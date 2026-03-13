@@ -1,0 +1,96 @@
+import { useState } from "react";
+import { toast } from "react-toastify";
+import Dialog from "../common/Dialog";
+import Button from "../common/Button";
+import { useDeleteProgram } from "../../hooks/useProgram";
+
+interface DeleteProgramModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  programId: string;
+  programName: string;
+}
+
+export default function DeleteProgramModal({
+  isOpen,
+  onClose,
+  programId,
+  programName,
+}: DeleteProgramModalProps) {
+  const [isLoading, setIsLoading] = useState(false);
+  const deleteProgram = useDeleteProgram();
+
+  const handleDelete = async () => {
+    setIsLoading(true);
+
+    toast.promise(
+      deleteProgram.mutateAsync(programId, {
+        onSuccess: () => {
+          onClose();
+        },
+        onError: (error) => {
+          console.error("Error deleting program:", error);
+        },
+        onSettled: () => {
+          setIsLoading(false);
+        },
+      }),
+      {
+        pending: "Deleting program...",
+        success: "Program deleted successfully",
+        error: "Failed to delete program",
+      }
+    );
+  };
+
+  return (
+    <Dialog isOpen={isOpen} onClose={onClose} title="Delete Program">
+      <div className="space-y-4">
+        <div className="text-center">
+          <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 mb-4">
+            <svg
+              className="h-6 w-6 text-red-600"
+              fill="none"
+              viewBox="0 0 24 24"
+              strokeWidth="1.5"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"
+              />
+            </svg>
+          </div>
+          <h3 className="text-lg font-medium text-gray-900 mb-2">
+            Delete Program
+          </h3>
+          <p className="text-sm text-gray-500 mb-4">
+            Are you sure you want to delete the program{" "}
+            <span className="font-semibold text-gray-900">"{programName}"</span>
+            ? This action cannot be undone.
+          </p>
+        </div>
+
+        <div className="flex justify-end gap-3">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onClose}
+            disabled={isLoading}
+          >
+            Cancel
+          </Button>
+          <Button
+            type="button"
+            variant="destructive"
+            onClick={handleDelete}
+            disabled={isLoading}
+          >
+            {isLoading ? "Deleting..." : "Delete Program"}
+          </Button>
+        </div>
+      </div>
+    </Dialog>
+  );
+}
