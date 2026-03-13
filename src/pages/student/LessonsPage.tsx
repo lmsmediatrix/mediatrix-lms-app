@@ -83,7 +83,7 @@ export default function LessonsPage() {
 
   if (isPending) return <LessonsPageSkeleton />;
 
-  const { instructor, modules } = data.sections[0];
+  const { instructor } = data.sections[0];
   const mainContent = lesson.mainContent;
   const contentType = mainContent ? getContentType(mainContent) : null;
   const isFullHeight = contentType !== null;

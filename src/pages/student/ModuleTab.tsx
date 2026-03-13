@@ -26,9 +26,7 @@ export default function ModuleTab({ sectionCode }: ModuleTabProps) {
   const { data: assessmentData } = useSectionAssessment(
     isStudent ? sectionCode : "",
   );
-  const { data: completedAssessmentIds } = useStudentCompletedAssessments(
-    isStudent ? userId : "",
-  );
+  useStudentCompletedAssessments(isStudent ? userId : "");
   const totalAssessments = assessmentData?.data?.totalAssessments || 0;
   const completedAssessments = totalAssessments
     ? totalAssessments - (assessmentData?.data?.pendingAssessment || 0)

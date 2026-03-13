@@ -53,7 +53,6 @@ export default function StudentDashboard() {
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
   const navigate = useNavigate();
   const { currentUser } = useAuth();
-  const orgType = currentUser.user.organization.type;
 
   const { data: dashboardMetrics, isPending: isMetricsPending } =
     useGetStudentMetrics(
@@ -113,30 +112,41 @@ export default function StudentDashboard() {
     announcements,
     overallProgress,
     recentGrades,
-    expandedStats,
     upcomingDeadlines,
     attendanceSummary,
     studyStreak,
     performanceData,
   } = dashboardMetrics?.[0] || {};
-  const averageGrade =
-    expandedStats?.[0]?.averageGrade ?? expandedStats?.[0]?.avgGrade;
 
-  const completionTotals = (studentSections?.sections || []).reduce(
-    (acc, section) => {
+  type SectionModule = NonNullable<Section["modules"]>[number];
+  type SectionLesson = SectionModule["lessons"][number];
+
+  type CompletionTotals = {
+    totalLessons: number;
+    completedLessons: number;
+    totalModules: number;
+    completedModules: number;
+    totalSections: number;
+    completedSections: number;
+  };
+
+  const completionTotals = (
+    (studentSections?.sections || []) as Section[]
+  ).reduce(
+    (acc: CompletionTotals, section: Section) => {
       acc.totalSections += 1;
 
-      (section.modules || []).forEach((mod) => {
-        const lessons = (mod.lessons || []).filter((lesson) =>
+      (section.modules || []).forEach((mod: SectionModule) => {
+        const lessons = (mod.lessons || []).filter((lesson: SectionLesson) =>
           lesson.status ? lesson.status === "published" : true,
         );
         if (lessons.length === 0) return;
         acc.totalModules += 1;
 
         let moduleCompletedLessons = 0;
-        lessons.forEach((lesson) => {
+        lessons.forEach((lesson: SectionLesson) => {
           const isCompleted = (lesson.progress || []).some(
-            (p) =>
+            (p: { userId: string; status: string }) =>
               p.userId?.toString() === currentUser.user.id &&
               p.status === "completed",
           );
@@ -287,17 +297,10 @@ export default function StudentDashboard() {
 
           {/* Insights Row */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 py-4 lg:py-8 lg:mr-4 items-stretch">
-            <OverallProgress
-              data={overallProgress?.[0]}
-              loading={isMetricsPending}
-            />
-            <StudyStreak data={studyStreak?.[0]} loading={isMetricsPending} />
-            <AttendanceSummary
-              data={attendanceSummary?.[0]}
-              loading={isMetricsPending}
-            />
+            <OverallProgress data={overallProgress?.[0]} />
+            <StudyStreak data={studyStreak?.[0]} />
+            <AttendanceSummary data={attendanceSummary?.[0]} />
           </div>
-
 
           <div className="py-2 lg:py-4 lg:mr-4">
             <CompletionTracker
@@ -323,11 +326,8 @@ export default function StudentDashboard() {
           </div>
           {/* Performance · Grades · Activity — 3-column row */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:mr-4 mb-4">
-            <PerformanceChart
-              data={performanceData}
-              loading={isMetricsPending}
-            />
-            <RecentGrades data={recentGrades} loading={isMetricsPending} />
+            <PerformanceChart data={performanceData} />
+            <RecentGrades data={recentGrades} />
           </div>
 
           {/* Side Panel in Mobile View */}
@@ -338,7 +338,6 @@ export default function StudentDashboard() {
               upcomingDeadlines={upcomingDeadlines}
             />
           </div>
-
         </div>
 
         {/* Side Panel in Desktop View */}
@@ -359,6 +358,3 @@ export default function StudentDashboard() {
     </div>
   );
 }
-
-
-

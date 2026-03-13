@@ -33,7 +33,7 @@ export default function InstructorDashboard() {
   const { data: dashboardData, isPending: isDashboardPending } =
     useGetInstructorMetrics(
       currentUser.user.id,
-      currentUser.user.organization._id
+      currentUser.user.organization._id,
     );
 
   const { data: instructorSections } = useInstructorSections({
@@ -61,11 +61,13 @@ export default function InstructorDashboard() {
 
   const activeSections = instructorSections?.sections.length || 0;
   const getSummaryValue = (label: string) =>
-    instructorSummary?.find((item: { label: string; value: string }) => item.label === label)
-      ?.value;
+    instructorSummary?.find(
+      (item: { label: string; value: string }) => item.label === label,
+    )?.value;
   const totalEnrolled = getSummaryValue("Total Enrolled Students") || "0";
   const newEnrollments = getSummaryValue("New Enrollment This Month") || "0";
-  const retentionRate = getSummaryValue("Retention Rate (Last 3 Months)") || "0%";
+  const retentionRate =
+    getSummaryValue("Retention Rate (Last 3 Months)") || "0%";
 
   const activeLearners = Number(totalEnrolled) || 0;
   const pendingSubmissions = gradingQueue?.[0]?.pendingSubmissions ?? 0;
@@ -75,21 +77,23 @@ export default function InstructorDashboard() {
 
   const averageGrades = averageGradeBySection || [];
   const engagementDays = engagementTrend?.[0]?.days || [];
-  const engagementMap = new Map(
-    engagementDays.map((d: { day: string; activeStudents: number }) => [
-      d.day,
-      d.activeStudents,
-    ])
+  const engagementMap = new Map<string, number>(
+    engagementDays.map(
+      (d: { day: string; activeStudents: number }) =>
+        [d.day, Number(d.activeStudents) || 0] as [string, number],
+    ),
   );
   const last7 = Array.from({ length: 7 }, (_, i) => {
     const d = new Date();
     d.setDate(d.getDate() - (6 - i));
     const dayKey = d.toLocaleDateString("en-CA");
-    const label = d.toLocaleDateString("en-US", { weekday: "short" }).slice(0, 2);
+    const label = d
+      .toLocaleDateString("en-US", { weekday: "short" })
+      .slice(0, 2);
     return {
       dayKey,
       label,
-      count: engagementMap.get(dayKey) || 0,
+      count: Number(engagementMap.get(dayKey) ?? 0),
     };
   });
   const maxEngagement = Math.max(...last7.map((d) => d.count), 1);
@@ -97,21 +101,28 @@ export default function InstructorDashboard() {
 
   const performanceStudents = performanceDashboard?.students || [];
   const totalPerformanceStudents = performanceStudents.length;
-  const completedLessonsStudents = performanceStudents.filter((student: any) => {
-    const progress = student.progress;
-    return progress && progress.completedLessons > 0;
-  }).length;
-  const completedModulesStudents = performanceStudents.filter((student: any) => {
-    const progress = student.progress;
-    if (!progress) return false;
-    return (progress.completedModules ?? 0) > 0;
-  }).length;
-  const completedSectionsStudents = performanceStudents.filter((student: any) => {
-    const progress = student.progress;
-    if (!progress) return false;
-    const totalItems = (progress.totalLessons || 0) + (progress.totalAssessments || 0);
-    return totalItems > 0 && progress.percent === 100;
-  }).length;
+  const completedLessonsStudents = performanceStudents.filter(
+    (student: any) => {
+      const progress = student.progress;
+      return progress && progress.completedLessons > 0;
+    },
+  ).length;
+  const completedModulesStudents = performanceStudents.filter(
+    (student: any) => {
+      const progress = student.progress;
+      if (!progress) return false;
+      return (progress.completedModules ?? 0) > 0;
+    },
+  ).length;
+  const completedSectionsStudents = performanceStudents.filter(
+    (student: any) => {
+      const progress = student.progress;
+      if (!progress) return false;
+      const totalItems =
+        (progress.totalLessons || 0) + (progress.totalAssessments || 0);
+      return totalItems > 0 && progress.percent === 100;
+    },
+  ).length;
 
   return (
     <div className="bg-gray-50 min-h-screen overflow-x-hidden">
@@ -152,7 +163,7 @@ export default function InstructorDashboard() {
                 <Button
                   onClick={() =>
                     navigate(
-                      `/${currentUser.user.organization.code}/instructor/schedule`
+                      `/${currentUser.user.organization.code}/instructor/schedule`,
                     )
                   }
                   variant="link"
@@ -162,7 +173,11 @@ export default function InstructorDashboard() {
                   <FaAngleRight />
                 </Button>
               </div>
-              <Schedule variant="embedded" showHeader={false} className="flex-1 min-h-0" />
+              <Schedule
+                variant="embedded"
+                showHeader={false}
+                className="flex-1 min-h-0"
+              />
             </div>
 
             <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm flex flex-col h-full">
@@ -176,19 +191,27 @@ export default function InstructorDashboard() {
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="rounded-xl border border-gray-100 bg-gray-50 p-4">
-                  <p className="text-2xl font-bold text-gray-900">{totalEnrolled}</p>
+                  <p className="text-2xl font-bold text-gray-900">
+                    {totalEnrolled}
+                  </p>
                   <p className="text-xs text-gray-500">Total Enrolled</p>
                 </div>
                 <div className="rounded-xl border border-gray-100 bg-gray-50 p-4">
-                  <p className="text-2xl font-bold text-gray-900">{newEnrollments}</p>
+                  <p className="text-2xl font-bold text-gray-900">
+                    {newEnrollments}
+                  </p>
                   <p className="text-xs text-gray-500">New Enrollments</p>
                 </div>
                 <div className="rounded-xl border border-gray-100 bg-gray-50 p-4">
-                  <p className="text-2xl font-bold text-gray-900">{retentionRate}</p>
+                  <p className="text-2xl font-bold text-gray-900">
+                    {retentionRate}
+                  </p>
                   <p className="text-xs text-gray-500">Retention Rate</p>
                 </div>
                 <div className="rounded-xl border border-gray-100 bg-gray-50 p-4">
-                  <p className="text-2xl font-bold text-gray-900">{pendingSubmissions}</p>
+                  <p className="text-2xl font-bold text-gray-900">
+                    {pendingSubmissions}
+                  </p>
                   <p className="text-xs text-gray-500">Pending Grading</p>
                 </div>
               </div>
@@ -231,7 +254,9 @@ export default function InstructorDashboard() {
               </h4>
               <div className="grid grid-cols-2 gap-3">
                 <div className="rounded-xl border border-gray-100 bg-gray-50 p-3">
-                  <p className="text-lg font-bold text-gray-900">{pendingSubmissions}</p>
+                  <p className="text-lg font-bold text-gray-900">
+                    {pendingSubmissions}
+                  </p>
                   <p className="text-xs text-gray-500">Pending</p>
                 </div>
                 <div className="rounded-xl border border-gray-100 bg-gray-50 p-3">
@@ -239,11 +264,15 @@ export default function InstructorDashboard() {
                   <p className="text-xs text-gray-500">Late</p>
                 </div>
                 <div className="rounded-xl border border-gray-100 bg-gray-50 p-3">
-                  <p className="text-lg font-bold text-gray-900">{missingCount}</p>
+                  <p className="text-lg font-bold text-gray-900">
+                    {missingCount}
+                  </p>
                   <p className="text-xs text-gray-500">Missing</p>
                 </div>
                 <div className="rounded-xl border border-gray-100 bg-gray-50 p-3">
-                  <p className="text-lg font-bold text-gray-900">{lateMissingTotal}</p>
+                  <p className="text-lg font-bold text-gray-900">
+                    {lateMissingTotal}
+                  </p>
                   <p className="text-xs text-gray-500">Late + Missing</p>
                 </div>
               </div>
@@ -321,9 +350,12 @@ export default function InstructorDashboard() {
                       average: number;
                       gradedCount: number;
                     },
-                    idx: number
+                    idx: number,
                   ) => (
-                    <div key={`${item.sectionCode}-${idx}`} className="space-y-1">
+                    <div
+                      key={`${item.sectionCode}-${idx}`}
+                      className="space-y-1"
+                    >
                       <div className="flex items-center justify-between">
                         <div className="min-w-0">
                           <p className="text-sm font-semibold text-gray-800 truncate">
@@ -346,7 +378,7 @@ export default function InstructorDashboard() {
                         />
                       </div>
                     </div>
-                  )
+                  ),
                 )}
               </div>
             ) : (
@@ -363,7 +395,6 @@ export default function InstructorDashboard() {
               announcements={announcements}
             />
           </div>
-
         </div>
 
         {/* Side Panel in Desktop View */}
