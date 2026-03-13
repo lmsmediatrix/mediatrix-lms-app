@@ -20,6 +20,10 @@ interface StudentsTabProps {
   sectionCode: string;
 }
 
+type StudentProgress = {
+  percent?: number;
+};
+
 export default function StudentsTab({ sectionCode }: StudentsTabProps) {
   const [searchParams, setSearchParams] = useSearchParams();
   const [skipLimit, setSkipLimit] = useState({
@@ -30,7 +34,7 @@ export default function StudentsTab({ sectionCode }: StudentsTabProps) {
     sectionCode,
     skip: skipLimit.skip,
     limit: skipLimit.limit,
-    withPagination: true
+    withPagination: true,
   });
   const { data: performanceData } = useGetPerformanceDashboard(sectionCode);
   const { currentUser } = useAuth();
@@ -39,11 +43,11 @@ export default function StudentsTab({ sectionCode }: StudentsTabProps) {
   const exportStudents = useExportSectionStudent();
 
   const learnerTerm = getTerm("learner", orgType, true);
-  const completionMap = new Map(
-    (performanceData?.students || []).map((student: any) => [
-      student._id,
-      student.progress,
-    ])
+  const completionMap = new Map<string, StudentProgress>(
+    (performanceData?.students || []).map(
+      (student: any) =>
+        [student._id, student.progress ?? {}] as [string, StudentProgress],
+    ),
   );
   const columnCount = orgType === "school" ? 5 : 4;
 
@@ -178,7 +182,7 @@ export default function StudentsTab({ sectionCode }: StudentsTabProps) {
                     {completionMap.get(student._id) ? (
                       (() => {
                         const progress = completionMap.get(student._id);
-                        const percent = Math.round(progress.percent || 0);
+                        const percent = Math.round(progress?.percent || 0);
                         const barColor =
                           percent === 100
                             ? "bg-green-500"

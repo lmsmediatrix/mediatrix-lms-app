@@ -93,40 +93,34 @@ export default function OrgAdminDashboard() {
 
   const performanceStudents = performanceDashboard?.students || [];
   const totalPerformanceStudents = performanceStudents.length;
-  const completedLessonsStudents = performanceStudents.filter((student: any) => {
-    const progress = student.progress;
-    return progress && progress.completedLessons > 0;
-  }).length;
-  const completedModulesStudents = performanceStudents.filter((student: any) => {
-    const progress = student.progress;
-    if (!progress) return false;
-    return (progress.completedModules ?? 0) > 0;
-  }).length;
-  const completedSectionsStudents = performanceStudents.filter((student: any) => {
-    const progress = student.progress;
-    if (!progress) return false;
-    const totalItems = (progress.totalLessons || 0) + (progress.totalAssessments || 0);
-    return totalItems > 0 && progress.percent === 100;
-  }).length;
+  const completedSectionsStudents = performanceStudents.filter(
+    (student: any) => {
+      const progress = student.progress;
+      if (!progress) return false;
+      const totalItems =
+        (progress.totalLessons || 0) + (progress.totalAssessments || 0);
+      return totalItems > 0 && progress.percent === 100;
+    },
+  ).length;
 
   // Transform API data to match expected structure
   const transformDashboardData = (
     apiData: DashboardApiResponse,
-    sectionData: SectionChartApiResponse
+    sectionData: SectionChartApiResponse,
   ) => {
     // Consolidate duplicate faculties
     const facultyMap = new Map<string, number>();
     apiData.userMetrics.instructorCountPerFaculty.forEach((item) => {
       facultyMap.set(
         item.faculty,
-        (facultyMap.get(item.faculty) || 0) + item.total
+        (facultyMap.get(item.faculty) || 0) + item.total,
       );
     });
     const consolidatedFaculties = Array.from(facultyMap.entries()).map(
       ([faculty, total]) => ({
         faculty,
         total,
-      })
+      }),
     );
 
     // Use sectionChartData for section-related metrics
@@ -161,14 +155,14 @@ export default function OrgAdminDashboard() {
       ],
       sectionChart: {
         labels: sectionMetrics.studentsPerSectionCount.map(
-          (item: { section: string }) => item.section
+          (item: { section: string }) => item.section,
         ),
         values: sectionMetrics.studentsPerSectionCount.map(
-          (item: { total: number }) => item.total
+          (item: { total: number }) => item.total,
         ),
         totalStudents: sectionMetrics.studentsPerSectionCount.reduce(
           (sum: number, item: { total: number }) => sum + item.total,
-          0
+          0,
         ),
       },
       sectionStatus: [
@@ -176,7 +170,7 @@ export default function OrgAdminDashboard() {
           label: "Upcoming Sections",
           value:
             sectionMetrics.sectionPerStatusCount.find(
-              (item: { status: string }) => item.status === "upcoming"
+              (item: { status: string }) => item.status === "upcoming",
             )?.total || 0,
           status: "upcoming" as const,
         },
@@ -184,7 +178,7 @@ export default function OrgAdminDashboard() {
           label: "Active Sections",
           value:
             sectionMetrics.sectionPerStatusCount.find(
-              (item: { status: string }) => item.status === "ongoing"
+              (item: { status: string }) => item.status === "ongoing",
             )?.total || 0,
           status: "active" as const,
         },
@@ -192,7 +186,7 @@ export default function OrgAdminDashboard() {
           label: "Completed Sections",
           value:
             sectionMetrics.sectionPerStatusCount.find(
-              (item: { status: string }) => item.status === "completed"
+              (item: { status: string }) => item.status === "completed",
             )?.total || 0,
           status: "completed" as const,
         },
@@ -203,21 +197,21 @@ export default function OrgAdminDashboard() {
             label: item.category,
             value: item.total,
             valueLabel: "courses",
-          })
+          }),
         ),
         facultyInstructors: consolidatedFaculties.map(
           (item: { faculty: string; total: number }) => ({
             label: item.faculty,
             value: item.total,
             valueLabel: "instructors",
-          })
+          }),
         ),
         programStudents: apiData.userMetrics.studentCountPerProgram.map(
           (item: { program: string; total: number }) => ({
             label: item.program,
             value: item.total,
             valueLabel: "students",
-          })
+          }),
         ),
       },
       instructorsToAssign: apiData.organizationMetrics.instructorsToAssign || 0,
@@ -289,7 +283,7 @@ export default function OrgAdminDashboard() {
           {dashboardData.stats.map(
             (
               stat: { label: string; value: number; icon: string },
-              idx: number
+              idx: number,
             ) => {
               const primary =
                 getComputedStyle(document.documentElement)
@@ -315,7 +309,7 @@ export default function OrgAdminDashboard() {
                   onClick={() => navigate(stat.label)}
                 />
               );
-            }
+            },
           )}
         </div>
         <div className="mb-4">
@@ -414,4 +408,3 @@ export default function OrgAdminDashboard() {
     </div>
   );
 }
-
