@@ -36,11 +36,18 @@ jobs:
             npm install
           fi
 
+      - name: Prepare .env.develop
+        run: |
+          if [ -f .env.develop ]; then
+            cp .env.develop .env
+            echo "Using .env.develop for build"
+          fi
+
       - name: Build
         run: npm run build
         env:
           CI: false
-          VITE_BASE_URL: ${{ secrets.VITE_BASE_URL_DEV }}
+          VITE_BASE_URL: https://lms-api-develop-763972588311.asia-southeast1.run.app/api
           VITE_CLOUDINARY_PATH: ${{ secrets.VITE_CLOUDINARY_PATH_DEV }}
 
       - name: Deploy to Firebase Hosting
