@@ -55,5 +55,5 @@ jobs:
         with:
           repoToken: ${{ secrets.GITHUB_TOKEN }}
           firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_LMS_APP_DEV_1F189 }}
-          projectId: ${{ secrets.FIREBASE_PROJECT_ID_DEV }}
+          projectId: mediatrix-lms-app-dev
           channelId: live
