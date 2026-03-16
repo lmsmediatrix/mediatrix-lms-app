@@ -1,13 +1,15 @@
 import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
-  FaSearch,
   FaFilter,
   FaExclamationTriangle,
   FaCheckCircle,
-  FaInfoCircle,
 } from "react-icons/fa";
 import { useGetPerformanceDashboard } from "../../hooks/useMetrics";
+import { useAuth } from "../../context/AuthContext";
+import { getTerm } from "../../lib/utils";
+import { SearchIcon } from "@/components/ui/search-icon";
+import { InfoIcon } from "@/components/ui/info-icon";
 
 type PerformanceStudentRow = {
   _id: string;
@@ -33,6 +35,10 @@ type PerformanceStudentRow = {
 export default function InstructorPerformancePage() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { currentUser } = useAuth();
+  const orgType = currentUser.user.organization.type;
+  const isCorporate = orgType === "corporate";
+  const sectionTerm = getTerm("group", orgType);
   const [searchTerm, setSearchTerm] = useState("");
   const [riskFilter, setRiskFilter] = useState<string>("all");
   const { data, isLoading } = useGetPerformanceDashboard();
@@ -77,6 +83,18 @@ export default function InstructorPerformancePage() {
     }
   };
 
+  const getStandingLabel = (standing: string) => {
+    if (!isCorporate) return standing;
+    switch (standing.toLowerCase()) {
+      case "probation":
+        return "At Risk";
+      case "warning":
+        return "Needs Improvement";
+      default:
+        return "On Track";
+    }
+  };
+
   return (
     <div className="p-6 max-w-[1600px] mx-auto space-y-6">
       {isLoading && (
@@ -101,66 +119,76 @@ export default function InstructorPerformancePage() {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
-          <div className="flex items-center gap-3">
-            <div className="p-3 bg-red-50 rounded-lg text-red-600">
-              <FaExclamationTriangle size={20} />
+        {[
+          {
+            label: "Critical Risk",
+            value: summary.criticalRisk,
+            icon: <FaExclamationTriangle size={20} />,
+            colorVar: "--color-danger",
+            fallback: "#ef4444",
+          },
+          {
+            label: "Moderate Risk",
+            value: summary.moderateRisk,
+            icon: <InfoIcon size={20} />,
+            colorVar: "--color-warning",
+            fallback: "#f59e0b",
+          },
+          {
+            label: "Good Standing",
+            value: summary.goodStanding,
+            icon: <FaCheckCircle size={20} />,
+            colorVar: "--color-success",
+            fallback: "#10b981",
+          },
+          {
+            label: "Class Average GPA",
+            value: Number(summary.classAverageGPA || 0).toFixed(2),
+            icon: <span className="text-base font-bold">AVG</span>,
+            colorVar: "--color-primary",
+            fallback: "#3b82f6",
+          },
+        ].map(({ label, value, icon, colorVar, fallback }) => {
+          const c = `var(${colorVar}, ${fallback})`;
+          return (
+            <div
+              key={label}
+              className="p-4 rounded-xl border shadow-sm"
+              style={{
+                backgroundColor: `color-mix(in srgb, ${c} 6%, white 94%)`,
+                borderColor: `color-mix(in srgb, ${c} 20%, white 80%)`,
+              }}
+            >
+              <div className="flex items-center gap-3">
+                <div
+                  className="p-3 rounded-lg"
+                  style={{
+                    backgroundColor: `color-mix(in srgb, ${c} 12%, white 88%)`,
+                    color: `color-mix(in srgb, ${c} 85%, black 15%)`,
+                  }}
+                >
+                  {icon}
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500 font-medium">{label}</p>
+                  <h3 className="text-2xl font-bold text-gray-800">{value}</h3>
+                </div>
+              </div>
             </div>
-            <div>
-              <p className="text-sm text-gray-500 font-medium">Critical Risk</p>
-              <h3 className="text-2xl font-bold text-gray-800">
-                {summary.criticalRisk}
-              </h3>
-            </div>
-          </div>
-        </div>
-        <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
-          <div className="flex items-center gap-3">
-            <div className="p-3 bg-yellow-50 rounded-lg text-yellow-600">
-              <FaInfoCircle size={20} />
-            </div>
-            <div>
-              <p className="text-sm text-gray-500 font-medium">Moderate Risk</p>
-              <h3 className="text-2xl font-bold text-gray-800">
-                {summary.moderateRisk}
-              </h3>
-            </div>
-          </div>
-        </div>
-        <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
-          <div className="flex items-center gap-3">
-            <div className="p-3 bg-green-50 rounded-lg text-green-600">
-              <FaCheckCircle size={20} />
-            </div>
-            <div>
-              <p className="text-sm text-gray-500 font-medium">Good Standing</p>
-              <h3 className="text-2xl font-bold text-gray-800">
-                {summary.goodStanding}
-              </h3>
-            </div>
-          </div>
-        </div>
-        <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
-          <div className="flex items-center gap-3">
-            <div className="p-3 bg-blue-50 rounded-lg text-blue-600">
-              <span className="text-xl font-bold">AVG</span>
-            </div>
-            <div>
-              <p className="text-sm text-gray-500 font-medium">
-                Class Average GPA
-              </p>
-              <h3 className="text-2xl font-bold text-gray-800">
-                {Number(summary.classAverageGPA || 0).toFixed(2)}
-              </h3>
-            </div>
-          </div>
-        </div>
+          );
+        })}
       </div>
 
       {/* Filters and Search */}
-      <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex flex-col md:flex-row gap-4 justify-between items-center">
+      <div
+        className="p-4 rounded-xl border shadow-sm flex flex-col md:flex-row gap-4 justify-between items-center"
+        style={{
+          backgroundColor: "color-mix(in srgb, var(--color-primary, #3b82f6) 4%, white 96%)",
+          borderColor: "color-mix(in srgb, var(--color-primary, #3b82f6) 15%, white 85%)",
+        }}
+      >
         <div className="relative w-full md:w-96">
-          <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+          <SearchIcon size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
           <input
             type="text"
             placeholder="Search students..."
@@ -187,16 +215,27 @@ export default function InstructorPerformancePage() {
       </div>
 
       {/* Table */}
-      <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
+      <div
+        className="rounded-xl border shadow-sm overflow-hidden"
+        style={{
+          borderColor: "color-mix(in srgb, var(--color-primary, #3b82f6) 15%, white 85%)",
+        }}
+      >
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
-              <tr className="bg-gray-50 border-b border-gray-200">
+              <tr
+                className="border-b"
+                style={{
+                  backgroundColor: "color-mix(in srgb, var(--color-primary, #3b82f6) 6%, white 94%)",
+                  borderColor: "color-mix(in srgb, var(--color-primary, #3b82f6) 15%, white 85%)",
+                }}
+              >
                 <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
                   Student
                 </th>
                 <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  Section
+                  {sectionTerm}
                 </th>
                 <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
                   GPA
@@ -208,7 +247,7 @@ export default function InstructorPerformancePage() {
                   Progress
                 </th>
                 <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  Academic Standing
+                  {isCorporate ? "Performance Status" : "Academic Standing"}
                 </th>
                 <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
                   Risk Level
@@ -218,16 +257,36 @@ export default function InstructorPerformancePage() {
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-200">
+            <tbody
+              className="bg-white divide-y"
+              style={{ borderColor: "color-mix(in srgb, var(--color-primary, #3b82f6) 10%, white 90%)" }}
+            >
               {filteredStudents.length > 0 ? (
                 filteredStudents.map((student) => (
                   <tr
                     key={student._id}
-                    className="hover:bg-gray-50 transition-colors"
+                    className="transition-colors hover:brightness-[0.97]"
+                    style={{
+                      backgroundColor: "white",
+                    }}
+                    onMouseEnter={(e) =>
+                      ((e.currentTarget as HTMLTableRowElement).style.backgroundColor =
+                        "color-mix(in srgb, var(--color-primary, #3b82f6) 4%, white 96%)")
+                    }
+                    onMouseLeave={(e) =>
+                      ((e.currentTarget as HTMLTableRowElement).style.backgroundColor =
+                        "white")
+                    }
                   >
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
-                        <div className="h-10 w-10 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold">
+                        <div
+                          className="h-10 w-10 rounded-full flex items-center justify-center font-bold text-sm"
+                          style={{
+                            backgroundColor: "color-mix(in srgb, var(--color-primary, #3b82f6) 12%, white 88%)",
+                            color: "var(--color-primary, #2563eb)",
+                          }}
+                        >
                           {student.name.charAt(0)}
                         </div>
                         <div className="ml-4">
@@ -241,7 +300,13 @@ export default function InstructorPerformancePage() {
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">
+                      <span
+                        className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full"
+                        style={{
+                          backgroundColor: "color-mix(in srgb, var(--color-primary, #3b82f6) 10%, white 90%)",
+                          color: "color-mix(in srgb, var(--color-primary, #3b82f6) 80%, black 20%)",
+                        }}
+                      >
                         {student.section}
                       </span>
                     </td>
@@ -269,17 +334,17 @@ export default function InstructorPerformancePage() {
                           <div className="flex items-center gap-2">
                             <div className="w-20 bg-gray-200 rounded-full h-1.5 overflow-hidden">
                               <div
-                                className={`h-full rounded-full ${
-                                  student.progress.percent === 0
-                                    ? "bg-gray-400"
-                                    : student.progress.percent < 50
-                                      ? "bg-orange-500"
-                                      : student.progress.percent < 100
-                                        ? "bg-blue-500"
-                                        : "bg-green-500"
-                                }`}
+                                className="h-full rounded-full"
                                 style={{
                                   width: `${student.progress.percent}%`,
+                                  backgroundColor:
+                                    student.progress.percent === 0
+                                      ? "#9ca3af"
+                                      : student.progress.percent === 100
+                                        ? "var(--color-success, #10b981)"
+                                        : student.progress.percent < 50
+                                          ? "var(--color-warning, #f59e0b)"
+                                          : "var(--color-primary, #3b82f6)",
                                 }}
                               />
                             </div>
@@ -304,7 +369,7 @@ export default function InstructorPerformancePage() {
                           student.standing,
                         )}`}
                       >
-                        {student.standing}
+                        {getStandingLabel(student.standing)}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
@@ -321,7 +386,8 @@ export default function InstructorPerformancePage() {
                         onClick={() =>
                           navigate(`${location.pathname}/${student._id}`)
                         }
-                        className="text-primary hover:text-primary/80 font-medium"
+                        className="font-medium transition-opacity hover:opacity-75"
+                        style={{ color: "var(--color-primary, #2563eb)" }}
                       >
                         View Details
                       </button>

@@ -2,7 +2,8 @@ import { useState, useRef, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { FaAngleLeft, FaSpinner, FaCheck, FaTimes } from "react-icons/fa";
+import { FaAngleLeft, FaSpinner, FaTimes } from "react-icons/fa";
+import { CheckIcon } from "@/components/ui/check-icon";
 import { BiBook } from "react-icons/bi";
 import { BsCalendar3 } from "react-icons/bs";
 import { useNavigate } from "react-router-dom";
@@ -384,7 +385,7 @@ export default function NewSectionPage() {
                     !validateCodeHook.isPending &&
                     !generateCodeHook.isError &&
                     !validateCodeHook.isError && (
-                      <FaCheck className="absolute right-2 top-1/2 transform -translate-y-1/2 text-green-500" />
+                      <CheckIcon size={14} className="absolute right-2 top-1/2 transform -translate-y-1/2 text-green-500" />
                     )}
                   {(generateCodeHook.isError || validateCodeHook.isError) && (
                     <FaTimes className="absolute right-2 top-1/2 transform -translate-y-1/2 text-red-500" />

@@ -24,9 +24,10 @@ interface SectionChartProps {
     values: number[];
     totalStudents: number;
   };
+  xAxisLabel?: string;
 }
 
-export default function SectionChart({ data }: SectionChartProps) {
+export default function SectionChart({ data, xAxisLabel = "Sections" }: SectionChartProps) {
   const labels = data?.labels?.length ? data.labels : ["No Sections"];
   const values = data?.values?.length ? data.values : [0];
   const totalStudents = data?.totalStudents || 0;
@@ -99,7 +100,7 @@ export default function SectionChart({ data }: SectionChartProps) {
       x: {
         title: {
           display: true,
-          text: "Sections",
+          text: xAxisLabel,
           font: { size: isMobile ? 12 : 14 },
         },
         ticks: {

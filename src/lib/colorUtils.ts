@@ -2,9 +2,8 @@ const BRANDING_COLORS_KEY = "brandingColors";
 interface BrandingColors {
   primary: string;
   secondary: string;
-  [key: string]: string; 
+  [key: string]: string;
 }
-
 
 export const updateThemeColors = (brandingColors: any) => {
   if (!brandingColors) return;
@@ -38,13 +37,18 @@ export const loadThemeColors = () => {
 export const resetThemeColors = () => {
   const root = document.documentElement;
   const defaultColors: BrandingColors = {
-    primary: "#3E5B93", 
-    secondary: "#228AB9",
-    background: "#f8f9fa", 
-    text: "#343a40", 
+    primary: "#3e5b93",
+    secondary: "#228ab9",
+    accent: "#c0db70",
+    info: "#6366f1",
+    success: "#28a745",
+    warning: "#f97316",
+    danger: "#dc3545",
+    neutral: "#8b5cf6",
+    light: "#f8f9fa",
+    dark: "#343a40",
   };
   Object.entries(defaultColors).forEach(([key, value]) => {
     root.style.setProperty(`--color-${key}`, value);
-  });
-
+  });
 };

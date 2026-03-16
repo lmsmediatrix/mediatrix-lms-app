@@ -1,11 +1,9 @@
 import { useState, useEffect, useRef } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
-import {
-  FaBars,
-  FaUser,
-  FaCog,
-  FaSignOutAlt,
-} from "react-icons/fa";
+import { FaBars } from "react-icons/fa";
+import { UserIcon } from "@/components/ui/user-icon";
+import { SettingsIcon } from "@/components/ui/settings-icon";
+import { LogoutIcon } from "@/components/ui/logout-icon";
 import { IoEllipsisVerticalSharp } from "react-icons/io5";
 import {
   MdKeyboardArrowDown,
@@ -427,7 +425,7 @@ export default function SideNavigation({
                     onClick={navigateToProfile}
                     className="flex items-center gap-2 w-full text-left px-4 py-2 text-sm text-gray-600 hover:bg-gray-100"
                   >
-                    <FaUser className="h-4 w-4" />
+                    <UserIcon size={16} />
                     Profile
                   </button>
                 )}
@@ -436,7 +434,7 @@ export default function SideNavigation({
                     onClick={navigateToSettings}
                     className="flex items-center gap-2 w-full text-left px-4 py-2 text-sm text-gray-600 hover:bg-gray-100"
                   >
-                    <FaCog className="h-4 w-4" />
+                    <SettingsIcon size={16} />
                     Settings
                   </button>
                 )}
@@ -444,7 +442,7 @@ export default function SideNavigation({
                   onClick={handleLogout}
                   className="flex items-center gap-2 w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100"
                 >
-                  <FaSignOutAlt className="h-4 w-4" />
+                  <LogoutIcon size={16} />
                   Logout
                 </button>
               </m.div>

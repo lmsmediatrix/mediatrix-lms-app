@@ -3,7 +3,7 @@ import Button from "../../components/common/Button";
 import Table from "../../components/common/Table";
 import UpsertInstructorModal from "../../components/instructor/UpsertInstructorModal";
 import { FiEdit2, FiTrash2 } from "react-icons/fi";
-import { FaPlus } from "react-icons/fa";
+import { PlusIcon } from "@/components/ui/plus-icon";
 
 import { formatDateMMMDDYYY } from "../../lib/dateUtils";
 import { dateFilter, IInstructor } from "../../types/interfaces";
@@ -568,7 +568,7 @@ export default function InstructorDatabase() {
             onClick={() => setSearchParams({ modal: "create-instructor" })}
             className="whitespace-nowrap text-sm flex-1 md:flex-initial"
           >
-            <FaPlus />
+            <PlusIcon size={14} />
             <span className="hidden sm:inline">Add {instructorTerm}</span>
             <span className="sm:hidden">Add</span>
           </Button>

@@ -8,6 +8,7 @@ interface DashboardHeaderProps {
   children?: React.ReactNode;
   coverPhoto?: string;
   noGreetings?: boolean;
+  dateFilter?: React.ReactNode;
 }
 
 export default function DashboardHeader({
@@ -16,6 +17,7 @@ export default function DashboardHeader({
   children,
   coverPhoto,
   noGreetings = false,
+  dateFilter,
 }: DashboardHeaderProps) {
   const { currentUser } = useAuth();
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -71,34 +73,39 @@ export default function DashboardHeader({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.5 }}
-      className={`relative px-4 md:px-6 lg:px-10 overflow-hidden ${
-        coverPhoto ? "" : "text-white"
-      }`}
+      className="relative px-4 md:px-6 lg:px-10 overflow-hidden text-white"
       style={backgroundStyles}
     >
       {!coverPhoto && (
         <>
-          {/* Main gradient background */}
-          <div className="absolute inset-0 bg-gradient-to-br from-blue-800 via-indigo-700 to-violet-700" />
+          {/* Solid primary base */}
+          <div
+            className="absolute inset-0"
+            style={{ backgroundColor: "var(--color-primary, #1e3a8a)" }}
+          />
 
-          {/* Animated floating orbs */}
+          {/* Left pulse orb — white opacity glow */}
           <motion.div
-            initial={{ scale: 0.8, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ duration: 1.2, ease: "easeOut" }}
-            className="absolute -top-20 -right-20 h-64 w-64 rounded-full bg-gradient-to-br from-cyan-400/20 to-blue-400/10 blur-3xl"
+            className="absolute -left-16 top-1/2 -translate-y-1/2 h-56 w-56 rounded-full blur-3xl"
+            style={{ background: "radial-gradient(circle, rgba(255,255,255,0.35) 0%, transparent 70%)" }}
+            animate={{ scale: [1, 1.25, 1], opacity: [0.5, 1, 0.5] }}
+            transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
           />
+
+          {/* Right pulse orb — white opacity glow, opposite phase */}
           <motion.div
-            initial={{ scale: 0.8, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ duration: 1.2, delay: 0.2, ease: "easeOut" }}
-            className="absolute -bottom-20 -left-20 h-64 w-64 rounded-full bg-gradient-to-tr from-violet-400/20 to-fuchsia-400/10 blur-3xl"
+            className="absolute -right-16 top-1/2 -translate-y-1/2 h-56 w-56 rounded-full blur-3xl"
+            style={{ background: "radial-gradient(circle, rgba(255,255,255,0.35) 0%, transparent 70%)" }}
+            animate={{ scale: [1.2, 1, 1.2], opacity: [1, 0.5, 1] }}
+            transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
           />
+
+          {/* Center large slow pulse — subtler white glow */}
           <motion.div
-            initial={{ scale: 0.6, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ duration: 1.4, delay: 0.4, ease: "easeOut" }}
-            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-40 w-80 rounded-full bg-white/5 blur-3xl"
+            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-72 w-96 rounded-full blur-3xl"
+            style={{ background: "radial-gradient(circle, rgba(255,255,255,0.18) 0%, transparent 65%)" }}
+            animate={{ scale: [1, 1.12, 1], opacity: [0.4, 0.85, 0.4] }}
+            transition={{ duration: 7, repeat: Infinity, ease: "easeInOut", delay: 1 }}
           />
 
           {/* Subtle mesh pattern overlay */}
@@ -115,15 +122,19 @@ export default function DashboardHeader({
       )}
 
       <div className="max-w-7xl mx-auto py-9 relative z-10">
-        {/* Date - animated slide in from right */}
-        <motion.p
+        {/* Date / date filter - top right of banner */}
+        <motion.div
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.5, delay: 0.3 }}
-          className="text-end text-white/80 mb-4 absolute right-0 top-0 hidden md:block pt-4 text-sm font-light tracking-wide"
+          className="absolute right-0 top-0 hidden md:flex items-center pt-4"
         >
-          {currentDate}
-        </motion.p>
+          {dateFilter ?? (
+            <p className="text-white/80 text-sm font-light tracking-wide">
+              {currentDate}
+            </p>
+          )}
+        </motion.div>
 
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center">
           <div className="flex flex-col justify-center mb-4 lg:mb-0">

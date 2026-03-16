@@ -1,5 +1,11 @@
 // utils/terminology.ts
 import { roleLabels, organizationTypes } from "../config/common";
+import { type ClassValue, clsx } from "clsx";
+import { twMerge } from "tailwind-merge";
+
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
+}
 
 // Define types for TypeScript
 export type OrganizationType = typeof organizationTypes[number];

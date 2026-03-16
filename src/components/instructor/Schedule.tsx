@@ -1,3 +1,4 @@
+import React from "react";
 import { useSchedule } from "../../hooks/useSection";
 import {
   calculateDurationMinutes,
@@ -5,15 +6,6 @@ import {
   formatDateMMMDDYYY,
 } from "../../lib/dateUtils";
 import { FaClock, FaCalendarAlt } from "react-icons/fa";
-
-interface Colors {
-  bg: string;
-  text: string;
-  border: string;
-  dot: string;
-  gradient: string;
-  icon: string;
-}
 
 interface Time {
   start: string;
@@ -34,53 +26,42 @@ interface ScheduleProps {
   showHeader?: boolean;
 }
 
-function getSectionColors(sectionCode: string): Colors {
-  const colors: Colors[] = [
-    {
-      bg: "bg-blue-50/80",
-      text: "text-blue-700",
-      border: "border-blue-200/60",
-      dot: "bg-blue-500",
-      gradient: "from-blue-500 to-blue-600",
-      icon: "text-blue-400",
-    },
-    {
-      bg: "bg-emerald-50/80",
-      text: "text-emerald-700",
-      border: "border-emerald-200/60",
-      dot: "bg-emerald-500",
-      gradient: "from-emerald-500 to-emerald-600",
-      icon: "text-emerald-400",
-    },
-    {
-      bg: "bg-violet-50/80",
-      text: "text-violet-700",
-      border: "border-violet-200/60",
-      dot: "bg-violet-500",
-      gradient: "from-violet-500 to-violet-600",
-      icon: "text-violet-400",
-    },
-    {
-      bg: "bg-amber-50/80",
-      text: "text-amber-700",
-      border: "border-amber-200/60",
-      dot: "bg-amber-500",
-      gradient: "from-amber-500 to-amber-600",
-      icon: "text-amber-400",
-    },
-    {
-      bg: "bg-rose-50/80",
-      text: "text-rose-700",
-      border: "border-rose-200/60",
-      dot: "bg-rose-500",
-      gradient: "from-rose-500 to-rose-600",
-      icon: "text-rose-400",
-    },
-  ];
+// Only vibrant palette slots — no gray/secondary — used for the accent bar only.
+// Order must match WeeklySchedule so the same section always gets the same accent color.
+const SECTION_VARIANTS: { colorVar: string; fallback: string }[] = [
+  { colorVar: "--color-primary", fallback: "#3b82f6" },
+  { colorVar: "--color-success", fallback: "#10b981" },
+  { colorVar: "--color-accent",  fallback: "#f59e0b" },
+  { colorVar: "--color-danger",  fallback: "#ef4444" },
+  { colorVar: "--color-warning", fallback: "#f97316" },
+  { colorVar: "--color-info",    fallback: "#6366f1" },
+];
+
+function getSectionColors(sectionCode: string) {
   const hash = sectionCode
     .split("")
     .reduce((acc: number, char: string) => acc + char.charCodeAt(0), 0);
-  return colors[hash % colors.length];
+  const v = SECTION_VARIANTS[hash % SECTION_VARIANTS.length];
+  const accent = `var(${v.colorVar}, ${v.fallback})`;
+
+  return {
+    // All cards share the org primary tint background
+    cardStyle: {
+      backgroundColor: "color-mix(in srgb, var(--color-primary, #3b82f6) 8%, white 92%)",
+      borderColor:     "color-mix(in srgb, var(--color-primary, #3b82f6) 18%, white 82%)",
+    } as React.CSSProperties,
+    // Left accent bar keeps the unique section color
+    accentStyle: {
+      background: `linear-gradient(to bottom, ${accent}, color-mix(in srgb, ${accent} 70%, black 30%))`,
+    } as React.CSSProperties,
+    // Section name text uses the section accent for identity
+    textStyle: {
+      color: `color-mix(in srgb, ${accent} 80%, black 20%)`,
+    } as React.CSSProperties,
+    iconStyle: {
+      color: accent,
+    } as React.CSSProperties,
+  };
 }
 
 export default function Schedule({
@@ -98,8 +79,16 @@ export default function Schedule({
       {showHeader && (
         <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary/10">
-              <FaCalendarAlt className="h-3.5 w-3.5 text-primary" />
+            <div
+              className="flex items-center justify-center w-8 h-8 rounded-lg"
+              style={{
+                backgroundColor: "color-mix(in srgb, var(--color-primary, #3b82f6) 12%, white 88%)",
+              }}
+            >
+              <FaCalendarAlt
+                className="h-3.5 w-3.5"
+                style={{ color: "var(--color-primary, #2563eb)" }}
+              />
             </div>
             <h2 className="font-semibold text-gray-900">
               {todaySchedule.length > 0
@@ -127,17 +116,20 @@ export default function Schedule({
               return (
                 <div
                   key={index}
-                  className={`group relative rounded-xl border ${c.border} ${c.bg} p-4 transition-all duration-200 hover:shadow-md hover:-translate-y-0.5`}
+                  className="group relative rounded-xl border p-4 transition-all duration-200 hover:shadow-md hover:-translate-y-0.5"
+                  style={c.cardStyle}
                 >
-                  {/* Accent bar */}
+                  {/* Per-section accent bar on the left */}
                   <div
-                    className={`absolute left-0 top-3 bottom-3 w-1 rounded-full bg-gradient-to-b ${c.gradient}`}
+                    className="absolute left-0 top-3 bottom-3 w-1 rounded-full"
+                    style={c.accentStyle}
                   />
 
                   <div className="flex items-center justify-between pl-3">
                     <div className="min-w-0 flex-1">
                       <h4
-                        className={`font-semibold text-sm ${c.text} truncate`}
+                        className="font-semibold text-sm truncate"
+                        style={c.textStyle}
                       >
                         {classItem.sectionName}
                       </h4>
@@ -148,8 +140,8 @@ export default function Schedule({
 
                     <div className="flex flex-col items-end gap-1 ml-4 shrink-0">
                       <div className="flex items-center gap-1.5">
-                        <FaClock className={`h-3 w-3 ${c.icon}`} />
-                        <span className={`text-sm font-semibold ${c.text}`}>
+                        <FaClock className="h-3 w-3" style={c.iconStyle} />
+                        <span className="text-sm font-semibold" style={c.textStyle}>
                           {convert24to12Format(classItem.time.start)} -{" "}
                           {convert24to12Format(classItem.time.end)}
                         </span>

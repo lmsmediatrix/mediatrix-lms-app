@@ -44,7 +44,12 @@ const GradeInputForm: React.FC<GradeInputFormProps> = ({
   );
   const [gradeLabel, setGradeLabel] = useState(existingGrade?.gradeLabel ?? "");
   const [remarks, setRemarks] = useState(existingGrade?.remarks ?? "");
-  const [status, setStatus] = useState(existingGrade?.status ?? "graded");
+  // If opening a submitted/late record for grading, default status to "graded"
+  const initialStatus =
+    existingGrade?.status && ["submitted", "late"].includes(existingGrade.status)
+      ? "graded"
+      : (existingGrade?.status ?? "graded");
+  const [status, setStatus] = useState(initialStatus);
   const [formError, setFormError] = useState<string | null>(null);
 
   const createGrade = useCreateStudentAssessmentGrade();
