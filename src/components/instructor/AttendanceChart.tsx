@@ -1,230 +1,174 @@
 import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  Title,
+  Bar,
+  BarChart,
+  CartesianGrid,
+  XAxis,
+  YAxis,
   Tooltip,
   Legend,
-} from "chart.js";
-import { Bar } from "react-chartjs-2";
-
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  Title,
-  Tooltip,
-  Legend
-);
+  ResponsiveContainer,
+} from "recharts";
+import { useAuth } from "../../context/AuthContext";
+import { useGetAttendanceByDate } from "../../hooks/useMetrics";
 
 interface AttendanceChartProps {
-  data?: {
-      sections: { section: string; present: number; absent: number }[];
-      numberOfStudents: number;
-  };
   variant?: "card" | "embedded";
   heightClass?: string;
   className?: string;
+  date?: string;
 }
 
+const toLocalDateString = (date: Date) => {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+};
+
+const CustomTooltip = ({ active, payload, label }: any) => {
+  if (!active || !payload?.length) return null;
+  return (
+    <div className="rounded-xl border border-gray-100 bg-gray-900 px-4 py-3 shadow-xl min-w-[160px]">
+      <p className="text-xs font-semibold text-gray-300 mb-2 uppercase tracking-wide">
+        {label}
+      </p>
+      {payload.map((entry: any) => (
+        <div key={entry.name} className="flex items-center justify-between gap-4 text-sm py-0.5">
+          <div className="flex items-center gap-2">
+            <span
+              className="h-2 w-2 rounded-full shrink-0"
+              style={{ backgroundColor: entry.fill }}
+            />
+            <span className="text-gray-400">{entry.name}</span>
+          </div>
+          <span className="font-bold text-white">{entry.value}</span>
+        </div>
+      ))}
+      {payload[0]?.payload?.total != null && (
+        <p className="text-xs text-gray-500 mt-2 pt-2 border-t border-gray-700">
+          Total students: {payload[0].payload.total}
+        </p>
+      )}
+    </div>
+  );
+};
+
+const CustomLegend = ({ payload }: any) => (
+  <div className="flex items-center gap-4 px-1 pb-2">
+    {payload?.map((entry: any) => (
+      <div key={entry.value} className="flex items-center gap-1.5">
+        <span
+          className="h-2.5 w-2.5 rounded-sm shrink-0"
+          style={{ backgroundColor: entry.color }}
+        />
+        <span className="text-xs text-gray-500 font-medium">{entry.value}</span>
+      </div>
+    ))}
+  </div>
+);
+
 export default function AttendanceChart({
-  data,
   variant = "card",
   heightClass = "h-[300px] md:h-[400px]",
   className,
+  date,
 }: AttendanceChartProps) {
-  const dataChart = data 
+  const { currentUser } = useAuth();
+  const today = toLocalDateString(new Date());
+  const selectedDate = date ?? today;
 
-  // Fallback values if dataChart is invalid
-  const sections = dataChart?.sections?.map(item => item.section) || [];
-  const present = dataChart?.sections?.map(item => item.present) || [];
-  const absent = dataChart?.sections?.map(item => item.absent) || [];
-  const numberOfStudents = dataChart?.numberOfStudents || 0;
-
-  // Check if there is no valid data
-  if (
-      !sections.length ||
-      !present.length ||
-      !absent.length ||
-      numberOfStudents === 0
-  ) {
-      const empty = (
-        <div className="flex items-center justify-center h-full">
-          <p className="text-gray-400 text-center text-sm md:text-base">
-            No attendance data available
-          </p>
-        </div>
-      );
-      if (variant === "embedded") {
-        return <div className={`${heightClass} ${className || ""}`}>{empty}</div>;
-      }
-      return (
-        <div className="bg-white p-3 md:p-4 rounded-2xl border border-gray-100 shadow-sm">
-          <div className={`${heightClass}`}>{empty}</div>
-        </div>
-      );
-  }
-
-  // Calculate the maximum total students in any section (present + absent)
-  const maxSectionTotal = Math.max(
-      ...(dataChart?.sections?.map(item => item.present + item.absent) || [])
+  const { data: metricsData, isPending } = useGetAttendanceByDate(
+    currentUser.user.id,
+    currentUser.user.organization._id,
+    selectedDate,
   );
 
-  // Round up to the nearest "obvious" number
-  const roundToObvious = (num: number) => {
-      if (num <= 10) return Math.ceil(num);
-      const magnitude = Math.pow(10, Math.floor(Math.log10(num)));
-      const step = magnitude >= 100 ? magnitude / 2 : magnitude;
-      return Math.ceil(num / step) * step;
-  };
+  const raw = metricsData?.[0]?.sectionsAttendance?.[0];
+  const chartData =
+    raw?.sections?.map((item: any) => ({
+      section: item.section,
+      sectionCode: item.sectionCode,
+      Present: item.present,
+      Absent: item.absent,
+      total: item.total,
+    })) ?? [];
 
-  const yAxisMax = roundToObvious(maxSectionTotal);
-  // Set tick step size to divide y-axis into approximately 5 steps
-  const stepSize = Math.ceil(yAxisMax / 5);
+  const hasData = chartData.length > 0 && raw?.numberOfStudents > 0;
 
-  // Calculate barThickness based on number of sections
-  const isMobile = window.innerWidth < 768;
-  const baseThickness = isMobile ? 16 : 40; // Slimmer bars for a modern look
-  const maxSections = 10; // Maximum sections before thickness scales down significantly
-  const thicknessFactor = Math.max(0.5, Math.min(1, maxSections / sections.length)); // Scale between 0.5 and 1
-  const barThickness = Math.round(baseThickness * thicknessFactor); // Round to nearest integer
+  const formattedDate = new Date(selectedDate + "T00:00:00").toLocaleDateString(
+    "en-US",
+    { month: "long", day: "numeric", year: "numeric" },
+  );
 
-  const options = {
-      responsive: true,
-      maintainAspectRatio: false, // Allow chart to stretch to container size
-      layout: {
-          padding: { top: 8, right: 8, bottom: 4, left: 4 },
-      },
-      plugins: {
-          legend: {
-              display: true,
-              position: "top" as const,
-              align: "start" as const,
-              labels: {
-                  usePointStyle: true,
-                  pointStyle: "circle",
-                  boxWidth: 8,
-                  boxHeight: 8,
-                  padding: 16,
-                  font: {
-                      size: isMobile ? 10 : 12, // Smaller legend on mobile
-                  },
-                  color: "#6B7280",
-              },
-          },
-          tooltip: {
-              backgroundColor: "rgba(17, 24, 39, 0.92)",
-              titleColor: "#F9FAFB",
-              bodyColor: "#F9FAFB",
-              padding: 10,
-              cornerRadius: 8,
-              displayColors: false,
-              bodyFont: {
-                  size: isMobile ? 12 : 14, // Smaller tooltip text on mobile
-              },
-          },
-      },
-      scales: {
-          y: {
-              stacked: true, // Enable stacking on y-axis
-              min: 0,
-              max: yAxisMax,
-              ticks: {
-                  stepSize: stepSize,
-                  font: {
-                      size: isMobile ? 10 : 12, // Smaller tick labels on mobile
-                  },
-                  color: "#9CA3AF",
-              },
-              grid: {
-                  display: true,
-                  drawTicks: true,
-                  color: "rgba(148, 163, 184, 0.25)",
-              },
-              border: { display: false },
-          },
-          x: {
-              stacked: true, // Enable stacking on x-axis
-              ticks: {
-                  font: {
-                      size: isMobile ? 10 : 12, // Smaller tick labels on mobile
-                  },
-                  color: "#6B7280",
-              },
-              grid: {
-                  display: false,
-              },
-              border: { display: false },
-          },
-      },
-  };
+  const emptyState = (
+    <div className="flex items-center justify-center h-full">
+      <p className="text-gray-400 text-center text-sm">
+        {isPending
+          ? "Loading attendance..."
+          : `No attendance data for ${formattedDate}`}
+      </p>
+    </div>
+  );
 
-  const chartData = {
-      labels: sections,
-      datasets: [
-          {
-              label: "Present",
-              data: present,
-              backgroundColor: (context: any) => {
-                  const { chart } = context;
-                  const { ctx, chartArea } = chart || {};
-                  if (!ctx || !chartArea) return "rgba(59, 130, 246, 0.85)";
-                  const gradient = ctx.createLinearGradient(
-                      0,
-                      chartArea.top,
-                      0,
-                      chartArea.bottom
-                  );
-                  gradient.addColorStop(0, "rgba(59, 130, 246, 0.95)");
-                  gradient.addColorStop(1, "rgba(37, 99, 235, 0.65)");
-                  return gradient;
-              },
-              borderRadius: 10,
-              borderSkipped: false,
-              barThickness: barThickness,
-              categoryPercentage: 0.7,
-              barPercentage: 0.9,
-          },
-          {
-              label: "Absent",
-              data: absent,
-              backgroundColor: (context: any) => {
-                  const { chart } = context;
-                  const { ctx, chartArea } = chart || {};
-                  if (!ctx || !chartArea) return "rgba(148, 163, 184, 0.7)";
-                  const gradient = ctx.createLinearGradient(
-                      0,
-                      chartArea.top,
-                      0,
-                      chartArea.bottom
-                  );
-                  gradient.addColorStop(0, "rgba(148, 163, 184, 0.9)");
-                  gradient.addColorStop(1, "rgba(100, 116, 139, 0.55)");
-                  return gradient;
-              },
-              borderRadius: 10,
-              borderSkipped: false,
-              barThickness: barThickness,
-              categoryPercentage: 0.7,
-              barPercentage: 0.9,
-          },
-      ],
-  };
+  const chart = !hasData ? (
+    emptyState
+  ) : (
+    <ResponsiveContainer width="100%" height="100%">
+      <BarChart
+        data={chartData}
+        margin={{ top: 4, right: 8, left: -16, bottom: 0 }}
+        barCategoryGap="30%"
+        barGap={3}
+      >
+        <CartesianGrid
+          vertical={false}
+          stroke="rgba(148,163,184,0.2)"
+          strokeDasharray="3 3"
+        />
+        <XAxis
+          dataKey="section"
+          tickLine={false}
+          axisLine={false}
+          tick={{ fontSize: 12, fill: "#9CA3AF" }}
+        />
+        <YAxis
+          allowDecimals={false}
+          tickLine={false}
+          axisLine={false}
+          tick={{ fontSize: 11, fill: "#9CA3AF" }}
+        />
+        <Tooltip
+          content={<CustomTooltip />}
+          cursor={{ fill: "rgba(148,163,184,0.08)", radius: 6 }}
+        />
+        <Legend content={<CustomLegend />} />
+        <Bar
+          dataKey="Present"
+          fill="#3b82f6"
+          radius={[5, 5, 0, 0]}
+          maxBarSize={40}
+        />
+        <Bar
+          dataKey="Absent"
+          fill="#f87171"
+          radius={[5, 5, 0, 0]}
+          maxBarSize={40}
+        />
+      </BarChart>
+    </ResponsiveContainer>
+  );
 
   if (variant === "embedded") {
     return (
-      <div className={`${heightClass} ${className || ""}`}>
-        <Bar options={options} data={chartData} />
+      <div className={`${className || ""} flex-1 min-h-0`}>
+        <div className={heightClass}>{chart}</div>
       </div>
     );
   }
 
   return (
     <div className="bg-white p-3 md:p-4 rounded-2xl border border-gray-100 shadow-sm">
-      <div className={`${heightClass}`}>
-        <Bar options={options} data={chartData} />
-      </div>
+      <div className={heightClass}>{chart}</div>
     </div>
   );
 }

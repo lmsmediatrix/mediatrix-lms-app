@@ -142,7 +142,7 @@ export default function InstructorSectionsPage() {
     };
 
     // Debounce scroll event
-    let timeoutId: number; // Changed from NodeJS.Timeout to number
+    let timeoutId: ReturnType<typeof setTimeout>;
     const debouncedScroll = () => {
       clearTimeout(timeoutId);
       timeoutId = setTimeout(handleScroll, 100);

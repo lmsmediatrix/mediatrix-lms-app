@@ -1,4 +1,5 @@
-import { FaAngleRight, FaBookOpen, FaCalendarAlt } from "react-icons/fa";
+import { FaAngleRight, FaCalendarAlt } from "react-icons/fa";
+import { BookOpenIcon } from "@/components/ui/book-open-icon";
 import Button from "../../components/common/Button";
 import DashboardHeader from "../../components/common/DashboardHeader";
 import StatCard from "../../components/common/StatCard";
@@ -19,6 +20,7 @@ import AttendanceSummary from "../../components/student/AttendanceSummary";
 import StudyStreak from "../../components/student/StudyStreak";
 import PerformanceChart from "../../components/student/PerformanceChart";
 import CompletionTracker from "../../components/common/CompletionTracker";
+import { getTerm } from "../../lib/utils";
 
 interface Section {
   _id: string;
@@ -53,6 +55,8 @@ export default function StudentDashboard() {
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
   const navigate = useNavigate();
   const { currentUser } = useAuth();
+  const orgType = currentUser.user.organization.type;
+  const sectionsTerm = getTerm("group", orgType, true);
 
   const { data: dashboardMetrics, isPending: isMetricsPending } =
     useGetStudentMetrics(
@@ -184,18 +188,16 @@ export default function StudentDashboard() {
     return <DashboardSkeleton />;
   }
 
+  const coverPhoto =
+    currentUser.user.organization.branding?.coverPhoto || undefined;
+
   return (
-    <div className="bg-gray-50 min-h-screen overflow-x-hidden">
+    <div className="bg-gray-50 h-screen flex flex-col overflow-hidden">
       <DashboardHeader
-        subTitle={
-          <div className="flex flex-col">
-            {/* <h2 className="md:text-lg text-white md:font-medium">
-              Program BSIT
-            </h2> */}
-          </div>
-        }
+        coverPhoto={coverPhoto}
+        subTitle={<div className="flex flex-col" />}
         statCard={
-          <div className="flex md:flex gap-2 md:gap-4 md:mt-6">
+          <div className="flex md:flex gap-2 md:gap-4 mt-6">
             <StatCard
               label="Total Assignments"
               value={assignmentData?.[0]?.total || 0}
@@ -214,134 +216,179 @@ export default function StudentDashboard() {
         }
       />
 
-      {/* Main Layout */}
-      <div className="lg:grid lg:grid-cols-[1fr_300px] max-w-[1400px] mx-auto w-full p-4 lg:p-0">
-        {/* Main Panel */}
-        <div>
-          {/* Continue Working + Today's Schedule (side-by-side) */}
-          {continueWorking?.length > 0 ? (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 py-4 lg:py-8 lg:mr-4 items-stretch">
-              <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm flex flex-col h-full">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-100">
-                    <FaBookOpen className="text-blue-600 text-sm" />
-                  </div>
-                  <h3 className="text-xl md:text-2xl font-bold text-gray-800">
-                    Continue Working
-                  </h3>
-                </div>
-                <div className="flex-1 min-h-0">
-                  <Summary summaryData={continueWorking} />
-                </div>
-              </div>
-
-              <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm flex flex-col h-full">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-100">
-                      <FaCalendarAlt className="text-blue-600 text-sm" />
+      {/* Main Layout — app-shell: left scrolls, right sidebar stays sticky */}
+      <div className="flex flex-1 min-h-0 max-w-[1400px] mx-auto w-full">
+        {/* Scrollable main content */}
+        <div className="flex-1 min-w-0 overflow-y-auto">
+          <div className="p-4 lg:p-0">
+            {/* Continue Working + Today's Schedule (side-by-side) */}
+            {continueWorking?.length > 0 ? (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 py-4 lg:py-8 lg:mr-4 items-stretch">
+                <div
+                  className="rounded-2xl border p-5 shadow-sm flex flex-col h-full"
+                  style={{
+                    backgroundColor: "color-mix(in srgb, var(--color-primary, #3b82f6) 4%, white 96%)",
+                    borderColor: "color-mix(in srgb, var(--color-primary, #3b82f6) 15%, white 85%)",
+                  }}
+                >
+                  <div className="flex items-center gap-3 mb-4">
+                    <div
+                      className="flex h-9 w-9 items-center justify-center rounded-xl shrink-0"
+                      style={{
+                        backgroundColor: "color-mix(in srgb, var(--color-primary, #3b82f6) 12%, white 88%)",
+                      }}
+                    >
+                      <BookOpenIcon
+                        size={14}
+                        style={{ color: "var(--color-primary, #2563eb)" }}
+                      />
                     </div>
                     <h3 className="text-xl md:text-2xl font-bold text-gray-800">
-                      Today&apos;s Schedule
+                      Continue Working
                     </h3>
                   </div>
-                  <Button
-                    onClick={() =>
-                      navigate(
-                        `/${currentUser.user.organization.code}/student/calendar`,
-                      )
-                    }
-                    variant="link"
-                    className="flex items-center gap-2"
-                  >
-                    View More
-                    <FaAngleRight />
-                  </Button>
+                  <div className="flex-1 min-h-0">
+                    <Summary summaryData={continueWorking} />
+                  </div>
                 </div>
-                <Schedule
-                  variant="embedded"
-                  showHeader={false}
-                  className="flex-1 min-h-0"
-                />
-              </div>
-            </div>
-          ) : (
-            <div className="py-4 lg:py-8 lg:mr-4">
-              <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm flex flex-col">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-100">
-                      <FaCalendarAlt className="text-blue-600 text-sm" />
+
+                <div
+                  className="rounded-2xl border p-5 shadow-sm flex flex-col h-full"
+                  style={{
+                    backgroundColor: "color-mix(in srgb, var(--color-primary, #3b82f6) 4%, white 96%)",
+                    borderColor: "color-mix(in srgb, var(--color-primary, #3b82f6) 15%, white 85%)",
+                  }}
+                >
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                      <div
+                        className="flex h-9 w-9 items-center justify-center rounded-xl shrink-0"
+                        style={{
+                          backgroundColor: "color-mix(in srgb, var(--color-primary, #3b82f6) 12%, white 88%)",
+                        }}
+                      >
+                        <FaCalendarAlt
+                          className="text-sm"
+                          style={{ color: "var(--color-primary, #2563eb)" }}
+                        />
+                      </div>
+                      <h3 className="text-xl md:text-2xl font-bold text-gray-800">
+                        Today&apos;s Schedule
+                      </h3>
                     </div>
-                    <h3 className="text-xl md:text-2xl font-bold text-gray-800">
-                      Today&apos;s Schedule
-                    </h3>
+                    <Button
+                      onClick={() =>
+                        navigate(
+                          `/${currentUser.user.organization.code}/student/calendar`,
+                        )
+                      }
+                      variant="link"
+                      className="flex items-center gap-2"
+                    >
+                      View More
+                      <FaAngleRight />
+                    </Button>
                   </div>
-                  <Button
-                    onClick={() =>
-                      navigate(
-                        `/${currentUser.user.organization.code}/student/calendar`,
-                      )
-                    }
-                    variant="link"
-                    className="flex items-center gap-2"
-                  >
-                    View More
-                    <FaAngleRight />
-                  </Button>
+                  <Schedule
+                    variant="embedded"
+                    showHeader={false}
+                    className="flex-1 min-h-0"
+                  />
                 </div>
-                <Schedule variant="embedded" showHeader={false} />
               </div>
+            ) : (
+              <div className="py-4 lg:py-8 lg:mr-4">
+                <div
+                  className="rounded-2xl border p-5 shadow-sm flex flex-col"
+                  style={{
+                    backgroundColor: "color-mix(in srgb, var(--color-primary, #3b82f6) 4%, white 96%)",
+                    borderColor: "color-mix(in srgb, var(--color-primary, #3b82f6) 15%, white 85%)",
+                  }}
+                >
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                      <div
+                        className="flex h-9 w-9 items-center justify-center rounded-xl shrink-0"
+                        style={{
+                          backgroundColor: "color-mix(in srgb, var(--color-primary, #3b82f6) 12%, white 88%)",
+                        }}
+                      >
+                        <FaCalendarAlt
+                          className="text-sm"
+                          style={{ color: "var(--color-primary, #2563eb)" }}
+                        />
+                      </div>
+                      <h3 className="text-xl md:text-2xl font-bold text-gray-800">
+                        Today&apos;s Schedule
+                      </h3>
+                    </div>
+                    <Button
+                      onClick={() =>
+                        navigate(
+                          `/${currentUser.user.organization.code}/student/calendar`,
+                        )
+                      }
+                      variant="link"
+                      className="flex items-center gap-2"
+                    >
+                      View More
+                      <FaAngleRight />
+                    </Button>
+                  </div>
+                  <Schedule variant="embedded" showHeader={false} />
+                </div>
+              </div>
+            )}
+
+            {/* Insights Row */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 py-4 lg:py-8 lg:mr-4 items-stretch">
+              <OverallProgress data={overallProgress?.[0]} />
+              <StudyStreak data={studyStreak?.[0]} />
+              <AttendanceSummary data={attendanceSummary?.[0]} />
             </div>
-          )}
 
-          {/* Insights Row */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 py-4 lg:py-8 lg:mr-4 items-stretch">
-            <OverallProgress data={overallProgress?.[0]} />
-            <StudyStreak data={studyStreak?.[0]} />
-            <AttendanceSummary data={attendanceSummary?.[0]} />
-          </div>
+            <div className="py-2 lg:py-4 lg:mr-4">
+              <CompletionTracker
+                title="Completion Tracker"
+                items={[
+                  {
+                    label: "Lessons Completed",
+                    value: completionTotals.completedLessons,
+                    total: completionTotals.totalLessons,
+                  },
+                  {
+                    label: "Modules Completed",
+                    value: completionTotals.completedModules,
+                    total: completionTotals.totalModules,
+                  },
+                  {
+                    label: `${sectionsTerm} Completed`,
+                    value: completionTotals.completedSections,
+                    total: completionTotals.totalSections,
+                  },
+                ]}
+              />
+            </div>
 
-          <div className="py-2 lg:py-4 lg:mr-4">
-            <CompletionTracker
-              title="Completion Tracker"
-              items={[
-                {
-                  label: "Lessons Completed",
-                  value: completionTotals.completedLessons,
-                  total: completionTotals.totalLessons,
-                },
-                {
-                  label: "Modules Completed",
-                  value: completionTotals.completedModules,
-                  total: completionTotals.totalModules,
-                },
-                {
-                  label: "Sections Completed",
-                  value: completionTotals.completedSections,
-                  total: completionTotals.totalSections,
-                },
-              ]}
-            />
-          </div>
-          {/* Performance · Grades · Activity — 3-column row */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:mr-4 mb-4">
-            <PerformanceChart data={performanceData} />
-            <RecentGrades data={recentGrades} />
-          </div>
+            {/* Performance · Grades */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:mr-4 mb-4">
+              <PerformanceChart data={performanceData} />
+              <RecentGrades data={recentGrades} />
+            </div>
 
-          {/* Side Panel in Mobile View */}
-          <div className="lg:hidden pt-4 ">
-            <SidePanel
-              comingUpData={upComingClassSchedule}
-              announcements={announcements}
-              upcomingDeadlines={upcomingDeadlines}
-            />
+            {/* Side Panel in Mobile View */}
+            <div className="lg:hidden pt-4">
+              <SidePanel
+                comingUpData={upComingClassSchedule}
+                announcements={announcements}
+                upcomingDeadlines={upcomingDeadlines}
+              />
+            </div>
           </div>
         </div>
 
-        {/* Side Panel in Desktop View */}
-        <div className="hidden lg:block min-h-screen bg-white p-4 w-[380px]">
+        {/* Sticky sidebar — only visible on desktop */}
+        <div className="hidden lg:block w-[360px] shrink-0 overflow-y-auto p-4">
           <SidePanel
             comingUpData={upComingClassSchedule}
             announcements={announcements}

@@ -52,9 +52,13 @@ export const useGetAdminMetrics = (userId: string, orgId: string) => {
   });
 };
 
-export const useGetInstructorMetrics = (userId: string, orgId: string) => {
+export const useGetInstructorMetrics = (
+  userId: string,
+  orgId: string,
+  date?: string,
+) => {
   return useQuery({
-    queryKey: ["user-metrics", userId, orgId],
+    queryKey: ["user-metrics", userId, orgId, date || ""],
     queryFn: () =>
       metricsService
         .metrics({
@@ -73,6 +77,69 @@ export const useGetInstructorMetrics = (userId: string, orgId: string) => {
           filter: {
             instructorId: userId,
             organizationId: orgId,
+            ...(date ? { date } : {}),
+          },
+        })
+        .searchMetrics(),
+    enabled: !!userId && !!orgId,
+    placeholderData: (prev) => prev,
+  });
+};
+
+export const useGetAttendanceByDate = (
+  instructorId: string,
+  orgId: string,
+  date: string,
+) => {
+  return useQuery({
+    queryKey: ["attendance-by-date", instructorId, orgId, date],
+    queryFn: () =>
+      metricsService
+        .metrics({
+          model: "instructor",
+          data: ["sectionsAttendance"],
+          filter: {
+            instructorId,
+            organizationId: orgId,
+            date,
+          },
+        })
+        .searchMetrics(),
+    enabled: !!instructorId && !!orgId && !!date,
+  });
+};
+
+export const useGetGradingQueueList = (userId: string, orgId: string) => {
+  return useQuery({
+    queryKey: ["grading-queue-list", userId, orgId],
+    queryFn: () =>
+      metricsService
+        .metrics({
+          model: "instructor",
+          data: ["gradingQueueList"],
+          filter: { instructorId: userId, organizationId: orgId },
+        })
+        .searchMetrics(),
+    enabled: !!userId && !!orgId,
+  });
+};
+
+export const useGetNewEnrollmentsList = (
+  userId: string,
+  orgId: string,
+  date?: string,
+) => {
+  return useQuery({
+    queryKey: ["new-enrollments-list", userId, orgId, date || ""],
+    queryFn: () =>
+      metricsService
+        .metrics({
+          model: "instructor",
+          data: ["newEnrollmentsList"],
+          filter: {
+            instructorId: userId,
+            organizationId: orgId,
+            ...(date ? { date } : {}),
           },
         })
         .searchMetrics(),

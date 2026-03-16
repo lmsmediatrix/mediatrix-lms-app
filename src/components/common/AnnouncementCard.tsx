@@ -16,10 +16,17 @@ export default function AnnouncementCard({
   return (
     <div
       onClick={() => onClick()}
-      className="group cursor-pointer relative rounded-xl border border-gray-100 bg-white p-4 transition-all duration-200 hover:shadow-md hover:-translate-y-0.5 h-full overflow-hidden"
+      className="group cursor-pointer relative rounded-xl border p-4 transition-all duration-200 hover:shadow-md hover:-translate-y-0.5 h-full overflow-hidden"
+      style={{
+        backgroundColor: "color-mix(in srgb, var(--color-primary, #3b82f6) 5%, white 95%)",
+        borderColor: "color-mix(in srgb, var(--color-primary, #3b82f6) 18%, white 82%)",
+      }}
     >
-      {/* Accent bar */}
-      <div className="absolute left-0 top-3 bottom-3 w-1 rounded-full bg-gradient-to-b from-blue-400 to-indigo-500" />
+      {/* Accent bar — org primary color */}
+      <div
+        className="absolute left-0 top-3 bottom-3 w-1 rounded-full"
+        style={{ background: "linear-gradient(to bottom, var(--color-primary, #60a5fa), color-mix(in srgb, var(--color-primary, #3b82f6) 70%, black 30%))" }}
+      />
 
       <div className="pl-3 flex flex-col gap-2.5">
         <div className="flex items-center gap-2.5">

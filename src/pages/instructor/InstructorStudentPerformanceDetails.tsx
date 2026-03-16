@@ -1,11 +1,12 @@
 import { useNavigate, useParams } from "react-router-dom";
 import {
-  FaArrowLeft,
   FaEnvelope,
   FaClipboardList,
   FaExclamationTriangle,
   FaCalendarAlt,
+  FaUserCircle,
 } from "react-icons/fa";
+import PageHeader from "../../components/common/PageHeader";
 import { toast } from "react-toastify";
 import Button from "../../components/common/Button";
 import {
@@ -119,7 +120,16 @@ export default function InstructorStudentPerformanceDetails() {
   };
 
   return (
+    <div className="min-h-screen bg-gray-50">
     <div className="p-6 max-w-[1600px] mx-auto space-y-6">
+      <PageHeader
+        onBack={() => navigate(-1)}
+        icon={<FaUserCircle className="text-indigo-600" />}
+        iconBg="bg-indigo-100"
+        title={details?.name ?? "Student Performance"}
+        subtitle={details ? `${details.section} · ${details.program}` : "Loading..."}
+      />
+
       {isLoading && (
         <div className="rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-500">
           Loading performance details...
@@ -135,13 +145,6 @@ export default function InstructorStudentPerformanceDetails() {
           Student was not found in your accessible performance list.
         </div>
       )}
-
-      <button
-        onClick={() => navigate(-1)}
-        className="flex items-center gap-2 text-gray-500 hover:text-primary transition-colors"
-      >
-        <FaArrowLeft /> Back to Performance List
-      </button>
 
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
         <div className="flex items-center gap-4">
@@ -334,6 +337,7 @@ export default function InstructorStudentPerformanceDetails() {
           </div>
         </div>
       </div>
+    </div>
     </div>
   );
 }

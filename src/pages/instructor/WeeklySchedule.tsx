@@ -38,10 +38,40 @@ interface Section {
 }
 
 interface Colors {
+  /** Card background — always the org primary tint (unified look) */
   bg: string;
-  text: string;
+  /** Left accent bar + legend dot — unique vivid per-section color */
+  accent: string;
+  /** Subtle border derived from primary */
   border: string;
-  dot: string;
+  /** Section name text using the accent color for identity */
+  text: string;
+}
+
+// Only vibrant palette slots — no gray/secondary — for the accent bar.
+const SECTION_VARIANTS: { colorVar: string; fallback: string }[] = [
+  { colorVar: "--color-primary", fallback: "#3b82f6" },
+  { colorVar: "--color-success", fallback: "#10b981" },
+  { colorVar: "--color-accent",  fallback: "#f59e0b" },
+  { colorVar: "--color-danger",  fallback: "#ef4444" },
+  { colorVar: "--color-warning", fallback: "#f97316" },
+  { colorVar: "--color-info",    fallback: "#6366f1" },
+];
+
+function getSectionColors(sectionCode: string): Colors {
+  const hash = sectionCode
+    .split("")
+    .reduce((acc: number, char: string) => acc + char.charCodeAt(0), 0);
+  const v = SECTION_VARIANTS[hash % SECTION_VARIANTS.length];
+  const accent = `var(${v.colorVar}, ${v.fallback})`;
+  return {
+    // All cards share the org primary tint background
+    bg:     "color-mix(in srgb, var(--color-primary, #3b82f6) 8%, white 92%)",
+    border: "color-mix(in srgb, var(--color-primary, #3b82f6) 18%, white 82%)",
+    // Accent bar and text remain section-specific
+    accent,
+    text: `color-mix(in srgb, ${accent} 80%, black 20%)`,
+  };
 }
 
 const toISO = (d: Date) => {
@@ -62,7 +92,7 @@ const getWeekRange = (offset: number) => {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const day = today.getDay();
-  const diff = -day; // align to Sunday
+  const diff = -day;
   const start = new Date(today);
   start.setDate(today.getDate() + diff + offset * 7);
   const end = new Date(start);
@@ -77,60 +107,10 @@ const getMonthRange = (offset: number) => {
   return { start, end, startISO: toISO(start), endISO: toISO(end) };
 };
 
-const SECTION_COLORS: Colors[] = [
-  {
-    bg: "bg-blue-100",
-    text: "text-blue-800",
-    border: "border-blue-200",
-    dot: "bg-blue-500",
-  },
-  {
-    bg: "bg-green-100",
-    text: "text-green-800",
-    border: "border-green-200",
-    dot: "bg-green-500",
-  },
-  {
-    bg: "bg-purple-100",
-    text: "text-purple-800",
-    border: "border-purple-200",
-    dot: "bg-purple-500",
-  },
-  {
-    bg: "bg-amber-100",
-    text: "text-amber-800",
-    border: "border-amber-200",
-    dot: "bg-amber-500",
-  },
-  {
-    bg: "bg-rose-100",
-    text: "text-rose-800",
-    border: "border-rose-200",
-    dot: "bg-rose-500",
-  },
-];
-
-function getSectionColors(sectionCode: string): Colors {
-  const hash = sectionCode
-    .split("")
-    .reduce((acc: number, char: string) => acc + char.charCodeAt(0), 0);
-  return SECTION_COLORS[hash % SECTION_COLORS.length];
-}
-
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const MONTH_NAMES = [
-  "January",
-  "February",
-  "March",
-  "April",
-  "May",
-  "June",
-  "July",
-  "August",
-  "September",
-  "October",
-  "November",
-  "December",
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
 ];
 
 export default function WeeklySchedule() {
@@ -146,7 +126,6 @@ export default function WeeklySchedule() {
 
   const { data, isPending } = useSchedule(range.startISO, range.endISO);
 
-  // ISO date → sorted ScheduleItem[]
   const scheduleMap = useMemo<Record<string, ScheduleItem[]>>(() => {
     return (data?.data || []).reduce(
       (acc: Record<string, ScheduleItem[]>, dayData: DayData) => {
@@ -203,30 +182,31 @@ export default function WeeklySchedule() {
             return (
               <div
                 key={i}
-                className={`flex items-center justify-between rounded-xl border-l-4 px-5 py-4 ${c.bg} ${c.border}`}
+                className="flex items-center justify-between rounded-xl border-l-4 px-5 py-4"
+                style={{
+                  backgroundColor: c.bg,
+                  borderColor: c.border,
+                  borderLeftColor: c.accent,
+                }}
               >
                 <div>
-                  <p className={`font-semibold ${c.text}`}>
+                  <p className="font-semibold" style={{ color: c.text }}>
                     {item.sectionName}
                   </p>
-                  <p className={`text-sm ${c.text} opacity-70`}>
+                  <p className="text-sm text-gray-500 mt-0.5">
                     {item.sectionCode}
                   </p>
                 </div>
                 <div className="text-right">
-                  <p className={`font-semibold text-sm ${c.text}`}>
+                  <p className="font-semibold text-sm" style={{ color: c.text }}>
                     {convert24to12Format(item.time.start)} –{" "}
                     {convert24to12Format(item.time.end)}
                   </p>
                   <p
-                    className={`text-xs ${c.text} opacity-60 flex items-center justify-end gap-1 mt-0.5`}
+                    className="text-xs text-gray-400 flex items-center justify-end gap-1 mt-0.5"
                   >
-                    <FaClock className="h-3 w-3" />
-                    {calculateDurationMinutes(
-                      item.time.start,
-                      item.time.end,
-                    )}{" "}
-                    min
+                    <FaClock className="h-3 w-3" style={{ color: c.accent }} />
+                    {calculateDurationMinutes(item.time.start, item.time.end)} min
                   </p>
                 </div>
               </div>
@@ -297,27 +277,41 @@ export default function WeeklySchedule() {
                     return (
                       <div
                         key={idx}
-                        className={`rounded-lg border p-2.5 ${c.bg} ${c.text} ${c.border}`}
+                        className="rounded-lg border-l-[3px] p-2.5"
+                        style={{
+                          backgroundColor: c.bg,
+                          borderLeftColor: c.accent,
+                          borderTopColor: c.border,
+                          borderRightColor: c.border,
+                          borderBottomColor: c.border,
+                        }}
                       >
                         <div className="flex items-start justify-between gap-1 mb-1">
                           <div>
-                            <p className="font-semibold text-xs leading-tight">
+                            <p
+                              className="font-semibold text-xs leading-tight"
+                              style={{ color: c.text }}
+                            >
                               {item.sectionCode}
                             </p>
-                            <p className="text-[11px] opacity-70 leading-tight">
+                            <p className="text-[11px] text-gray-500 leading-tight">
                               {item.sectionName}
                             </p>
                           </div>
-                          <span className="shrink-0 rounded border px-1.5 py-0.5 text-[10px]">
-                            {calculateDurationMinutes(
-                              item.time.start,
-                              item.time.end,
-                            )}
-                            m
+                          <span
+                            className="shrink-0 rounded border px-1.5 py-0.5 text-[10px] text-gray-500"
+                            style={{ borderColor: c.border }}
+                          >
+                            {calculateDurationMinutes(item.time.start, item.time.end)}m
                           </span>
                         </div>
-                        <div className="flex items-center gap-1 text-[11px]">
-                          <FaClock className="h-2.5 w-2.5 opacity-60" />
+                        <div
+                          className="flex items-center gap-1 text-[11px] text-gray-500"
+                        >
+                          <FaClock
+                            className="h-2.5 w-2.5"
+                            style={{ color: c.accent }}
+                          />
                           {convert24to12Format(item.time.start)} –{" "}
                           {convert24to12Format(item.time.end)}
                         </div>
@@ -342,8 +336,8 @@ export default function WeeklySchedule() {
   const renderMonth = () => {
     const year = range.start.getFullYear();
     const month = range.start.getMonth();
-    const firstDayOfWeek = new Date(year, month, 1).getDay(); // 0 = Sunday
-    const startOffset = firstDayOfWeek; // Sunday = 0
+    const firstDayOfWeek = new Date(year, month, 1).getDay();
+    const startOffset = firstDayOfWeek;
     const daysInMonth = new Date(year, month + 1, 0).getDate();
     const totalCells = Math.ceil((startOffset + daysInMonth) / 7) * 7;
 
@@ -399,7 +393,12 @@ export default function WeeklySchedule() {
                     return (
                       <div
                         key={idx}
-                        className={`rounded px-1.5 py-0.5 text-[10px] font-medium truncate ${c.bg} ${c.text}`}
+                        className="rounded border-l-2 pl-1.5 pr-1 py-0.5 text-[10px] font-medium truncate"
+                        style={{
+                          backgroundColor: c.bg,
+                          borderLeftColor: c.accent,
+                          color: c.text,
+                        }}
                       >
                         {item.sectionCode}{" "}
                         {convert24to12Format(item.time.start)}
@@ -480,7 +479,8 @@ export default function WeeklySchedule() {
           {uniqueSections.map((s) => (
             <div key={s.code} className="flex items-center gap-1.5">
               <span
-                className={`h-2.5 w-2.5 rounded-full ${getSectionColors(s.code).dot}`}
+                className="h-2.5 w-2.5 rounded-full shrink-0"
+                style={{ backgroundColor: getSectionColors(s.code).accent }}
               />
               <span className="text-xs text-gray-600">
                 {s.code} – {s.name}

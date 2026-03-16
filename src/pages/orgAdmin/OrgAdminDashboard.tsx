@@ -1,10 +1,7 @@
-import {
-  FaPlus,
-  FaBook,
-  FaUserTie,
-  FaUserGraduate,
-  FaThLarge,
-} from "react-icons/fa";
+import { FaBook, FaThLarge } from "react-icons/fa";
+import { PlusIcon } from "@/components/ui/plus-icon";
+import { UserIcon } from "@/components/ui/user-icon";
+import { UsersIcon } from "@/components/ui/users-icon";
 import Button from "../../components/common/Button";
 import DashboardHeader from "../../components/common/DashboardHeader";
 import StatCard from "../../components/common/StatCard";
@@ -30,8 +27,8 @@ import CompletionTracker from "../../components/common/CompletionTracker";
 // Icon mapping for dashboard stats
 const iconMap = {
   FaBook: <FaBook className="text-2xl" />,
-  FaUserTie: <FaUserTie className="text-2xl" />,
-  FaUserGraduate: <FaUserGraduate className="text-2xl" />,
+  FaUserTie: <UserIcon size={24} />,
+  FaUserGraduate: <UsersIcon size={24} />,
   FaThLarge: <FaThLarge className="text-2xl" />,
 };
 
@@ -74,6 +71,8 @@ type SectionChartApiResponse = {
 export default function OrgAdminDashboard() {
   const { currentUser } = useAuth();
   const orgType = currentUser.user.organization.type;
+  const sectionTerm = getTerm("group", orgType);
+  const sectionsTerm = getTerm("group", orgType, true);
   const navigate = useNavigate();
   const location = useLocation();
   const orgCode = currentUser.user?.organization.code;
@@ -148,7 +147,7 @@ export default function OrgAdminDashboard() {
           icon: "FaUserGraduate",
         },
         {
-          label: "Sections",
+          label: sectionsTerm,
           value: sectionMetrics.totalSectionCount[0]?.total || 0,
           icon: "FaThLarge",
         },
@@ -167,7 +166,7 @@ export default function OrgAdminDashboard() {
       },
       sectionStatus: [
         {
-          label: "Upcoming Sections",
+          label: `Upcoming ${sectionsTerm}`,
           value:
             sectionMetrics.sectionPerStatusCount.find(
               (item: { status: string }) => item.status === "upcoming",
@@ -175,7 +174,7 @@ export default function OrgAdminDashboard() {
           status: "upcoming" as const,
         },
         {
-          label: "Active Sections",
+          label: `Active ${sectionsTerm}`,
           value:
             sectionMetrics.sectionPerStatusCount.find(
               (item: { status: string }) => item.status === "ongoing",
@@ -183,7 +182,7 @@ export default function OrgAdminDashboard() {
           status: "active" as const,
         },
         {
-          label: "Completed Sections",
+          label: `Completed ${sectionsTerm}`,
           value:
             sectionMetrics.sectionPerStatusCount.find(
               (item: { status: string }) => item.status === "completed",
@@ -251,7 +250,7 @@ export default function OrgAdminDashboard() {
             onClick={() => navigate(`/${orgCode}/admin/section/new`)}
             className="hidden mt-4 xl:flex bg-secondary w-fit justify-center text-white hover:bg-white hover:text-secondary transition-all duration-300"
           >
-            <FaPlus /> Create New {getTerm("group", orgType)}
+            <PlusIcon size={14} /> Create New {getTerm("group", orgType)}
           </Button>
         }
         statCard={
@@ -317,7 +316,7 @@ export default function OrgAdminDashboard() {
             title="Completion Tracker"
             items={[
               {
-                label: "Students Completed Sections",
+                label: `Students Completed ${sectionsTerm}`,
                 value: completedSectionsStudents,
                 total: totalPerformanceStudents,
               },
@@ -332,10 +331,10 @@ export default function OrgAdminDashboard() {
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
               <div>
                 <h2 className="text-2xl font-bold text-gray-800">
-                  Section Analytics
+                  {sectionTerm} Analytics
                 </h2>
                 <p className="text-gray-600">
-                  View metrics and status across all course sections
+                  View metrics and status across all course {sectionsTerm.toLowerCase()}
                 </p>
               </div>
               <div className="w-full md:w-72">
@@ -369,7 +368,7 @@ export default function OrgAdminDashboard() {
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
               <div className="lg:col-span-2">
-                <SectionChart data={dashboardData.sectionChart} />
+                <SectionChart data={dashboardData.sectionChart} xAxisLabel={sectionsTerm} />
               </div>
               <div>
                 <SectionStatus statusData={dashboardData.sectionStatus} />

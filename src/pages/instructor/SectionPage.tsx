@@ -249,7 +249,7 @@ export default function InstructorSectionPage() {
                       <FaCalendarDays className="text-primary text-lg" />
                     </div>
                     <p className="font-medium text-gray-600">
-                      View Section Schedule
+                      View {sectionTerm} Schedule
                     </p>
                   </div>
                 </div>

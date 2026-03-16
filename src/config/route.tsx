@@ -52,6 +52,8 @@ import WeeklySchedule from "../pages/instructor/WeeklySchedule";
 import InstructorPerformancePage from "../pages/instructor/InstructorPerformancePage";
 import InstructorStudentPerformanceDetails from "../pages/instructor/InstructorStudentPerformanceDetails";
 import InstructorCompletionPage from "../pages/instructor/InstructorCompletionPage";
+import InstructorGradingPage from "../pages/instructor/InstructorGradingPage";
+import InstructorEnrollmentsPage from "../pages/instructor/InstructorEnrollmentsPage";
 
 export const appRoutes = [
   //Superadmin routes
@@ -233,6 +235,14 @@ export const appRoutes = [
       {
         path: "/:orgCode/instructor/performance/:studentId",
         element: <InstructorStudentPerformanceDetails />,
+      },
+      {
+        path: "/:orgCode/instructor/grading",
+        element: <InstructorGradingPage />,
+      },
+      {
+        path: "/:orgCode/instructor/enrollments",
+        element: <InstructorEnrollmentsPage />,
       },
     ],
   },

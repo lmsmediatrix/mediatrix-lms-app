@@ -140,7 +140,7 @@ export default function StudentSectionsPage() {
     };
 
     // Debounce scroll event
-    let timeoutId: number; // Use number instead of NodeJS.Timeout
+    let timeoutId: ReturnType<typeof setTimeout>;
     const debouncedScroll = () => {
       clearTimeout(timeoutId);
       timeoutId = setTimeout(handleScroll, 100); // Reduced debounce time

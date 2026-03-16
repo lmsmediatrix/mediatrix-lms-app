@@ -1,4 +1,4 @@
-import { FaPlus } from "react-icons/fa";
+import { PlusIcon } from "@/components/ui/plus-icon";
 import { FiEdit2, FiTrash2 } from "react-icons/fi";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import Table from "../../components/common/Table";
@@ -552,7 +552,7 @@ export default function StudentDatabase() {
             onClick={() => setSearchParams({ modal: "create-student" })}
             className="whitespace-nowrap text-sm flex-1 md:flex-initial"
           >
-            <FaPlus />
+            <PlusIcon size={14} />
             <span className="hidden sm:inline">Add {learnerTerm}</span>
             <span className="sm:hidden">Add</span>
           </Button>

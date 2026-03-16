@@ -1,4 +1,5 @@
-import { FaEdit, FaTrash } from "react-icons/fa";
+import { FaEdit } from "react-icons/fa";
+import { TrashIcon } from "@/components/ui/trash-icon";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import DeleteSectionModal from "../../components/orgAdmin/DeleteSectionModal";
@@ -40,6 +41,8 @@ const SectionEditPage = () => {
   const modal = searchParams.get("modal");
   const { data, isLoading } = useSearchSectionByCode(sectionCode || "");
   const learnerTerm = getTerm("learner", orgType);
+  const sectionTerm = getTerm("group", orgType);
+  const sectionsTerm = getTerm("group", orgType, true);
 
   const section = data?.data as SectionWithPaginatedStudents;
 
@@ -56,7 +59,7 @@ const SectionEditPage = () => {
           className="flex items-center gap-2 text-gray-600 hover:text-gray-800 transition-colors"
         >
           <IoArrowBack className="text-lg sm:text-xl" />
-          <span className="text-sm sm:text-base">Back to Sections</span>
+          <span className="text-sm sm:text-base">Back to {sectionsTerm}</span>
         </button>
       </div>
 
@@ -127,7 +130,7 @@ const SectionEditPage = () => {
                   className="bg-primary text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-primary/90 flex items-center gap-2 text-sm sm:text-base flex-1 sm:flex-initial justify-center"
                 >
                   <FaEdit className="text-sm" />
-                  <span className="hidden sm:inline">Edit Section</span>
+                  <span className="hidden sm:inline">Edit {sectionTerm}</span>
                   <span className="sm:hidden">Edit</span>
                 </button>
               </div>
@@ -139,13 +142,13 @@ const SectionEditPage = () => {
             <div className="space-y-6">
               <div>
                 <h3 className="text-lg sm:text-xl font-semibold mb-4">
-                  Section Information
+                  {sectionTerm} Information
                 </h3>
                 <div className="bg-gray-50 rounded-lg p-4 sm:p-6 space-y-4">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-8">
                     <div>
                       <h3 className="text-gray-600 mb-1 text-sm sm:text-base">
-                        Section Code
+                        {sectionTerm} Code
                       </h3>
                       <p className="font-semibold text-base sm:text-lg break-words">
                         {section.code}
@@ -153,7 +156,7 @@ const SectionEditPage = () => {
                     </div>
                     <div>
                       <h3 className="text-gray-600 mb-1 text-sm sm:text-base">
-                        Section Name
+                        {sectionTerm} Name
                       </h3>
                       <p className="font-semibold text-base sm:text-lg break-words">
                         {section.name}
@@ -254,7 +257,7 @@ const SectionEditPage = () => {
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                   <div>
                     <h4 className="font-medium text-red-800 text-sm sm:text-base">
-                      Delete Section
+                      Delete {sectionTerm}
                     </h4>
                     <p className="text-xs sm:text-sm text-red-600">
                       This action cannot be undone.
@@ -269,7 +272,7 @@ const SectionEditPage = () => {
                     }
                     className="bg-white border border-red-300 text-red-600 px-3 sm:px-4 py-2 rounded-lg hover:bg-red-50 flex items-center gap-2 text-sm sm:text-base justify-center w-full sm:w-auto"
                   >
-                    <FaTrash className="text-sm" /> Delete Section
+                    <TrashIcon size={14} /> Delete {sectionTerm}
                   </button>
                 </div>
               </div>

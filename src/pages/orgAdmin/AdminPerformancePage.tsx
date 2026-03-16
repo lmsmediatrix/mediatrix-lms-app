@@ -1,13 +1,15 @@
 import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
-  FaSearch,
   FaFilter,
   FaExclamationTriangle,
   FaCheckCircle,
-  FaInfoCircle,
 } from "react-icons/fa";
 import { useGetPerformanceDashboard } from "../../hooks/useMetrics";
+import { useAuth } from "../../context/AuthContext";
+import { getTerm } from "../../lib/utils";
+import { SearchIcon } from "@/components/ui/search-icon";
+import { InfoIcon } from "@/components/ui/info-icon";
 
 type PerformanceStudentRow = {
   _id: string;
@@ -31,6 +33,10 @@ type PerformanceStudentRow = {
 export default function AdminPerformancePage() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { currentUser } = useAuth();
+  const orgType = currentUser.user.organization.type;
+  const isCorporate = orgType === "corporate";
+  const sectionTerm = getTerm("group", orgType);
   const [searchTerm, setSearchTerm] = useState("");
   const [riskFilter, setRiskFilter] = useState<string>("all");
   const { data, isLoading } = useGetPerformanceDashboard();
@@ -75,6 +81,18 @@ export default function AdminPerformancePage() {
     }
   };
 
+  const getStandingLabel = (standing: string) => {
+    if (!isCorporate) return standing;
+    switch (standing.toLowerCase()) {
+      case "probation":
+        return "At Risk";
+      case "warning":
+        return "Needs Improvement";
+      default:
+        return "On Track";
+    }
+  };
+
   return (
     <div className="p-6 max-w-[1600px] mx-auto space-y-6">
       {isLoading && (
@@ -113,7 +131,7 @@ export default function AdminPerformancePage() {
         <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
           <div className="flex items-center gap-3">
             <div className="p-3 bg-yellow-50 rounded-lg text-yellow-600">
-              <FaInfoCircle size={20} />
+              <InfoIcon size={20} />
             </div>
             <div>
               <p className="text-sm text-gray-500 font-medium">Moderate Risk</p>
@@ -156,7 +174,7 @@ export default function AdminPerformancePage() {
       {/* Filters and Search */}
       <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex flex-col md:flex-row gap-4 justify-between items-center">
         <div className="relative w-full md:w-96">
-          <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+          <SearchIcon size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
           <input
             type="text"
             placeholder="Search students..."
@@ -192,7 +210,7 @@ export default function AdminPerformancePage() {
                   Student
                 </th>
                 <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  Section
+                  {sectionTerm}
                 </th>
                 <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
                   GPA
@@ -204,7 +222,7 @@ export default function AdminPerformancePage() {
                   Progress
                 </th>
                 <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  Academic Standing
+                  {isCorporate ? "Performance Status" : "Academic Standing"}
                 </th>
                 <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
                   Risk Level
@@ -300,7 +318,7 @@ export default function AdminPerformancePage() {
                           student.standing,
                         )}`}
                       >
-                        {student.standing}
+                        {getStandingLabel(student.standing)}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">

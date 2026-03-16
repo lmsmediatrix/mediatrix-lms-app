@@ -97,196 +97,226 @@ export default function SidePanel({
   };
 
   return (
-    <div className="lg:pr-4 space-y-5">
+    <div className="space-y-5">
       {/* Coming Up Section */}
       {showComingUp && (
-        <div className="rounded-2xl bg-white border border-gray-100 shadow-sm overflow-hidden">
-        <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-amber-50">
-              <svg
-                className="h-3.5 w-3.5 text-amber-500"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                />
-              </svg>
+        <div
+          className="rounded-2xl border shadow-sm overflow-hidden"
+          style={{
+            backgroundColor: "white",
+            borderColor: "color-mix(in srgb, var(--color-primary, #3b82f6) 15%, white 85%)",
+          }}
+        >
+          <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-amber-50">
+                <svg
+                  className="h-3.5 w-3.5 text-amber-500"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+              </div>
+              <h3 className="font-semibold text-gray-900">Coming Up</h3>
             </div>
-            <h3 className="font-semibold text-gray-900">Coming Up</h3>
+            {comingUpData?.length > 0 && (
+              <span className="px-2.5 py-1 text-xs font-medium bg-amber-50 text-amber-600 rounded-full">
+                {totalComingUp}
+              </span>
+            )}
           </div>
-          {comingUpData?.length > 0 && (
-            <span className="px-2.5 py-1 text-xs font-medium bg-amber-50 text-amber-600 rounded-full">
-              {totalComingUp}
-            </span>
-          )}
-        </div>
-        <div className="p-4">
-          {totalComingUp > 0 ? (
-            <motion.div
-              className="lg:overflow-hidden"
-              variants={containerVariants}
-              initial="collapsed"
-              animate={showAllComingUp ? "expanded" : "collapsed"}
-            >
+          <div className="p-4">
+            {totalComingUp > 0 ? (
               <motion.div
-                className="flex lg:flex-col gap-2.5 overflow-x-auto lg:overflow-hidden snap-x snap-mandatory pb-2 lg:pb-0"
-                initial={false}
+                className="lg:overflow-hidden"
+                variants={containerVariants}
+                initial="collapsed"
+                animate={showAllComingUp ? "expanded" : "collapsed"}
               >
-                <AnimatePresence>
-                  {displayedItems.map((item, index) => {
-                    const typeIcons: Record<string, React.ReactNode> = {
-                      quiz: (
-                        <FaPencilAlt className="text-blue-600 text-[10px]" />
-                      ),
-                      exam: <FaFileAlt className="text-red-600 text-[10px]" />,
-                      assignment: (
-                        <FaTasks className="text-amber-600 text-[10px]" />
-                      ),
-                      activity: (
-                        <FaClipboardList className="text-green-600 text-[10px]" />
-                      ),
-                      lesson: (
-                        <FaClock className="text-indigo-600 text-[10px]" />
-                      ),
-                    };
-                    const typeIconBg: Record<string, string> = {
-                      quiz: "bg-blue-100",
-                      exam: "bg-red-100",
-                      assignment: "bg-amber-100",
-                      activity: "bg-green-100",
-                      lesson: "bg-indigo-100",
-                    };
-                    const typeLower = item.type?.toLowerCase() || "";
-                    const urgencyColor =
-                      item.daysLeft <= 0
-                        ? "text-red-500"
-                        : item.daysLeft <= 1
+                <motion.div
+                  className="flex lg:flex-col gap-2.5 overflow-x-auto lg:overflow-hidden snap-x snap-mandatory pb-2 lg:pb-0"
+                  initial={false}
+                >
+                  <AnimatePresence>
+                    {displayedItems.map((item, index) => {
+                      const typeIcons: Record<string, React.ReactNode> = {
+                        quiz: (
+                          <FaPencilAlt className="text-blue-600 text-[10px]" />
+                        ),
+                        exam: (
+                          <FaFileAlt className="text-red-600 text-[10px]" />
+                        ),
+                        assignment: (
+                          <FaTasks className="text-amber-600 text-[10px]" />
+                        ),
+                        activity: (
+                          <FaClipboardList className="text-green-600 text-[10px]" />
+                        ),
+                        lesson: (
+                          <FaClock className="text-indigo-600 text-[10px]" />
+                        ),
+                      };
+                      const typeIconBg: Record<string, string> = {
+                        quiz: "bg-blue-100",
+                        exam: "bg-red-100",
+                        assignment: "bg-amber-100",
+                        activity: "bg-green-100",
+                        lesson: "bg-indigo-100",
+                      };
+                      const typeLower = item.type?.toLowerCase() || "";
+                      const urgencyColor =
+                        item.daysLeft <= 0
                           ? "text-red-500"
+                          : item.daysLeft <= 1
+                            ? "text-red-500"
+                            : item.daysLeft <= 3
+                              ? "text-amber-500"
+                              : "text-green-600";
+                      const urgencyLabel =
+                        item.daysLeft <= 0
+                          ? "Due today"
+                          : item.daysLeft === 1
+                            ? "Due tomorrow"
+                            : `${item.daysLeft} days left`;
+
+                      // Accent bar color based on urgency
+                      const accentColor =
+                        item.daysLeft <= 1
+                          ? "from-red-400 to-rose-500"
                           : item.daysLeft <= 3
-                            ? "text-amber-500"
-                            : "text-green-600";
-                    const urgencyLabel =
-                      item.daysLeft <= 0
-                        ? "Due today"
-                        : item.daysLeft === 1
-                          ? "Due tomorrow"
-                          : `${item.daysLeft} days left`;
+                            ? "from-amber-400 to-orange-500"
+                            : "from-blue-400 to-indigo-500";
 
                     return (
                       <motion.div
                         key={item.id}
-                        className="snap-start min-w-[260px] lg:min-w-0 rounded-xl border border-gray-100 bg-white p-3 transition-all hover:shadow-sm hover:cursor-pointer"
-                        onClick={() => {
-                          navigate(
-                            location.pathname.replace(
-                              "dashboard",
-                              `sections/${item.sectionCode}`,
-                            ),
-                          );
+                        className="snap-start min-w-[260px] lg:min-w-0 group cursor-pointer relative rounded-xl border p-4 overflow-hidden transition-all duration-200 hover:shadow-md hover:-translate-y-0.5"
+                        style={{
+                          backgroundColor: "color-mix(in srgb, var(--color-primary, #3b82f6) 6%, white 94%)",
+                          borderColor: "color-mix(in srgb, var(--color-primary, #3b82f6) 18%, white 82%)",
                         }}
-                        variants={itemVariants}
-                        initial="hidden"
-                        animate="visible"
-                        exit="exit"
-                        transition={{ duration: 0.3, delay: index * 0.06 }}
-                      >
-                        <div className="flex items-start gap-3">
+                          onClick={() => {
+                            navigate(
+                              location.pathname.replace(
+                                "dashboard",
+                                `sections/${item.sectionCode}`,
+                              ),
+                            );
+                          }}
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -6 }}
+                          transition={{ duration: 0.3, delay: index * 0.06 }}
+                        >
+                          {/* Accent bar — same pattern as AnnouncementCard */}
                           <div
-                            className={`flex h-8 w-8 items-center justify-center rounded-lg flex-shrink-0 ${
-                              typeIconBg[typeLower] || "bg-gray-100"
-                            }`}
-                          >
-                            {typeIcons[typeLower] || (
-                              <FaClipboardList className="text-gray-500 text-[10px]" />
-                            )}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-semibold text-gray-800 truncate">
-                              {item.title}
-                            </p>
-                            <div className="flex items-center gap-1.5 mt-0.5">
-                              <span className="text-[10px] text-gray-400 uppercase font-medium">
-                                {item.type}
-                              </span>
-                              {item.sectionCode && (
-                                <>
-                                  <span className="text-[10px] text-gray-300">
-                                    •
-                                  </span>
-                                  <span className="text-[10px] text-gray-400">
-                                    {item.sectionCode}
-                                  </span>
-                                </>
-                              )}
-                              {item.points > 0 && (
-                                <>
-                                  <span className="text-[10px] text-gray-300">
-                                    •
-                                  </span>
-                                  <span className="text-[10px] text-gray-400">
-                                    {item.points} pts
-                                  </span>
-                                </>
-                              )}
-                            </div>
-                            <div className="flex items-center justify-between mt-1.5">
-                              <span className="text-[11px] text-gray-400">
-                                {item.date}
-                              </span>
-                              <span
-                                className={`text-[11px] font-semibold ${urgencyColor}`}
-                              >
-                                {urgencyLabel}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                      </motion.div>
-                    );
-                  })}
-                </AnimatePresence>
-              </motion.div>
-            </motion.div>
-          ) : (
-            <div className="flex flex-col items-center py-8 text-gray-300">
-              <svg
-                className="h-8 w-8 mb-2 opacity-40"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                />
-              </svg>
-              <p className="text-sm text-gray-400">No upcoming tasks yet</p>
-            </div>
-          )}
+                            className={`absolute left-0 top-3 bottom-3 w-1 rounded-full bg-gradient-to-b ${accentColor}`}
+                          />
 
-          {totalComingUp > 4 && (
-            <Button
-              variant="link"
-              className="w-fit hidden md:block mt-3 text-sm"
-              onClick={() => setShowAllComingUp(!showAllComingUp)}
-            >
-              {showAllComingUp ? "Show Less" : `View All (${totalComingUp})`}
-            </Button>
-          )}
-        </div>
+                          <div className="pl-3 flex items-start gap-3">
+                            <div
+                              className={`flex h-8 w-8 items-center justify-center rounded-lg flex-shrink-0 ${
+                                typeIconBg[typeLower] || "bg-gray-100"
+                              }`}
+                            >
+                              {typeIcons[typeLower] || (
+                                <FaClipboardList className="text-gray-500 text-[10px]" />
+                              )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-semibold text-gray-800 truncate group-hover:text-blue-700 transition-colors">
+                                {item.title}
+                              </p>
+                              <div className="flex items-center gap-1.5 mt-0.5">
+                                <span className="text-[10px] text-gray-400 uppercase font-medium">
+                                  {item.type}
+                                </span>
+                                {item.sectionCode && (
+                                  <>
+                                    <span className="text-[10px] text-gray-300">
+                                      •
+                                    </span>
+                                    <span className="text-[10px] text-gray-400">
+                                      {item.sectionCode}
+                                    </span>
+                                  </>
+                                )}
+                                {item.points > 0 && (
+                                  <>
+                                    <span className="text-[10px] text-gray-300">
+                                      •
+                                    </span>
+                                    <span className="text-[10px] text-gray-400">
+                                      {item.points} pts
+                                    </span>
+                                  </>
+                                )}
+                              </div>
+                              <div className="flex items-center justify-between mt-1.5">
+                                <span className="text-[11px] text-gray-400">
+                                  {item.date}
+                                </span>
+                                <span
+                                  className={`text-[11px] font-semibold ${urgencyColor}`}
+                                >
+                                  {urgencyLabel}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        </motion.div>
+                      );
+                    })}
+                  </AnimatePresence>
+                </motion.div>
+              </motion.div>
+            ) : (
+              <div className="flex flex-col items-center py-8 text-gray-300">
+                <svg
+                  className="h-8 w-8 mb-2 opacity-40"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+                <p className="text-sm text-gray-400">No upcoming tasks yet</p>
+              </div>
+            )}
+
+            {totalComingUp > 4 && (
+              <Button
+                variant="link"
+                className="w-fit hidden md:block mt-3 text-sm"
+                onClick={() => setShowAllComingUp(!showAllComingUp)}
+              >
+                {showAllComingUp ? "Show Less" : `View All (${totalComingUp})`}
+              </Button>
+            )}
+          </div>
         </div>
       )}
 
       {/* Announcements Section */}
-      <div className="rounded-2xl bg-white border border-gray-100 shadow-sm overflow-hidden">
+      <div
+        className="rounded-2xl border shadow-sm overflow-hidden"
+        style={{
+          backgroundColor: "white",
+          borderColor: "color-mix(in srgb, var(--color-primary, #3b82f6) 15%, white 85%)",
+        }}
+      >
         <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-blue-50">

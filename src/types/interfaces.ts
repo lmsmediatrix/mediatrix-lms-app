@@ -26,6 +26,18 @@ export interface ICurrentUser {
       branding: {
         logo: string;
         coverPhoto: string;
+        colors?: {
+          primary?: string;
+          secondary?: string;
+          accent?: string;
+          success?: string;
+          warning?: string;
+          danger?: string;
+          info?: string;
+          light?: string;
+          dark?: string;
+          neutral?: string;
+        };
       };
     };
   };
@@ -132,6 +144,19 @@ export interface OrgCardProps {
   actions?: React.ReactNode;
 }
 
+export interface IOrgBrandingColors {
+  primary?: string;
+  secondary?: string;
+  accent?: string;
+  success?: string;
+  warning?: string;
+  danger?: string;
+  info?: string;
+  light?: string;
+  dark?: string;
+  neutral?: string;
+}
+
 export interface IOrganization {
   _id: string;
   name: string;
@@ -141,6 +166,7 @@ export interface IOrganization {
   branding: {
     logo: string;
     coverPhoto: string;
+    colors?: IOrgBrandingColors;
   };
 }
 
