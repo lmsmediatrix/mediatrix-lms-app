@@ -16,8 +16,24 @@ interface IStudent {
     gradeMethod: string;
     percentageScore: number;
     gradeLabel: string;
+    dueDate?: string;
+    submittedAt?: string;
   }[];
 }
+
+const formatDueDate = (d: string | undefined) =>
+  d ? new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : null;
+
+const formatSubmittedAt = (d: string | undefined) =>
+  d
+    ? new Date(d).toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+      })
+    : null;
 
 interface StudentGradesModalProps {
   student: IStudent | null;
@@ -65,16 +81,26 @@ const StudentGradesModal: React.FC<StudentGradesModalProps> = ({
         </div>
       </div>
       <div className="grid grid-cols-2 gap-4">
-        {student.assessments.map((assessment, index) => (
-          <div key={index}>
-            <p className="mb-2 text-base">
-              {assessment.type + " " + assessment.assessmentNo}:
-            </p>
-            <p className="bg-gray-200 p-2 rounded-md text-base">
-              {assessment.gradeLabel || "-"}
-            </p>
-          </div>
-        ))}
+        {student.assessments.map((assessment, index) => {
+          const dueStr = formatDueDate(assessment.dueDate);
+          const submittedStr = formatSubmittedAt(assessment.submittedAt);
+          return (
+            <div key={index} className="rounded-lg border border-gray-100 bg-gray-50/50 p-3">
+              <p className="mb-2 text-base font-medium text-gray-800">
+                {assessment.type + " " + assessment.assessmentNo}
+              </p>
+              <p className="bg-gray-200 p-2 rounded-md text-base">
+                {assessment.gradeLabel || "-"}
+              </p>
+              {(dueStr || submittedStr) && (
+                <div className="mt-2 flex flex-wrap gap-x-4 gap-y-0.5 text-[11px] text-gray-500">
+                  {dueStr && <span>Due: {dueStr}</span>}
+                  {submittedStr && <span>Submitted: {submittedStr}</span>}
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
 
       <div className="flex gap-2 justify-end mt-6">

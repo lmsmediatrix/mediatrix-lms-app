@@ -1,9 +1,6 @@
-import {
-  FaAngleRight,
-  FaCalendarAlt,
-  FaChevronDown,
-} from "react-icons/fa";
+import { FaAngleRight, FaChevronDown } from "react-icons/fa";
 import { ChartLineIcon } from "@/components/ui/chart-line-icon";
+import { BellIcon } from "@/components/ui/bell-icon";
 import Button from "../../components/common/Button";
 import DashboardHeader from "../../components/common/DashboardHeader";
 import StatCard from "../../components/common/StatCard";
@@ -12,7 +9,7 @@ import DashboardSkeleton from "../../components/skeleton/DashboardSkeleton";
 import { useAuth } from "../../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import IsPasswordChangedModal from "../../components/common/IsPasswordChangedModal";
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useInstructorSections } from "../../hooks/useSection";
 import {
   useGetInstructorMetrics,
@@ -41,6 +38,32 @@ function RefetchCard({
   );
 }
 
+// ── Animated icon helper ──────────────────────────────────────────────────
+interface AnimIconHandle {
+  startAnimation: () => void;
+  stopAnimation: () => void;
+}
+
+function AnimatedCardIcon({
+  Icon,
+  isHovered,
+  size = 14,
+}: {
+  Icon: React.ComponentType<{ size?: number }>;
+  isHovered: boolean;
+  size?: number;
+}) {
+  const iconRef = useRef<AnimIconHandle>(null);
+  useEffect(() => {
+    if (isHovered) iconRef.current?.startAnimation();
+    else iconRef.current?.stopAnimation();
+  }, [isHovered]);
+  const IconWithRef = Icon as React.ForwardRefExoticComponent<
+    { size?: number } & React.RefAttributes<AnimIconHandle>
+  >;
+  return <IconWithRef ref={iconRef} size={size} />;
+}
+
 import Schedule from "../../components/instructor/Schedule";
 import AttendanceChart from "../../components/instructor/AttendanceChart";
 import CompletionTracker from "../../components/common/CompletionTracker";
@@ -57,6 +80,8 @@ export default function InstructorDashboard() {
   const [selectedDate, setSelectedDate] = useState(
     toLocalDateString(new Date()),
   );
+  const [scheduleCardHovered, setScheduleCardHovered] = useState(false);
+  const [summaryCardHovered, setSummaryCardHovered] = useState(false);
   const dateInputRef = useRef<HTMLInputElement>(null);
   const { currentUser } = useAuth();
   const orgType = currentUser.user.organization.type;
@@ -94,6 +119,7 @@ export default function InstructorDashboard() {
     upComingClassSchedule,
     announcements,
     gradingQueue,
+    gradingQueueStatusCounts,
     lateMissingAssignments,
     averageGradeBySection,
   } = dashboardMetrics;
@@ -114,8 +140,8 @@ export default function InstructorDashboard() {
 
   const activeLearners = Number(totalEnrolled) || 0;
   const pendingSubmissions = gradingQueue?.[0]?.pendingSubmissions ?? 0;
-  const lateMissingTotal = lateMissingAssignments?.[0]?.total ?? 0;
-  const lateCount = lateMissingAssignments?.[0]?.late ?? 0;
+  // Use the same definition as the Late Submissions page: late AND still pending grading.
+  const lateCount = gradingQueueStatusCounts?.[0]?.late ?? 0;
   const missingCount = lateMissingAssignments?.[0]?.missing ?? 0;
 
   const averageGrades = averageGradeBySection || [];
@@ -185,7 +211,7 @@ export default function InstructorDashboard() {
               onClick={() => dateInputRef.current?.showPicker?.()}
               className="inline-flex items-center gap-2 rounded-lg border border-white/25 bg-white/10 px-3.5 py-2 text-sm font-medium text-white hover:bg-white/20 transition-all cursor-pointer select-none backdrop-blur-sm"
             >
-              <FaCalendarAlt className="text-white/70 h-3 w-3 shrink-0" />
+              <BellIcon size={12} className="text-white/70 shrink-0" />
               <span>
                 {new Date(selectedDate + "T00:00:00").toLocaleDateString(
                   "en-US",
@@ -220,7 +246,11 @@ export default function InstructorDashboard() {
             <div className="p-4 lg:p-0">
               <RefetchCard loading={isRefetching} delay={0}>
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 py-4 lg:py-8 pr-4 items-stretch">
-                  <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm flex flex-col h-full">
+                  <div
+                    className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm flex flex-col h-full"
+                    onMouseEnter={() => setScheduleCardHovered(true)}
+                    onMouseLeave={() => setScheduleCardHovered(false)}
+                  >
                     <div className="flex items-center justify-between mb-4">
                       <div className="flex items-center gap-3">
                         <div
@@ -228,12 +258,10 @@ export default function InstructorDashboard() {
                           style={{
                             backgroundColor:
                               "color-mix(in srgb, var(--color-primary, #3b82f6) 12%, white 88%)",
+                            color: "var(--color-primary, #2563eb)",
                           }}
                         >
-                          <FaCalendarAlt
-                            className="text-sm"
-                            style={{ color: "var(--color-primary, #2563eb)" }}
-                          />
+                          <AnimatedCardIcon Icon={BellIcon} isHovered={scheduleCardHovered} size={16} />
                         </div>
                         <h3 className="text-xl md:text-2xl font-bold text-gray-800">
                           Today's Schedule
@@ -259,19 +287,21 @@ export default function InstructorDashboard() {
                     />
                   </div>
 
-                  <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm flex flex-col h-full">
+                  <div
+                    className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm flex flex-col h-full"
+                    onMouseEnter={() => setSummaryCardHovered(true)}
+                    onMouseLeave={() => setSummaryCardHovered(false)}
+                  >
                     <div className="flex items-center gap-3 mb-4">
                       <div
                         className="flex h-9 w-9 items-center justify-center rounded-xl"
                         style={{
                           backgroundColor:
                             "color-mix(in srgb, var(--color-primary, #3b82f6) 12%, white 88%)",
+                          color: "var(--color-primary, #2563eb)",
                         }}
                       >
-                        <ChartLineIcon
-                          size={14}
-                          style={{ color: "var(--color-primary, #2563eb)" }}
-                        />
+                        <AnimatedCardIcon Icon={ChartLineIcon} isHovered={summaryCardHovered} size={16} />
                       </div>
                       <h3 className="text-xl md:text-2xl font-bold text-gray-800">
                         Instructor Summary
@@ -371,22 +401,37 @@ export default function InstructorDashboard() {
                     </h4>
                     <div className="grid grid-cols-2 gap-3 flex-1">
                       {[
-                        { value: pendingSubmissions, label: "Pending", color: "text-gray-900" },
-                        { value: lateCount, label: "Late", color: "text-amber-500" },
-                        { value: missingCount, label: "Missing", color: "text-red-500" },
-                        { value: lateMissingTotal, label: "Late + Missing", color: "text-gray-900" },
-                      ].map(({ value, label, color }) => (
-                        <div
+                        {
+                          value: pendingSubmissions,
+                          label: "Pending",
+                          color: "text-gray-900",
+                          href: `/${orgCode}/instructor/grading`,
+                        },
+                        {
+                          value: lateCount,
+                          label: "Late",
+                          color: "text-amber-500",
+                          href: `/${orgCode}/instructor/grading?filter=late`,
+                        },
+                        {
+                          value: missingCount,
+                          label: "Missing",
+                          color: "text-red-500",
+                          href: `/${orgCode}/instructor/late-missing?filter=missing`,
+                        },
+                      ].map(({ value, label, color, href }) => (
+                        <button
                           key={label}
-                          className="rounded-xl border p-4 flex flex-col justify-center"
+                          onClick={() => navigate(href)}
+                          className="rounded-xl border p-4 flex flex-col justify-center text-left transition-all hover:shadow-sm hover:brightness-95 cursor-pointer"
                           style={{
                             backgroundColor: "color-mix(in srgb, var(--color-primary, #3b82f6) 6%, white 94%)",
                             borderColor: "color-mix(in srgb, var(--color-primary, #3b82f6) 18%, white 82%)",
                           }}
                         >
                           <p className={`text-2xl font-bold ${color}`}>{value}</p>
-                          <p className="text-xs text-gray-500 mt-0.5">{label}</p>
-                        </div>
+                          <p className="text-xs text-gray-500 mt-0.5">{label} ↗</p>
+                        </button>
                       ))}
                     </div>
                   </div>

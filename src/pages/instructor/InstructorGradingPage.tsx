@@ -1,4 +1,4 @@
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { useGetGradingQueueList } from "../../hooks/useMetrics";
 import { FaClipboardCheck } from "react-icons/fa";
@@ -8,12 +8,33 @@ type Submission = {
   _id: string;
   status: string;
   submittedAt?: string;
+  dueDate?: string;
+  assessmentId: string;
+  studentId: string;
+  gradeMethod?: string;
+  assessmentNo?: number | null;
   sectionName: string;
   sectionCode: string;
   assessmentTitle: string;
   assessmentType: string;
   studentName: string;
 };
+
+const formatDueDate = (d: string | undefined) =>
+  d
+    ? new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+    : "—";
+
+const formatSubmittedAt = (d: string | undefined) =>
+  d
+    ? new Date(d).toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+      })
+    : "—";
 
 const statusConfig: Record<string, { label: string; className: string }> = {
   submitted: {
@@ -35,6 +56,8 @@ const typeLabel: Record<string, string> = {
 
 export default function InstructorGradingPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const filterParam = searchParams.get("filter"); // "late" | null
   const { currentUser } = useAuth();
   const orgCode = currentUser.user.organization.code;
 
@@ -43,7 +66,10 @@ export default function InstructorGradingPage() {
     currentUser.user.organization._id,
   );
 
-  const submissions: Submission[] = data?.[0]?.gradingQueueList ?? [];
+  const allSubmissions: Submission[] = data?.[0]?.gradingQueueList ?? [];
+  const submissions = filterParam === "late"
+    ? allSubmissions.filter((s) => s.status === "late")
+    : allSubmissions;
 
   const grouped = submissions.reduce<Record<string, Submission[]>>((acc, item) => {
     const key = item.sectionCode;
@@ -57,9 +83,9 @@ export default function InstructorGradingPage() {
       <div className="max-w-5xl mx-auto px-4 py-8">
         <PageHeader
           onBack={() => navigate(`/${orgCode}/instructor/dashboard`)}
-          icon={<FaClipboardCheck className="text-blue-600" />}
-          iconBg="bg-blue-100"
-          title="Pending Grading"
+          icon={<FaClipboardCheck className={filterParam === "late" ? "text-amber-600" : "text-blue-600"} />}
+          iconBg={filterParam === "late" ? "bg-amber-100" : "bg-blue-100"}
+          title={filterParam === "late" ? "Late Submissions" : "Pending Grading"}
           subtitle={`${submissions.length} submission${submissions.length !== 1 ? "s" : ""} awaiting review`}
         />
 
@@ -80,8 +106,12 @@ export default function InstructorGradingPage() {
         ) : submissions.length === 0 ? (
           <div className="rounded-2xl border border-gray-100 bg-white p-16 shadow-sm text-center">
             <FaClipboardCheck className="mx-auto text-4xl text-gray-200 mb-4" />
-            <p className="text-gray-500 font-medium">No pending submissions</p>
-            <p className="text-sm text-gray-400 mt-1">All assessments have been graded.</p>
+            <p className="text-gray-500 font-medium">
+              {filterParam === "late" ? "No late submissions" : "No pending submissions"}
+            </p>
+            <p className="text-sm text-gray-400 mt-1">
+              {filterParam === "late" ? "No submissions were submitted late." : "All assessments have been graded."}
+            </p>
           </div>
         ) : (
           <div className="space-y-5">
@@ -104,28 +134,34 @@ export default function InstructorGradingPage() {
                 <div className="divide-y divide-gray-50">
                   {items.map((item, idx) => {
                     const cfg = statusConfig[item.status] ?? statusConfig.submitted;
-                    const submittedDate = item.submittedAt
-                      ? new Date(item.submittedAt).toLocaleDateString("en-US", {
-                          month: "short",
-                          day: "numeric",
-                          year: "numeric",
-                          hour: "numeric",
-                          minute: "2-digit",
-                        })
-                      : "—";
-                    // Only show type badge if it differs from the title (avoid "Assignment · Assignment")
                     const typeLabelText = item.assessmentType
                       ? typeLabel[item.assessmentType] ?? item.assessmentType
                       : "";
                     const showTypeBadge =
                       typeLabelText &&
                       typeLabelText.toLowerCase() !== item.assessmentTitle?.toLowerCase();
+
+                    const reasons: string[] = [];
+                    if (item.status === "late") reasons.push("Submitted after due date");
+                    if (item.gradeMethod && item.gradeMethod !== "auto") {
+                      reasons.push("Includes questions that require manual grading");
+                    } else {
+                      reasons.push("Score not recorded yet");
+                    }
+                    const reasonText = reasons.join(" · ");
+
                     return (
                       <button
                         key={idx}
                         onClick={() =>
                           navigate(
-                            `/${orgCode}/instructor/sections/${item.sectionCode}?tab=grades`,
+                            `/${orgCode}/instructor/sections/${item.sectionCode}/assessment/${item.assessmentId}/student/${item.studentId}`,
+                            {
+                              state: {
+                                assessmentNo: item.assessmentNo,
+                                assessmentType: item.assessmentType,
+                              },
+                            },
                           )
                         }
                         className="w-full flex items-center gap-4 px-5 py-4 hover:bg-blue-50/40 transition-colors text-left group"
@@ -144,6 +180,13 @@ export default function InstructorGradingPage() {
                               </span>
                             )}
                           </div>
+                          <div className="flex flex-wrap gap-x-4 gap-y-0.5 mt-2 text-[11px] text-gray-500">
+                            <span>Due: {formatDueDate(item.dueDate)}</span>
+                            <span>Submitted: {formatSubmittedAt(item.submittedAt)}</span>
+                            <span className="block w-full text-[11px] text-gray-500">
+                              Reason pending: {reasonText}
+                            </span>
+                          </div>
                         </div>
                         <div className="text-right shrink-0">
                           <span
@@ -151,7 +194,6 @@ export default function InstructorGradingPage() {
                           >
                             {cfg.label}
                           </span>
-                          <p className="text-xs text-gray-400 mt-1">{submittedDate}</p>
                         </div>
                       </button>
                     );

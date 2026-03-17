@@ -1,26 +1,20 @@
-import {
-  FaBookOpen,
-  FaUserGraduate,
-  FaClipboardList,
-  FaExclamationTriangle,
-} from "react-icons/fa";
+import { useEffect, useRef, useState } from "react";
 import { ImSpinner2 } from "react-icons/im";
+import { BookOpenIcon } from "@/components/ui/book-open-icon";
+import { UsersIcon } from "@/components/ui/users-icon";
+import { ChartBarIcon } from "@/components/ui/chart-bar-icon";
+import { InfoIcon } from "@/components/ui/info-icon";
 
-interface StatCardProps {
-  value: number | string;
-  label: string;
-  icon: IconType;
-  loading?: boolean;
-  onClick?: () => void;
-  variant?: StatCardVariant;
-  size?: "sm" | "md";
+interface AnimIconHandle {
+  startAnimation: () => void;
+  stopAnimation: () => void;
 }
 
 const iconMap = {
-  courses: FaBookOpen,
-  students: FaUserGraduate,
-  assignments: FaClipboardList,
-  critical: FaExclamationTriangle,
+  courses: BookOpenIcon,
+  students: UsersIcon,
+  assignments: ChartBarIcon,
+  critical: InfoIcon,
 } as const;
 
 const iconColors = {
@@ -55,6 +49,16 @@ const variantStyles = {
 export type IconType = keyof typeof iconMap;
 export type StatCardVariant = keyof typeof iconColors;
 
+interface StatCardProps {
+  value: number | string;
+  label: string;
+  icon: IconType;
+  loading?: boolean;
+  onClick?: () => void;
+  variant?: StatCardVariant;
+  size?: "sm" | "md";
+}
+
 export default function StatCard({
   value,
   label,
@@ -64,7 +68,19 @@ export default function StatCard({
   variant = "glass",
   size = "md",
 }: StatCardProps) {
+  const [isHovered, setIsHovered] = useState(false);
+  const iconRef = useRef<AnimIconHandle>(null);
+
+  useEffect(() => {
+    if (isHovered) iconRef.current?.startAnimation();
+    else iconRef.current?.stopAnimation();
+  }, [isHovered]);
+
   const Icon = iconMap[icon];
+  const IconWithRef = Icon as React.ForwardRefExoticComponent<
+    { size?: number } & React.RefAttributes<AnimIconHandle>
+  >;
+
   const styles = variantStyles[variant];
   const sizeStyles = {
     md: {
@@ -72,7 +88,7 @@ export default function StatCard({
       value: "text-2xl",
       label: "text-xs",
       iconWrap: "p-2 rounded-lg",
-      icon: "text-base",
+      iconSize: 18,
       spinnerWrap: "h-7",
       spinner: "text-xl",
     },
@@ -81,7 +97,7 @@ export default function StatCard({
       value: "text-xl",
       label: "text-[11px]",
       iconWrap: "p-1.5 rounded-md",
-      icon: "text-sm",
+      iconSize: 14,
       spinnerWrap: "h-6",
       spinner: "text-lg",
     },
@@ -91,6 +107,8 @@ export default function StatCard({
   return (
     <div
       onClick={onClick}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
       className={`${sizeClass.container} ${styles.container} ${
         onClick
           ? `cursor-pointer ${styles.hover} transition-all duration-200`
@@ -117,7 +135,7 @@ export default function StatCard({
           </p>
         </div>
         <div className={`${sizeClass.iconWrap} ${iconColors[variant][icon]}`}>
-          <Icon className={sizeClass.icon} />
+          <IconWithRef ref={iconRef} size={sizeClass.iconSize} />
         </div>
       </div>
     </div>

@@ -26,40 +26,38 @@ interface ScheduleProps {
   showHeader?: boolean;
 }
 
-// Only vibrant palette slots — no gray/secondary — used for the accent bar only.
-// Order must match WeeklySchedule so the same section always gets the same accent color.
-const SECTION_VARIANTS: { colorVar: string; fallback: string }[] = [
-  { colorVar: "--color-primary", fallback: "#3b82f6" },
-  { colorVar: "--color-success", fallback: "#10b981" },
-  { colorVar: "--color-accent",  fallback: "#f59e0b" },
-  { colorVar: "--color-danger",  fallback: "#ef4444" },
-  { colorVar: "--color-warning", fallback: "#f97316" },
-  { colorVar: "--color-info",    fallback: "#6366f1" },
+// Fixed distinct palette — hardcoded so section colors never clash
+// regardless of the org's CSS variable customizations.
+const SECTION_PALETTE: { bg: string; border: string; accent: string; text: string }[] = [
+  { bg: "#dbeafe", border: "#93c5fd", accent: "#3b82f6", text: "#1d4ed8" }, // blue
+  { bg: "#dcfce7", border: "#86efac", accent: "#22c55e", text: "#15803d" }, // green
+  { bg: "#fef3c7", border: "#fcd34d", accent: "#f59e0b", text: "#b45309" }, // amber
+  { bg: "#fee2e2", border: "#fca5a5", accent: "#ef4444", text: "#b91c1c" }, // red
+  { bg: "#ede9fe", border: "#c4b5fd", accent: "#8b5cf6", text: "#6d28d9" }, // purple
+  { bg: "#fce7f3", border: "#f9a8d4", accent: "#ec4899", text: "#be185d" }, // pink
+  { bg: "#ccfbf1", border: "#5eead4", accent: "#14b8a6", text: "#0f766e" }, // teal
+  { bg: "#ffedd5", border: "#fdba74", accent: "#f97316", text: "#c2410c" }, // orange
 ];
 
 function getSectionColors(sectionCode: string) {
   const hash = sectionCode
     .split("")
     .reduce((acc: number, char: string) => acc + char.charCodeAt(0), 0);
-  const v = SECTION_VARIANTS[hash % SECTION_VARIANTS.length];
-  const accent = `var(${v.colorVar}, ${v.fallback})`;
+  const p = SECTION_PALETTE[hash % SECTION_PALETTE.length];
 
   return {
-    // All cards share the org primary tint background
     cardStyle: {
-      backgroundColor: "color-mix(in srgb, var(--color-primary, #3b82f6) 8%, white 92%)",
-      borderColor:     "color-mix(in srgb, var(--color-primary, #3b82f6) 18%, white 82%)",
+      backgroundColor: p.bg,
+      borderColor:     p.border,
     } as React.CSSProperties,
-    // Left accent bar keeps the unique section color
     accentStyle: {
-      background: `linear-gradient(to bottom, ${accent}, color-mix(in srgb, ${accent} 70%, black 30%))`,
+      background: `linear-gradient(to bottom, ${p.accent}, ${p.text})`,
     } as React.CSSProperties,
-    // Section name text uses the section accent for identity
     textStyle: {
-      color: `color-mix(in srgb, ${accent} 80%, black 20%)`,
+      color: p.text,
     } as React.CSSProperties,
     iconStyle: {
-      color: accent,
+      color: p.accent,
     } as React.CSSProperties,
   };
 }
