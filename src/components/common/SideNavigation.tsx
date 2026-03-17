@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { FaBars } from "react-icons/fa";
 import { UserIcon } from "@/components/ui/user-icon";
@@ -20,13 +20,180 @@ import { motion as m, AnimatePresence } from "framer-motion";
 interface NavItem {
   LABEL: string;
   PATH?: string;
-  ICON?: React.ComponentType;
+  ICON?: React.ComponentType<{ size?: number }>;
   SUBMENU?: NavItem[];
 }
 
 interface SideNavigationProps {
   isCollapsed: boolean;
   setIsCollapsed: (value: boolean) => void;
+}
+
+// ── Animated icon wrapper ──────────────────────────────────────────────────
+interface AnimIconHandle {
+  startAnimation: () => void;
+  stopAnimation: () => void;
+}
+
+function AnimatedNavIcon({
+  Icon,
+  isHovered,
+  isActive = false,
+  size = 20,
+}: {
+  Icon: React.ComponentType<{ size?: number }>;
+  isHovered: boolean;
+  isActive?: boolean;
+  size?: number;
+}) {
+  const iconRef = useRef<AnimIconHandle>(null);
+
+  useEffect(() => {
+    if (isHovered) iconRef.current?.startAnimation();
+    else iconRef.current?.stopAnimation();
+  }, [isHovered]);
+
+  const IconWithRef = Icon as React.ForwardRefExoticComponent<
+    { size?: number } & React.RefAttributes<AnimIconHandle>
+  >;
+
+  return (
+    <span className={`shrink-0 transition-colors ${isActive ? "text-primary" : "text-gray-500"}`}>
+      <IconWithRef ref={iconRef} size={size} />
+    </span>
+  );
+}
+
+// ── NavLink item (leaf node) ───────────────────────────────────────────────
+function NavLinkItem({
+  item,
+  path,
+  displayName,
+  isSubmenu,
+  isCollapsed,
+  isMobileMenuOpen,
+  onClose,
+}: {
+  item: NavItem;
+  path: string;
+  displayName: string;
+  isSubmenu: boolean;
+  isCollapsed: boolean;
+  isMobileMenuOpen: boolean;
+  onClose: () => void;
+}) {
+  const [isHovered, setIsHovered] = useState(false);
+
+  return (
+    <NavLink
+      to={path}
+      className={({ isActive }) =>
+        `flex items-center gap-3 px-4 py-2 text-base rounded-lg transition-all ${
+          isActive ? "bg-gray-100 gap-4" : "text-gray-600 hover:bg-gray-100 hover:gap-4"
+        } ${isSubmenu && (!isCollapsed || isMobileMenuOpen) ? "pl-4" : ""} ${
+          isCollapsed && !isMobileMenuOpen ? "justify-center" : ""
+        }`
+      }
+      end
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      onClick={onClose}
+    >
+      {({ isActive }) => (
+        <>
+          {item.ICON && !isSubmenu && (
+            <AnimatedNavIcon Icon={item.ICON} isHovered={isHovered} isActive={isActive} />
+          )}
+          <AnimatePresence>
+            {(!isCollapsed || isMobileMenuOpen) && (
+              <m.span
+                className={`font-semibold ${isActive ? "text-primary" : "text-gray-600"}`}
+                initial={{ opacity: 0, width: 0 }}
+                animate={{ opacity: 1, width: "auto" }}
+                exit={{ opacity: 0, width: 0 }}
+                transition={{ duration: 0.2 }}
+              >
+                {displayName}
+              </m.span>
+            )}
+          </AnimatePresence>
+        </>
+      )}
+    </NavLink>
+  );
+}
+
+// ── Submenu parent button ──────────────────────────────────────────────────
+function NavMenuButton({
+  item,
+  displayName,
+  isOpen,
+  isCollapsed,
+  isMobileMenuOpen,
+  onToggle,
+  children,
+}: {
+  item: NavItem;
+  displayName: string;
+  isOpen: boolean;
+  isCollapsed: boolean;
+  isMobileMenuOpen: boolean;
+  onToggle: () => void;
+  children: React.ReactNode;
+}) {
+  const [isHovered, setIsHovered] = useState(false);
+
+  return (
+    <div>
+      <button
+        onClick={onToggle}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+        className={`flex items-center gap-3 px-4 py-2 text-base rounded-lg transition-all w-full text-left text-gray-600 hover:bg-gray-100 hover:gap-4 ${
+          isCollapsed && !isMobileMenuOpen ? "justify-center" : ""
+        }`}
+      >
+        {item.ICON && (
+          <AnimatedNavIcon Icon={item.ICON} isHovered={isHovered} />
+        )}
+        <AnimatePresence>
+          {(!isCollapsed || isMobileMenuOpen) && (
+            <m.span
+              className="font-medium"
+              initial={{ opacity: 0, width: 0 }}
+              animate={{ opacity: 1, width: "auto" }}
+              exit={{ opacity: 0, width: 0 }}
+              transition={{ duration: 0.2 }}
+            >
+              {displayName}
+            </m.span>
+          )}
+        </AnimatePresence>
+        {(!isCollapsed || isMobileMenuOpen) && (
+          <span className="ml-auto">
+            {isOpen ? (
+              <MdKeyboardArrowDown className="text-[20px]" />
+            ) : (
+              <MdKeyboardArrowRight className="text-[20px]" />
+            )}
+          </span>
+        )}
+      </button>
+      <AnimatePresence>
+        {isOpen && (!isCollapsed || isMobileMenuOpen) && (
+          <m.div
+            className="ml-6 px-4 border-l-2 border-gray-200"
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+          >
+            {children}
+          </m.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
 }
 
 export default function SideNavigation({
@@ -75,7 +242,7 @@ export default function SideNavigation({
     return { displayName };
   };
 
-  const renderNavItem = (item: NavItem, isSubmenu = false) => {
+  const renderNavItem = useCallback((item: NavItem, isSubmenu = false) => {
     const isOpen = openMenus.includes(item.LABEL);
     const { displayName } = transformItem(item);
     const path = item.PATH
@@ -86,103 +253,34 @@ export default function SideNavigation({
 
     if (item.SUBMENU && !item.PATH) {
       return (
-        <div key={item.LABEL}>
-          <button
-            onClick={() => toggleSubmenu(item.LABEL)}
-            className={`flex items-center gap-3 hover:gap-4 px-4 py-2 text-base rounded-lg transition-all w-full text-left text-gray-600 hover:bg-gray-100 ${
-              isCollapsed && !isMobileMenuOpen ? "justify-center" : ""
-            }`}
-          >
-            {item.ICON && !isSubmenu && (
-              <span className="text-[20px] text-gray-600">
-                <item.ICON />
-              </span>
-            )}
-            <AnimatePresence>
-              {(!isCollapsed || isMobileMenuOpen) && (
-                <m.span
-                  className="font-medium"
-                  initial={{ opacity: 0, width: 0 }}
-                  animate={{ opacity: 1, width: "auto" }}
-                  exit={{ opacity: 0, width: 0 }}
-                  transition={{ duration: 0.2 }}
-                >
-                  {displayName}
-                </m.span>
-              )}
-            </AnimatePresence>
-            {(!isCollapsed || isMobileMenuOpen) && (
-              <span className="ml-auto">
-                {isOpen ? (
-                  <MdKeyboardArrowDown className="text-[20px]" />
-                ) : (
-                  <MdKeyboardArrowRight className="text-[20px]" />
-                )}
-              </span>
-            )}
-          </button>
-          <AnimatePresence>
-            {isOpen && (!isCollapsed || isMobileMenuOpen) && (
-              <m.div
-                className="ml-6 px-4 border-l-2 border-gray-200"
-                initial={{ height: 0, opacity: 0 }}
-                animate={{ height: "auto", opacity: 1 }}
-                exit={{ height: 0, opacity: 0 }}
-                transition={{ duration: 0.2 }}
-              >
-                {item.SUBMENU.map((subItem) => renderNavItem(subItem, true))}
-              </m.div>
-            )}
-          </AnimatePresence>
-        </div>
+        <NavMenuButton
+          key={item.LABEL}
+          item={item}
+          displayName={displayName}
+          isOpen={isOpen}
+          isCollapsed={isCollapsed}
+          isMobileMenuOpen={isMobileMenuOpen}
+          onToggle={() => toggleSubmenu(item.LABEL)}
+        >
+          {item.SUBMENU.map((subItem) => renderNavItem(subItem, true))}
+        </NavMenuButton>
       );
     }
 
     return (
-      <NavLink
-        to={path}
+      <NavLinkItem
         key={path}
-        className={({ isActive }) =>
-          `flex items-center gap-3 hover:gap-4 px-4 py-2 text-base rounded-lg transition-all ${
-            isActive ? "bg-gray-100 gap-4" : "text-gray-600 hover:bg-gray-100"
-          } ${isSubmenu && (!isCollapsed || isMobileMenuOpen) ? "pl-4" : ""} ${
-            isCollapsed && !isMobileMenuOpen ? "justify-center" : ""
-          }`
-        }
-        end
-        onClick={() => setIsMobileMenuOpen(false)}
-      >
-        {({ isActive }) => (
-          <>
-            {item.ICON && !isSubmenu && (
-              <span
-                className={`text-[20px] ${
-                  isActive ? "text-primary" : "text-gray-600"
-                }`}
-              >
-                <item.ICON />
-              </span>
-            )}
-            <AnimatePresence>
-              {(!isCollapsed || isMobileMenuOpen) && (
-                <m.span
-                  className={`font-semibold ${
-                    isActive ? "text-primary" : "text-gray-600"
-                  }`}
-                  initial={{ opacity: 0, width: 0 }}
-                  animate={{ opacity: 1, width: "auto" }}
-                  exit={{ opacity: 0, width: 0 }}
-                  transition={{ duration: 0.2 }}
-                >
-                  {displayName}
-                </m.span>
-              )}
-            </AnimatePresence>
-          </>
-        )}
-      </NavLink>
+        item={item}
+        path={path}
+        displayName={displayName}
+        isSubmenu={isSubmenu}
+        isCollapsed={isCollapsed}
+        isMobileMenuOpen={isMobileMenuOpen}
+        onClose={() => setIsMobileMenuOpen(false)}
+      />
     );
-  };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openMenus, isCollapsed, isMobileMenuOpen, role, code, orgType]);
 
   const navigateToHome = () => {
     const homePath =

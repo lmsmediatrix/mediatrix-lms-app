@@ -68,10 +68,10 @@ export default function PerformanceChart({ data = [] }: PerformanceChartProps) {
       </div>
 
       {/* Bar chart */}
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto overflow-y-visible">
         <div
-          className="flex items-end gap-1.5 min-w-fit"
-          style={{ height: chartHeight + 32 }}
+          className="flex items-end gap-1.5 min-w-fit pt-14"
+          style={{ height: chartHeight + 32 + 56 }}
         >
           {data.map((item, index) => {
             const barHeight = (item.percentage / maxPercentage) * chartHeight;
@@ -84,7 +84,7 @@ export default function PerformanceChart({ data = [] }: PerformanceChartProps) {
                 style={{ width: barWidth }}
               >
                 {/* Tooltip */}
-                <div className="absolute -top-14 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity z-10 pointer-events-none">
+                <div className="absolute top-12 left-1/2 -translate-x-1/2 -translate-y-full opacity-0 group-hover:opacity-100 transition-opacity z-20 pointer-events-none">
                   <div className="bg-gray-800 text-white text-[10px] rounded-lg px-2.5 py-1.5 whitespace-nowrap shadow-lg">
                     <p className="font-medium">{item.title}</p>
                     <p>
@@ -101,6 +101,11 @@ export default function PerformanceChart({ data = [] }: PerformanceChartProps) {
                   className="rounded-t-md w-full cursor-pointer transition-opacity hover:opacity-80"
                   style={{ backgroundColor: color }}
                 />
+
+                {/* Value label (always visible) */}
+                <span className="text-[10px] font-semibold text-gray-600 leading-none">
+                  {Math.round(item.percentage)}%
+                </span>
 
                 {/* Label */}
                 <span className="text-[9px] text-gray-400 truncate w-full text-center">

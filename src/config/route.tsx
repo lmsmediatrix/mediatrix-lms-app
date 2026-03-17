@@ -53,6 +53,7 @@ import InstructorPerformancePage from "../pages/instructor/InstructorPerformance
 import InstructorStudentPerformanceDetails from "../pages/instructor/InstructorStudentPerformanceDetails";
 import InstructorCompletionPage from "../pages/instructor/InstructorCompletionPage";
 import InstructorGradingPage from "../pages/instructor/InstructorGradingPage";
+import InstructorLateMissingPage from "../pages/instructor/InstructorLateMissingPage";
 import InstructorEnrollmentsPage from "../pages/instructor/InstructorEnrollmentsPage";
 
 export const appRoutes = [
@@ -239,6 +240,10 @@ export const appRoutes = [
       {
         path: "/:orgCode/instructor/grading",
         element: <InstructorGradingPage />,
+      },
+      {
+        path: "/:orgCode/instructor/late-missing",
+        element: <InstructorLateMissingPage />,
       },
       {
         path: "/:orgCode/instructor/enrollments",

@@ -12,22 +12,20 @@ export const defaultColors = {
   danger: "#dc3545",
 };
 
-import {
-  FaHome,
-  FaCog,
-  FaBook,
-  FaChalkboardTeacher,
-  FaUsers,
-  FaLayerGroup,
-  FaWrench,
-  FaChartLine,
-  FaCalendarAlt,
-} from "react-icons/fa";
+import { HouseIcon } from "../components/ui/house-icon";
+import { BookOpenIcon } from "../components/ui/book-open-icon";
+import { UserCheckIcon } from "../components/ui/user-check-icon";
+import { UsersIcon } from "../components/ui/users-icon";
+import { LayoutGridIcon } from "../components/ui/layout-grid-icon";
+import { SettingsIcon } from "../components/ui/settings-icon";
+import { ChartNoAxesCombinedIcon } from "../components/ui/chart-no-axes-combined-icon";
+import { ActivityIcon } from "../components/ui/activity-icon";
+import { BellIcon } from "../components/ui/bell-icon";
 
 export interface NavItem {
   LABEL: string;
   PATH?: string;
-  ICON?: React.ComponentType;
+  ICON?: React.ComponentType<{ size?: number }>;
   SUBMENU?: NavItem[];
 }
 
@@ -38,16 +36,16 @@ export const BASE_NAVIGATION: {
     {
       LABEL: "Dashboard",
       PATH: "/admin/dashboard",
-      ICON: FaHome,
+      ICON: HouseIcon,
     },
     {
       LABEL: "Organization",
       PATH: "/admin/organization",
-      ICON: FaCog,
+      ICON: SettingsIcon,
     },
     {
       LABEL: "Logs",
-      ICON: FaBook,
+      ICON: ActivityIcon,
       SUBMENU: [
         {
           LABEL: "Activity",
@@ -64,31 +62,31 @@ export const BASE_NAVIGATION: {
     {
       LABEL: "Dashboard",
       PATH: "/:code/admin/dashboard",
-      ICON: FaHome,
+      ICON: HouseIcon,
     },
     {
       LABEL: "Courses",
       PATH: "/:code/admin/course",
-      ICON: FaBook,
+      ICON: BookOpenIcon,
     },
     {
       LABEL: "Instructor",
       PATH: "/:code/admin/instructor",
-      ICON: FaChalkboardTeacher,
+      ICON: UserCheckIcon,
     },
     {
       LABEL: "Student",
       PATH: "/:code/admin/student",
-      ICON: FaUsers,
+      ICON: UsersIcon,
     },
     {
       LABEL: "Sections",
       PATH: "/:code/admin/section",
-      ICON: FaLayerGroup,
+      ICON: LayoutGridIcon,
     },
     {
       LABEL: "Configuration",
-      ICON: FaWrench,
+      ICON: SettingsIcon,
       SUBMENU: [
         {
           LABEL: "Category",
@@ -107,46 +105,46 @@ export const BASE_NAVIGATION: {
     {
       LABEL: "Performance",
       PATH: "/:code/admin/performance",
-      ICON: FaChartLine,
+      ICON: ChartNoAxesCombinedIcon,
     },
   ],
   INSTRUCTOR: [
     {
       LABEL: "Dashboard",
       PATH: "/:code/instructor/dashboard",
-      ICON: FaHome,
+      ICON: HouseIcon,
     },
     {
       LABEL: "My Sections",
       PATH: "/:code/instructor/sections",
-      ICON: FaLayerGroup,
+      ICON: LayoutGridIcon,
     },
     {
       LABEL: "Performance",
       PATH: "/:code/instructor/performance",
-      ICON: FaChartLine,
+      ICON: ChartNoAxesCombinedIcon,
     },
     {
       LABEL: "Schedule",
       PATH: "/:code/instructor/schedule",
-      ICON: FaCalendarAlt,
+      ICON: BellIcon,
     },
   ],
   STUDENT: [
     {
       LABEL: "Dashboard",
       PATH: "/:code/student/dashboard",
-      ICON: FaHome,
+      ICON: HouseIcon,
     },
     {
       LABEL: "My Sections",
       PATH: "/:code/student/sections",
-      ICON: FaLayerGroup,
+      ICON: LayoutGridIcon,
     },
     {
       LABEL: "Schedule",
       PATH: "/:code/student/calendar",
-      ICON: FaCalendarAlt,
+      ICON: BellIcon,
     },
   ],
 };

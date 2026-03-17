@@ -47,6 +47,7 @@ export default function SidePanel({
     ...(comingUpData || []).map((item: any) => ({
       id: `cu-${item.sectionCode}-${item.title}`,
       kind: "comingUp" as const,
+      assessmentId: item._id || item.assessmentId,
       title: item.title,
       type: item.type,
       points: item.points,
@@ -59,6 +60,7 @@ export default function SidePanel({
     ...(upcomingDeadlines || []).map((item) => ({
       id: `dl-${item._id}`,
       kind: "deadline" as const,
+      assessmentId: item._id,
       title: item.title,
       type: item.type,
       points: item.totalPoints,
@@ -83,6 +85,8 @@ export default function SidePanel({
     : announcements.slice(0, 3);
   const navigate = useNavigate();
   const location = useLocation();
+  const orgCodeFromPath = location.pathname.split("/")[1];
+  const isStudentView = location.pathname.includes("/student/");
 
   // Animation variants for container sliding
   const containerVariants: Variants = {
@@ -203,6 +207,20 @@ export default function SidePanel({
                           borderColor: "color-mix(in srgb, var(--color-primary, #3b82f6) 18%, white 82%)",
                         }}
                           onClick={() => {
+                            // Student: deadlines are assessments → go to assessments tab with id
+                            if (
+                              isStudentView &&
+                              item.kind === "deadline" &&
+                              item.assessmentId &&
+                              item.sectionCode
+                            ) {
+                              navigate(
+                                `/${orgCodeFromPath}/student/sections/${item.sectionCode}?tab=assessments&id=${item.assessmentId}`,
+                              );
+                              return;
+                            }
+
+                            // Default: open the section page
                             navigate(
                               location.pathname.replace(
                                 "dashboard",

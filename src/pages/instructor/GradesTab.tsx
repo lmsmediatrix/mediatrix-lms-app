@@ -24,6 +24,8 @@ interface IStudent {
     gradeMethod: string;
     percentageScore: number;
     gradeLabel: string;
+    dueDate?: string;
+    submittedAt?: string;
   }[];
 }
 

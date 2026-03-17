@@ -1,7 +1,8 @@
-import { FaBook, FaThLarge } from "react-icons/fa";
 import { PlusIcon } from "@/components/ui/plus-icon";
 import { UserIcon } from "@/components/ui/user-icon";
 import { UsersIcon } from "@/components/ui/users-icon";
+import { BookOpenIcon } from "@/components/ui/book-open-icon";
+import { LayoutGridIcon } from "@/components/ui/layout-grid-icon";
 import Button from "../../components/common/Button";
 import DashboardHeader from "../../components/common/DashboardHeader";
 import StatCard from "../../components/common/StatCard";
@@ -24,12 +25,11 @@ import { ICourse } from "../../types/interfaces";
 import SectionAnalyticsSkeleton from "../../components/skeleton/SectionAnalyticsSkeleton";
 import CompletionTracker from "../../components/common/CompletionTracker";
 
-// Icon mapping for dashboard stats
 const iconMap = {
-  FaBook: <FaBook className="text-2xl" />,
-  FaUserTie: <UserIcon size={24} />,
-  FaUserGraduate: <UsersIcon size={24} />,
-  FaThLarge: <FaThLarge className="text-2xl" />,
+  FaBook: BookOpenIcon,
+  FaUserTie: UserIcon,
+  FaUserGraduate: UsersIcon,
+  FaThLarge: LayoutGridIcon,
 };
 
 type DashboardApiResponse = {
@@ -283,32 +283,16 @@ export default function OrgAdminDashboard() {
             (
               stat: { label: string; value: number; icon: string },
               idx: number,
-            ) => {
-              const primary =
-                getComputedStyle(document.documentElement)
-                  .getPropertyValue("--color-primary")
-                  .trim() || "#3B82F6";
-              const secondary =
-                getComputedStyle(document.documentElement)
-                  .getPropertyValue("--color-secondary")
-                  .trim() || "#60B2F0";
-              const accent =
-                getComputedStyle(document.documentElement)
-                  .getPropertyValue("--color-accent")
-                  .trim() || "#F59E42";
-              const iconColors = [primary, secondary, accent, primary];
-              const iconColor = iconColors[idx] || "#6B7280";
-              return (
-                <DashboardStatCard
-                  key={idx}
-                  label={stat.label}
-                  value={stat.value}
-                  icon={iconMap[stat.icon as keyof typeof iconMap]}
-                  iconColor={iconColor}
-                  onClick={() => navigate(stat.label)}
-                />
-              );
-            },
+            ) => (
+              <DashboardStatCard
+                key={idx}
+                label={stat.label}
+                value={stat.value}
+                icon={iconMap[stat.icon as keyof typeof iconMap]}
+                index={idx}
+                onClick={() => navigate(stat.label)}
+              />
+            ),
           )}
         </div>
         <div className="mb-4">

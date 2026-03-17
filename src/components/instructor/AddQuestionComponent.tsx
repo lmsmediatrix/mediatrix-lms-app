@@ -8,13 +8,17 @@ interface AddQuestionComponentProps {
   onAdd: (question: IQuestion) => void;
   initialQuestion?: IQuestion;
   onCancel?: () => void;
+  /** When "auto", essay questions are not allowed (manual grading required). */
+  gradeMethod?: "manual" | "auto" | "mixed";
 }
 
 export default function AddQuestionComponent({
   onAdd,
   initialQuestion,
   onCancel,
+  gradeMethod = "auto",
 }: AddQuestionComponentProps) {
+  const allowEssay = gradeMethod !== "auto" || initialQuestion?.type === "essay";
   const [questionText, setQuestionText] = useState(
     initialQuestion?.questionText || ""
   );
@@ -263,9 +267,16 @@ export default function AddQuestionComponent({
             <option value="true_false">True/False</option>
             <option value="enumeration">Enumeration</option>
             <option value="fill_in_the_blank">Fill in the Blank</option>
-            <option value="essay">Essay</option>
+            <option value="essay" disabled={!allowEssay}>
+              Essay{!allowEssay ? " (use Manually or Mixed grading)" : ""}
+            </option>
             <option value="checkbox">Checkbox</option>
           </select>
+          {!allowEssay && (
+            <p className="mt-1 text-xs text-amber-600">
+              Essay requires Manually or Mixed grading. Change Grading Method above to add essay questions.
+            </p>
+          )}
         </div>
         <div className="flex-1">
           <label className="block text-sm font-medium text-gray-700">

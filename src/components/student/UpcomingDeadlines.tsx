@@ -1,4 +1,6 @@
 import { motion } from "framer-motion";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "../../context/AuthContext";
 import {
   FaClock,
   FaClipboardList,
@@ -39,6 +41,10 @@ const typeIconBg: Record<string, string> = {
 export default function UpcomingDeadlines({
   data = [],
 }: UpcomingDeadlinesProps) {
+  const navigate = useNavigate();
+  const { currentUser } = useAuth();
+  const orgCode = currentUser?.user.organization.code;
+
   if (data.length === 0) {
     return (
       <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
@@ -69,12 +75,19 @@ export default function UpcomingDeadlines({
       </div>
       <div className="space-y-2">
         {data.map((item, index) => (
-          <motion.div
+          <motion.button
             key={item._id}
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.2, delay: index * 0.04 }}
-            className="flex items-center gap-3 rounded-xl bg-gray-50 px-4 py-3 group hover:bg-gray-100 transition-colors"
+            type="button"
+            onClick={() => {
+              if (!orgCode) return;
+              navigate(
+                `/${orgCode}/student/sections/${item.sectionCode}?tab=assessments&id=${item._id}`,
+              );
+            }}
+            className="w-full text-left flex items-center gap-3 rounded-xl bg-gray-50 px-4 py-3 group hover:bg-gray-100 transition-colors"
           >
             <div
               className={`flex h-8 w-8 items-center justify-center rounded-lg ${
@@ -123,7 +136,7 @@ export default function UpcomingDeadlines({
                     : `${item.daysLeft} days left`}
               </p>
             </div>
-          </motion.div>
+          </motion.button>
         ))}
       </div>
     </div>

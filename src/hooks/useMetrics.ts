@@ -70,6 +70,7 @@ export const useGetInstructorMetrics = (
             "announcements",
             "sectionsAttendance",
             "gradingQueue",
+            "gradingQueueStatusCounts",
             "lateMissingAssignments",
             "averageGradeBySection",
             "engagementTrend",
@@ -117,6 +118,21 @@ export const useGetGradingQueueList = (userId: string, orgId: string) => {
         .metrics({
           model: "instructor",
           data: ["gradingQueueList"],
+          filter: { instructorId: userId, organizationId: orgId },
+        })
+        .searchMetrics(),
+    enabled: !!userId && !!orgId,
+  });
+};
+
+export const useGetLateMissingList = (userId: string, orgId: string) => {
+  return useQuery({
+    queryKey: ["late-missing-list", userId, orgId],
+    queryFn: () =>
+      metricsService
+        .metrics({
+          model: "instructor",
+          data: ["lateMissingList"],
           filter: { instructorId: userId, organizationId: orgId },
         })
         .searchMetrics(),

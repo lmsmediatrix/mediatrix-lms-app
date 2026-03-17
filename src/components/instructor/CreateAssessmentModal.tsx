@@ -127,6 +127,7 @@ export default function CreateAssessmentModal({
 
   const startDate = watch("startDate");
   const shuffleQuestions = watch("shuffleQuestions");
+  const gradeMethod = watch("gradeMethod");
 
   const isEditMode = modal === "edit-assessment";
   const draftKey = `assessment-draft-${sectionId || sectionCode}`;
@@ -243,6 +244,13 @@ export default function CreateAssessmentModal({
   }, [data, isPending, reset]);
 
   const onSubmit = async (data: AssignmentFormData) => {
+    if (data.gradeMethod === "auto" && questionsList.some((q) => q.type === "essay")) {
+      toast.error(
+        "Automatically Graded assessments cannot include essay questions. Switch to Manually or Mixed grading, or remove the essay question(s)."
+      );
+      return;
+    }
+
     const formData = createAssessmentFormData({
       ...(assessmentId && { _id: assessmentId }),
       organizationId: organizationId!,
@@ -409,17 +417,23 @@ export default function CreateAssessmentModal({
                     Grading Method
                   </label>
                   <select
-                    className={`appearance-none mt-1 block w-full px-3 py-2 bg-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm sm:text-base ${
+                    className={`appearance-none mt-1 block w-full px-3 py-2 bg-gray-100 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm sm:text-base ${
                       errors.gradeMethod ? "border-red-500 border" : ""
                     }`}
                     {...register("gradeMethod")}
-                    disabled={true}
-                    defaultValue="auto"
                   >
                     <option value="manual">Manually Graded</option>
                     <option value="auto">Automatically Graded</option>
                     <option value="mixed">Mixed Grading</option>
                   </select>
+                  <p className="mt-1.5 text-xs text-gray-500">
+                    {gradeMethod === "auto" &&
+                      "Students get a score as soon as they submit. Submissions do not appear in the Grading Queue."}
+                    {gradeMethod === "manual" &&
+                      "Submissions appear in your Grading Queue until you assign a score (e.g. for essay questions)."}
+                    {gradeMethod === "mixed" &&
+                      "Auto-graded parts are scored on submit; submissions stay in the Grading Queue until you grade essay or other manual parts."}
+                  </p>
                   {errors.gradeMethod && (
                     <p className="mt-1 text-sm text-red-600">
                       {errors.gradeMethod.message}
@@ -736,6 +750,7 @@ export default function CreateAssessmentModal({
                           onAdd={handleAddQuestion}
                           initialQuestion={question}
                           onCancel={() => setEditingIndex(null)}
+                          gradeMethod={gradeMethod}
                         />
                       </div>
                     )}
@@ -748,6 +763,7 @@ export default function CreateAssessmentModal({
               <AddQuestionComponent
                 onAdd={handleAddQuestion}
                 onCancel={() => setShowAddQuestion(false)}
+                gradeMethod={gradeMethod}
               />
             )}
           </div>
