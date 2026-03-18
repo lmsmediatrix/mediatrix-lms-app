@@ -4,18 +4,24 @@ import LoadingSpinner from "../components/SplashScreen";
 
 export default function AuthLayout () {
   const { isAuthenticated, isInitialAuthCheck, currentUser } = useAuth();
-  const role = currentUser?.user.role;
-  const orgCode = role !== "superadmin" ? currentUser?.user.organization.code : "";
+  const role = currentUser?.user?.role;
+  const orgCode = currentUser?.user?.organization?.code;
 
   const destination =
     role === "superadmin"
       ? "/admin/dashboard"
       : role === "admin"
-      ? `/${orgCode}/admin/dashboard`
+      ? orgCode
+        ? `/${orgCode}/admin/dashboard`
+        : "/login"
       : role === "instructor"
-      ? `/${orgCode}/instructor/dashboard`
+      ? orgCode
+        ? `/${orgCode}/instructor/dashboard`
+        : "/login"
       : role === "student"
-      ? `/${orgCode}/student/dashboard`
+      ? orgCode
+        ? `/${orgCode}/student/dashboard`
+        : "/login"
       : "/login";
 
   if (isAuthenticated) {

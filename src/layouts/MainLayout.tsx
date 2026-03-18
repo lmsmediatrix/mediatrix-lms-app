@@ -13,6 +13,7 @@ const MainLayout = () => {
   const { currentUser } = useAuth();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const role = currentUser.user.role;
+  const orgCode = currentUser.user.organization?.code;
   const isTopNav = role === "student" || role === "instructor";
   const isSideNav = role === "admin" || role === "superadmin";
   const isAssessmentPage =
@@ -21,13 +22,14 @@ const MainLayout = () => {
   useEffect(() => {
     if (
       currentUser.user.isPasswordChanged === false &&
-      currentUser.user.role !== "superadmin"
+      currentUser.user.role !== "superadmin" &&
+      orgCode
     ) {
       navigate(
-        `/${currentUser.user.organization.code}/${currentUser.user.role}/profile?change-password=true`
+        `/${orgCode}/${currentUser.user.role}/profile?change-password=true`
       );
     }
-  }, [currentUser, navigate]);
+  }, [currentUser, navigate, orgCode]);
 
   return (
     <div className="flex flex-col min-h-screen">
