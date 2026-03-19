@@ -45,11 +45,11 @@ import ProgramPage from "../pages/orgAdmin/ProgramPage";
 import FAQ from "../pages/common/FAQ";
 import TermsAndCondition from "../pages/common/TermsAndCondition";
 import PrivacyPolicy from "../pages/common/PrivacyPolicy";
+import PerformanceSystemRedirect from "../pages/common/PerformanceSystemRedirect";
 import Settings from "../pages/orgAdmin/Settings";
 import AdminPerformancePage from "../pages/orgAdmin/AdminPerformancePage";
 import AdminStudentPerformanceDetails from "../pages/orgAdmin/AdminStudentPerformanceDetails";
 import WeeklySchedule from "../pages/instructor/WeeklySchedule";
-import InstructorPerformancePage from "../pages/instructor/InstructorPerformancePage";
 import InstructorStudentPerformanceDetails from "../pages/instructor/InstructorStudentPerformanceDetails";
 import InstructorCompletionPage from "../pages/instructor/InstructorCompletionPage";
 import InstructorGradingPage from "../pages/instructor/InstructorGradingPage";
@@ -169,8 +169,20 @@ export const appRoutes = [
         element: <AdminPerformancePage />,
       },
       {
+        path: "/:orgCode/admin/compliance",
+        element: <AdminPerformancePage />,
+      },
+      {
         path: "/:orgCode/admin/performance/:studentId",
         element: <AdminStudentPerformanceDetails />,
+      },
+      {
+        path: "/:orgCode/admin/compliance/:studentId",
+        element: <AdminStudentPerformanceDetails />,
+      },
+      {
+        path: "/:orgCode/admin/performance-system",
+        element: <PerformanceSystemRedirect />,
       },
     ],
   },
@@ -227,14 +239,22 @@ export const appRoutes = [
       },
       {
         path: "/:orgCode/instructor/performance",
-        element: <InstructorPerformancePage />,
+        element: <PerformanceSystemRedirect />,
       },
       {
         path: "/:orgCode/instructor/completion",
         element: <InstructorCompletionPage />,
       },
       {
+        path: "/:orgCode/instructor/performance-system",
+        element: <PerformanceSystemRedirect />,
+      },
+      {
         path: "/:orgCode/instructor/performance/:studentId",
+        element: <InstructorStudentPerformanceDetails />,
+      },
+      {
+        path: "/:orgCode/instructor/completion/:studentId",
         element: <InstructorStudentPerformanceDetails />,
       },
       {
