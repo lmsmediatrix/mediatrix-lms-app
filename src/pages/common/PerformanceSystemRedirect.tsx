@@ -2,6 +2,7 @@ import { useEffect, useMemo } from "react";
 import { useParams } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import SystemBridgeLoader from "../../components/common/SystemBridgeLoader";
+import { getStoredAuthToken } from "../../lib/authToken";
 
 const PERFORMANCE_SYSTEM_URL =
   import.meta.env.VITE_PERFORMANCE_APP_URL || "http://localhost:5181";
@@ -29,8 +30,12 @@ export default function PerformanceSystemRedirect() {
 
   const targetUrl = useMemo(() => {
     const url = new URL(toAbsoluteUrl(PERFORMANCE_SYSTEM_URL));
+    const authToken = getStoredAuthToken();
     url.searchParams.set("source", "lms");
     url.searchParams.set("returnTo", lmsReturnUrl);
+    if (authToken) {
+      url.searchParams.set("accessToken", authToken);
+    }
     if (resolvedOrgCode) {
       url.searchParams.set("orgCode", resolvedOrgCode);
     }
