@@ -9,6 +9,7 @@ import React, {
 import { RegisterData, ICurrentUser } from "../types/interfaces";
 import UserService from "../services/userApi";
 import { loadThemeColors, resetThemeColors, updateThemeColors } from "../lib/colorUtils";
+import { clearStoredAuthToken, setStoredAuthToken } from "../lib/authToken";
 
 
 interface AuthContextType {
@@ -51,6 +52,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (error) {
       setIsAuthenticated(false);
       setCurrentUser(undefined);
+      clearStoredAuthToken();
       resetThemeColors();
     } finally {
       setIsInitialAuthCheck(false);
@@ -65,10 +67,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       localStorage.removeItem("brandingColors");
       const res = await UserService.login(email, password);
-      setCurrentUser(res);
+      const token = (res as { token?: unknown })?.token;
+      if (typeof token === "string") {
+        setStoredAuthToken(token);
+      }
+      setCurrentUser(res as ICurrentUser);
       setIsAuthenticated(true);
-      if (res.user.organization?.branding?.colors) {
-        updateThemeColors(res.user.organization.branding.colors);
+      if ((res as ICurrentUser).user.organization?.branding?.colors) {
+        updateThemeColors((res as ICurrentUser).user.organization.branding.colors);
       }
     } catch (error) {
       console.error("Login failed:", error);
@@ -81,6 +87,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await UserService.logout();
       setIsAuthenticated(false);
       setCurrentUser(undefined);
+      clearStoredAuthToken();
       localStorage.removeItem("brandingColors");
       resetThemeColors(); // Reset CSS variables on logout
     } catch (error) {
