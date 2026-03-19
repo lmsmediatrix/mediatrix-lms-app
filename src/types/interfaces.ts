@@ -9,6 +9,7 @@ export type TAttendanceStatus =
   | "class not started yet";
 
 export interface ICurrentUser {
+  token?: string;
   user: {
     id: string;
     email: string;
