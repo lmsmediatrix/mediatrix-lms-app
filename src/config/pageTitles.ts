@@ -85,6 +85,7 @@ export const pageTitles: TitleMapping = {
   "/:orgCode/student/calendar": "Calendar",
   "/:orgCode/student/portfolio": "Portfolio",
   "/:orgCode/student/inbox": "Inbox",
+  "/:orgCode/student/performance-system": "Performance System",
   "/:orgCode/student/:assessmentType/:assessmentId": "Assessment",
   "/:orgCode/student/:assessmentType/:assessmentId/submitted":
     "Assessment Submitted",

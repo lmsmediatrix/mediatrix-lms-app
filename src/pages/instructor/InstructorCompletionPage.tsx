@@ -1,6 +1,9 @@
-import React, { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { useGetPerformanceDashboard } from "../../hooks/useMetrics";
+import {
+  useGetPerformanceDashboard,
+  useGetStudentPerformanceDetails,
+} from "../../hooks/useMetrics";
 import { useAuth } from "../../context/AuthContext";
 import { getTerm } from "../../lib/utils";
 import PageHeader from "../../components/common/PageHeader";
@@ -38,6 +41,33 @@ interface SectionGroup {
   completedCount: number;
 }
 
+interface CourseBreakdownEntry {
+  course: string;
+  section?: string;
+  grade: number;
+  status: string;
+  progress?: {
+    completedLessons: number;
+    totalLessons: number;
+    completedAssessments: number;
+    totalAssessments: number;
+    percent: number;
+  };
+}
+
+interface StudentPerformanceDetails {
+  _id: string;
+  name: string;
+  email: string;
+  section: string;
+  program: string;
+  gpa: number;
+  riskLevel: string;
+  attendance: number;
+  missingAssignments: number;
+  courseBreakdown: CourseBreakdownEntry[];
+}
+
 export default function InstructorCompletionPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -58,6 +88,61 @@ export default function InstructorCompletionPage() {
 
   const { data, isLoading } = useGetPerformanceDashboard(sectionCode);
   const students: StudentEntry[] = data?.students || [];
+  const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
+
+  const {
+    data: rawStudentDetails,
+    isLoading: isStudentDetailsLoading,
+    isError: isStudentDetailsError,
+  } = useGetStudentPerformanceDetails(selectedStudentId || "");
+
+  const studentDetails = rawStudentDetails as StudentPerformanceDetails | undefined;
+  const detailCourseBreakdown = studentDetails?.courseBreakdown || [];
+
+  const detailLessonTotals = useMemo(() => {
+    const completed = detailCourseBreakdown.reduce(
+      (sum, course) => sum + (course.progress?.completedLessons || 0),
+      0
+    );
+    const total = detailCourseBreakdown.reduce(
+      (sum, course) => sum + (course.progress?.totalLessons || 0),
+      0
+    );
+    return { completed, total };
+  }, [detailCourseBreakdown]);
+
+  const detailAssessmentTotals = useMemo(() => {
+    const completed = detailCourseBreakdown.reduce(
+      (sum, course) => sum + (course.progress?.completedAssessments || 0),
+      0
+    );
+    const total = detailCourseBreakdown.reduce(
+      (sum, course) => sum + (course.progress?.totalAssessments || 0),
+      0
+    );
+    return { completed, total };
+  }, [detailCourseBreakdown]);
+
+  const detailOverallPercent = useMemo(() => {
+    const completed = detailLessonTotals.completed + detailAssessmentTotals.completed;
+    const total = detailLessonTotals.total + detailAssessmentTotals.total;
+    return total > 0 ? Math.round((completed / total) * 100) : 0;
+  }, [detailAssessmentTotals, detailLessonTotals]);
+
+  const openStudentDetails = (studentId: string) => {
+    setSelectedStudentId(studentId);
+  };
+
+  const closeStudentDetails = () => {
+    setSelectedStudentId(null);
+  };
+
+  const getCourseResult = (course: CourseBreakdownEntry) => {
+    const statusValue = (course.status || "").toLowerCase();
+    if (statusValue.includes("fail")) return "Fail";
+    if (statusValue.includes("pass")) return "Pass";
+    return Number(course.grade || 0) >= 75 ? "Pass" : "Needs Review";
+  };
 
   function getCompletionStats(student: StudentEntry) {
     const progress = student.progress;
@@ -142,7 +227,7 @@ export default function InstructorCompletionPage() {
             backgroundColor: "color-mix(in srgb, var(--color-primary, #3b82f6) 12%, white 88%)",
           }}
           title={`${labelMap[completionType]} Progress`}
-          subtitle={`${totalCompleted} of ${students.length} student${students.length !== 1 ? "s" : ""} completed · ${sectionCode ? `${sectionTerm}: ${sectionCode}` : `All ${sectionsTerm.toLowerCase()}`}`}
+          subtitle={`${totalCompleted} of ${students.length} student${students.length !== 1 ? "s" : ""} completed - ${sectionCode ? `${sectionTerm}: ${sectionCode}` : `All ${sectionsTerm.toLowerCase()}`}`}
         />
 
         {isLoading ? (
@@ -216,129 +301,481 @@ export default function InstructorCompletionPage() {
                   </span>
                 </div>
 
-                {/* Students */}
-                <div className="divide-y bg-white" style={{ borderColor: "color-mix(in srgb, var(--color-primary, #3b82f6) 8%, white 92%)" }}>
-                  {group.students.map((student) => {
-                    const stats = getCompletionStats(student);
-                    const initials = student.name?.charAt(0)?.toUpperCase() || "?";
-
-                    const barStyle: React.CSSProperties =
-                      stats.percent >= 100
-                        ? { backgroundColor: "var(--color-success, #10b981)" }
-                        : stats.percent > 0
-                        ? { backgroundColor: "var(--color-primary, #3b82f6)" }
-                        : { backgroundColor: "#d1d5db" };
-
-                    const avatarStyle: React.CSSProperties =
-                      stats.percent >= 100
-                        ? {
-                            backgroundColor: "color-mix(in srgb, var(--color-success, #10b981) 12%, white 88%)",
-                            color: "color-mix(in srgb, var(--color-success, #10b981) 80%, black 20%)",
-                          }
-                        : stats.percent > 0
-                        ? {
-                            backgroundColor: "color-mix(in srgb, var(--color-primary, #3b82f6) 12%, white 88%)",
-                            color: "var(--color-primary, #2563eb)",
-                          }
-                        : { backgroundColor: "#f3f4f6", color: "#6b7280" };
-
-                    const statusBadge =
-                      stats.percent >= 100
-                        ? {
-                            label: "Completed",
-                            style: {
-                              backgroundColor: "color-mix(in srgb, var(--color-success, #10b981) 10%, white 90%)",
-                              color: "color-mix(in srgb, var(--color-success, #10b981) 80%, black 20%)",
-                              borderColor: "color-mix(in srgb, var(--color-success, #10b981) 25%, white 75%)",
-                            },
-                          }
-                        : stats.percent > 0
-                        ? {
-                            label: "In Progress",
-                            style: {
-                              backgroundColor: "color-mix(in srgb, var(--color-primary, #3b82f6) 10%, white 90%)",
-                              color: "var(--color-primary, #2563eb)",
-                              borderColor: "color-mix(in srgb, var(--color-primary, #3b82f6) 20%, white 80%)",
-                            },
-                          }
-                        : {
-                            label: "Not Started",
-                            style: {
-                              backgroundColor: "#f9fafb",
-                              color: "#6b7280",
-                              borderColor: "#e5e7eb",
-                            },
-                          };
-
-                    return (
-                      <div
-                        key={student._id}
-                        className="flex items-center gap-4 px-5 py-4 transition-colors"
-                        style={{ backgroundColor: "white" }}
-                        onMouseEnter={(e) =>
-                          ((e.currentTarget as HTMLDivElement).style.backgroundColor =
-                            "color-mix(in srgb, var(--color-primary, #3b82f6) 4%, white 96%)")
-                        }
-                        onMouseLeave={(e) =>
-                          ((e.currentTarget as HTMLDivElement).style.backgroundColor = "white")
-                        }
+                {/* Students table */}
+                <div className="bg-white overflow-x-auto">
+                  <table className="w-full min-w-[980px]">
+                    <thead>
+                      <tr
+                        className="border-b"
+                        style={{
+                          backgroundColor: "color-mix(in srgb, var(--color-primary, #3b82f6) 5%, white 95%)",
+                          borderColor: "color-mix(in srgb, var(--color-primary, #3b82f6) 12%, white 88%)",
+                        }}
                       >
-                        {/* Avatar + name */}
-                        <div className="flex items-center gap-3 min-w-0 flex-1">
-                          <div
-                            className="h-9 w-9 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
-                            style={avatarStyle}
-                          >
-                            {initials}
-                          </div>
-                          <div className="min-w-0">
-                            <p className="text-sm font-semibold text-gray-800 truncate">{student.name}</p>
-                            <p className="text-xs text-gray-400 truncate">{student.email}</p>
-                          </div>
-                        </div>
+                        <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                          Student
+                        </th>
+                        <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                          Lessons Progress
+                        </th>
+                        <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                          Assessments Progress
+                        </th>
+                        <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                          Status
+                        </th>
+                        <th className="px-5 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                          Actions
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody
+                      className="divide-y"
+                      style={{
+                        borderColor: "color-mix(in srgb, var(--color-primary, #3b82f6) 8%, white 92%)",
+                      }}
+                    >
+                      {group.students.map((student) => {
+                        const initials = student.name?.charAt(0)?.toUpperCase() || "?";
 
-                        {/* Progress bar */}
-                        <div className="flex items-center gap-3 w-48 shrink-0">
-                          <div className="flex-1 bg-gray-100 rounded-full h-1.5 overflow-hidden">
-                            <div
-                              className="h-full rounded-full transition-all"
-                              style={{ width: `${stats.percent}%`, ...barStyle }}
-                            />
-                          </div>
-                          <span className="text-sm font-medium text-gray-700 tabular-nums w-10 text-right shrink-0">
-                            {completionType === "sections" ? `${stats.percent}%` : `${stats.value}/${stats.total}`}
-                          </span>
-                        </div>
+                        const completedLessons = student.progress?.completedLessons ?? 0;
+                        const totalLessons = student.progress?.totalLessons ?? 0;
+                        const lessonPercent =
+                          totalLessons > 0
+                            ? Math.round((completedLessons / totalLessons) * 100)
+                            : 0;
 
-                        {/* Status badge */}
-                        <div className="w-28 shrink-0">
-                          <span
-                            className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border"
-                            style={statusBadge.style}
-                          >
-                            {statusBadge.label}
-                          </span>
-                        </div>
+                        const completedAssessments =
+                          student.progress?.completedAssessments ?? 0;
+                        const totalAssessments = student.progress?.totalAssessments ?? 0;
+                        const assessmentPercent =
+                          totalAssessments > 0
+                            ? Math.round(
+                                (completedAssessments / totalAssessments) * 100
+                              )
+                            : 0;
+                        const overallCompleted =
+                          completedLessons + completedAssessments;
+                        const overallTotal = totalLessons + totalAssessments;
+                        const overallPercent =
+                          overallTotal > 0
+                            ? Math.round((overallCompleted / overallTotal) * 100)
+                            : 0;
 
-                        {/* Action */}
-                        <div className="shrink-0">
-                          <button
-                            onClick={() => navigate(`/${orgCode}/instructor/completion/${student._id}`)}
-                            className="text-xs font-medium hover:underline transition-colors"
-                            style={{ color: "var(--color-primary, #2563eb)" }}
+                        const statusBadge =
+                          overallPercent >= 100
+                            ? {
+                                label: "Completed",
+                                style: {
+                                  backgroundColor:
+                                    "color-mix(in srgb, var(--color-success, #10b981) 10%, white 90%)",
+                                  color:
+                                    "color-mix(in srgb, var(--color-success, #10b981) 80%, black 20%)",
+                                  borderColor:
+                                    "color-mix(in srgb, var(--color-success, #10b981) 25%, white 75%)",
+                                },
+                              }
+                            : overallPercent > 0
+                            ? {
+                                label: "In Progress",
+                                style: {
+                                  backgroundColor:
+                                    "color-mix(in srgb, var(--color-primary, #3b82f6) 10%, white 90%)",
+                                  color: "var(--color-primary, #2563eb)",
+                                  borderColor:
+                                    "color-mix(in srgb, var(--color-primary, #3b82f6) 20%, white 80%)",
+                                },
+                              }
+                            : {
+                                label: "Not Started",
+                                style: {
+                                  backgroundColor: "#f9fafb",
+                                  color: "#6b7280",
+                                  borderColor: "#e5e7eb",
+                                },
+                              };
+
+                        return (
+                          <tr
+                            key={student._id}
+                            className="cursor-pointer transition-colors hover:brightness-[0.98]"
+                            style={{ backgroundColor: "white" }}
+                            onClick={() => openStudentDetails(student._id)}
+                            onMouseEnter={(e) =>
+                              ((e.currentTarget as HTMLTableRowElement).style.backgroundColor =
+                                "color-mix(in srgb, var(--color-primary, #3b82f6) 4%, white 96%)")
+                            }
+                            onMouseLeave={(e) =>
+                              ((e.currentTarget as HTMLTableRowElement).style.backgroundColor =
+                                "white")
+                            }
                           >
-                            View Details
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
+                            <td className="px-5 py-4">
+                              <div className="flex items-center gap-3 min-w-0">
+                                <div
+                                  className="h-9 w-9 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
+                                  style={{
+                                    backgroundColor:
+                                      "color-mix(in srgb, var(--color-primary, #3b82f6) 12%, white 88%)",
+                                    color: "var(--color-primary, #2563eb)",
+                                  }}
+                                >
+                                  {initials}
+                                </div>
+                                <div className="min-w-0">
+                                  <p className="text-sm font-semibold text-gray-800 truncate">
+                                    {student.name}
+                                  </p>
+                                  <p className="text-xs text-gray-400 truncate">
+                                    {student.email}
+                                  </p>
+                                </div>
+                              </div>
+                            </td>
+
+                            <td className="px-5 py-4 min-w-[240px]">
+                              <div className="flex items-center gap-3">
+                                <div className="flex-1 bg-gray-100 rounded-full h-1.5 overflow-hidden">
+                                  <div
+                                    className="h-full rounded-full transition-all"
+                                    style={{
+                                      width: `${lessonPercent}%`,
+                                      backgroundColor:
+                                        lessonPercent >= 100
+                                          ? "var(--color-success, #10b981)"
+                                          : lessonPercent > 0
+                                          ? "var(--color-primary, #3b82f6)"
+                                          : "#d1d5db",
+                                    }}
+                                  />
+                                </div>
+                                <span className="text-sm font-medium text-gray-700 tabular-nums min-w-[56px] text-right">
+                                  {completedLessons}/{totalLessons}
+                                </span>
+                              </div>
+                            </td>
+
+                            <td className="px-5 py-4 min-w-[260px]">
+                              <div className="flex items-center gap-3">
+                                <div className="flex-1 bg-gray-100 rounded-full h-1.5 overflow-hidden">
+                                  <div
+                                    className="h-full rounded-full transition-all"
+                                    style={{
+                                      width: `${assessmentPercent}%`,
+                                      backgroundColor:
+                                        assessmentPercent >= 100
+                                          ? "var(--color-success, #10b981)"
+                                          : assessmentPercent > 0
+                                          ? "var(--color-primary, #3b82f6)"
+                                          : "#d1d5db",
+                                    }}
+                                  />
+                                </div>
+                                <span className="text-sm font-medium text-gray-700 tabular-nums min-w-[56px] text-right">
+                                  {completedAssessments}/{totalAssessments}
+                                </span>
+                              </div>
+                            </td>
+
+                            <td className="px-5 py-4">
+                              <span
+                                className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border"
+                                style={statusBadge.style}
+                              >
+                                {statusBadge.label}
+                              </span>
+                            </td>
+
+                            <td className="px-5 py-4 text-right">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  openStudentDetails(student._id);
+                                }}
+                                className="text-xs font-medium hover:underline transition-colors"
+                                style={{ color: "var(--color-primary, #2563eb)" }}
+                              >
+                                View Details
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
                 </div>
               </div>
             ))}
           </div>
         )}
       </div>
+
+      {selectedStudentId && (
+        <div className="fixed inset-0 z-50">
+          <button
+            type="button"
+            className="absolute inset-0 bg-slate-900/35 backdrop-blur-[2px]"
+            onClick={closeStudentDetails}
+            aria-label="Close student details panel"
+          />
+
+          <aside className="absolute right-0 top-0 h-full w-full max-w-3xl bg-white shadow-2xl border-l border-gray-200 overflow-y-auto">
+            <div className="sticky top-0 z-10 border-b border-gray-200 bg-white/95 backdrop-blur px-6 py-4">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-xs uppercase tracking-wide text-gray-500 font-semibold">
+                    Student Completion Details
+                  </p>
+                  <h2 className="text-xl font-bold text-gray-900 mt-1">
+                    {studentDetails?.name || "Loading student..."}
+                  </h2>
+                  <p className="text-sm text-gray-500 mt-1">
+                    {studentDetails?.email || "Fetching details..."}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={closeStudentDetails}
+                  className="h-9 w-9 rounded-lg border border-gray-200 text-gray-500 hover:text-gray-800 hover:border-gray-300 transition-colors"
+                  aria-label="Close details"
+                >
+                  x
+                </button>
+              </div>
+            </div>
+
+            <div className="p-6 space-y-6">
+              {isStudentDetailsLoading ? (
+                <div className="space-y-3 animate-pulse">
+                  <div className="h-24 rounded-xl bg-gray-100" />
+                  <div className="h-56 rounded-xl bg-gray-100" />
+                  <div className="h-56 rounded-xl bg-gray-100" />
+                </div>
+              ) : isStudentDetailsError || !studentDetails ? (
+                <div className="rounded-xl border border-red-200 bg-red-50 p-4">
+                  <p className="text-sm font-medium text-red-700">
+                    Unable to load student details right now.
+                  </p>
+                  <p className="text-xs text-red-600 mt-1">
+                    Please try again, or open the full details page.
+                  </p>
+                </div>
+              ) : (
+                <>
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                    <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+                      <p className="text-xs text-gray-500 uppercase tracking-wide">Overall</p>
+                      <p className="text-2xl font-bold text-gray-900 mt-1">
+                        {detailOverallPercent}%
+                      </p>
+                      <p className="text-xs text-gray-500 mt-1">Completion rate</p>
+                    </div>
+
+                    <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+                      <p className="text-xs text-gray-500 uppercase tracking-wide">Lessons</p>
+                      <p className="text-2xl font-bold text-gray-900 mt-1">
+                        {detailLessonTotals.completed}/{detailLessonTotals.total}
+                      </p>
+                      <p className="text-xs text-gray-500 mt-1">Completed lessons</p>
+                    </div>
+
+                    <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+                      <p className="text-xs text-gray-500 uppercase tracking-wide">Assessments</p>
+                      <p className="text-2xl font-bold text-gray-900 mt-1">
+                        {detailAssessmentTotals.completed}/{detailAssessmentTotals.total}
+                      </p>
+                      <p className="text-xs text-gray-500 mt-1">Submitted assessments</p>
+                    </div>
+
+                    <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+                      <p className="text-xs text-gray-500 uppercase tracking-wide">GPA</p>
+                      <p className="text-2xl font-bold text-gray-900 mt-1">
+                        {Number(studentDetails.gpa || 0).toFixed(2)}
+                      </p>
+                      <p className="text-xs text-gray-500 mt-1">
+                        {studentDetails.program || "Program not set"}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="rounded-2xl border border-gray-200 overflow-hidden">
+                    <div className="px-4 py-3 bg-gray-50 border-b border-gray-200">
+                      <h3 className="font-semibold text-gray-900">Section Breakdown</h3>
+                      <p className="text-xs text-gray-500 mt-0.5">
+                        Lessons, assessments, grade, and pass/fail status per section.
+                      </p>
+                    </div>
+
+                    <div className="overflow-x-auto">
+                      <table className="w-full min-w-[880px]">
+                        <thead>
+                          <tr className="border-b border-gray-200 bg-white">
+                            <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
+                              Section / Course
+                            </th>
+                            <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
+                              Lessons
+                            </th>
+                            <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
+                              Assessments
+                            </th>
+                            <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
+                              Grade
+                            </th>
+                            <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
+                              Result
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100 bg-white">
+                          {detailCourseBreakdown.length > 0 ? (
+                            detailCourseBreakdown.map((course, idx) => {
+                              const lessonsCompleted = course.progress?.completedLessons || 0;
+                              const lessonsTotal = course.progress?.totalLessons || 0;
+                              const lessonsPct =
+                                lessonsTotal > 0
+                                  ? Math.round((lessonsCompleted / lessonsTotal) * 100)
+                                  : 0;
+                              const assessmentsCompleted =
+                                course.progress?.completedAssessments || 0;
+                              const assessmentsTotal = course.progress?.totalAssessments || 0;
+                              const assessmentsPct =
+                                assessmentsTotal > 0
+                                  ? Math.round(
+                                      (assessmentsCompleted / assessmentsTotal) * 100
+                                    )
+                                  : 0;
+                              const result = getCourseResult(course);
+
+                              return (
+                                <tr key={`${course.section || course.course}-${idx}`}>
+                                  <td className="px-4 py-4">
+                                    <p className="text-sm font-semibold text-gray-900">
+                                      {course.section || "Section"}
+                                    </p>
+                                    <p className="text-xs text-gray-500 mt-0.5">{course.course}</p>
+                                  </td>
+                                  <td className="px-4 py-4 min-w-[190px]">
+                                    <div className="flex items-center gap-3">
+                                      <div className="flex-1 bg-gray-100 rounded-full h-1.5 overflow-hidden">
+                                        <div
+                                          className="h-full rounded-full"
+                                          style={{
+                                            width: `${lessonsPct}%`,
+                                            backgroundColor:
+                                              lessonsPct >= 100
+                                                ? "var(--color-success, #10b981)"
+                                                : lessonsPct > 0
+                                                ? "var(--color-primary, #3b82f6)"
+                                                : "#d1d5db",
+                                          }}
+                                        />
+                                      </div>
+                                      <span className="text-sm font-medium text-gray-700 tabular-nums min-w-[56px] text-right">
+                                        {lessonsCompleted}/{lessonsTotal}
+                                      </span>
+                                    </div>
+                                  </td>
+                                  <td className="px-4 py-4 min-w-[220px]">
+                                    <div className="flex items-center gap-3">
+                                      <div className="flex-1 bg-gray-100 rounded-full h-1.5 overflow-hidden">
+                                        <div
+                                          className="h-full rounded-full"
+                                          style={{
+                                            width: `${assessmentsPct}%`,
+                                            backgroundColor:
+                                              assessmentsPct >= 100
+                                                ? "var(--color-success, #10b981)"
+                                                : assessmentsPct > 0
+                                                ? "var(--color-primary, #3b82f6)"
+                                                : "#d1d5db",
+                                          }}
+                                        />
+                                      </div>
+                                      <span className="text-sm font-medium text-gray-700 tabular-nums min-w-[56px] text-right">
+                                        {assessmentsCompleted}/{assessmentsTotal}
+                                      </span>
+                                    </div>
+                                  </td>
+                                  <td className="px-4 py-4">
+                                    <p className="text-sm font-semibold text-gray-900">
+                                      {Number(course.grade || 0).toFixed(2)}
+                                    </p>
+                                  </td>
+                                  <td className="px-4 py-4">
+                                    <span
+                                      className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border"
+                                      style={
+                                        result === "Pass"
+                                          ? {
+                                              backgroundColor:
+                                                "color-mix(in srgb, var(--color-success, #10b981) 10%, white 90%)",
+                                              color:
+                                                "color-mix(in srgb, var(--color-success, #10b981) 80%, black 20%)",
+                                              borderColor:
+                                                "color-mix(in srgb, var(--color-success, #10b981) 25%, white 75%)",
+                                            }
+                                          : result === "Fail"
+                                          ? {
+                                              backgroundColor:
+                                                "color-mix(in srgb, var(--color-danger, #ef4444) 10%, white 90%)",
+                                              color:
+                                                "color-mix(in srgb, var(--color-danger, #ef4444) 80%, black 20%)",
+                                              borderColor:
+                                                "color-mix(in srgb, var(--color-danger, #ef4444) 25%, white 75%)",
+                                            }
+                                          : {
+                                              backgroundColor: "#f9fafb",
+                                              color: "#6b7280",
+                                              borderColor: "#e5e7eb",
+                                            }
+                                      }
+                                    >
+                                      {result}
+                                    </span>
+                                  </td>
+                                </tr>
+                              );
+                            })
+                          ) : (
+                            <tr>
+                              <td colSpan={5} className="px-4 py-10 text-center text-sm text-gray-500">
+                                No section breakdown found for this student.
+                              </td>
+                            </tr>
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap gap-3 justify-end">
+                    <button
+                      type="button"
+                      onClick={closeStudentDetails}
+                      className="px-4 py-2 rounded-lg border border-gray-200 text-sm font-medium text-gray-600 hover:border-gray-300 hover:text-gray-800"
+                    >
+                      Close
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        navigate(`/${orgCode}/instructor/completion/${selectedStudentId}`)
+                      }
+                      className="px-4 py-2 rounded-lg text-sm font-medium text-white"
+                      style={{ backgroundColor: "var(--color-primary, #2563eb)" }}
+                    >
+                      Open Full Details Page
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          </aside>
+        </div>
+      )}
     </div>
   );
 }
+
+

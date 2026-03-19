@@ -152,6 +152,11 @@ export const BASE_NAVIGATION: {
       ICON: LayoutGridIcon,
     },
     {
+      LABEL: "Performance System",
+      PATH: "/:code/student/performance-system",
+      ICON: ChartNoAxesCombinedIcon,
+    },
+    {
       LABEL: "Schedule",
       PATH: "/:code/student/calendar",
       ICON: BellIcon,

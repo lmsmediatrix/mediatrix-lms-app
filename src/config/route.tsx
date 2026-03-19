@@ -307,6 +307,10 @@ export const appRoutes = [
         element: <StudentDashboard />,
       },
       {
+        path: "/:orgCode/student/performance-system",
+        element: <PerformanceSystemRedirect />,
+      },
+      {
         path: "/:orgCode/student/sections/:sectionCode/assessment/:assessmentId",
         element: <AssessmentPage />,
       },
