@@ -40,12 +40,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const checkAuth = useCallback(async () => {
     try {
       const userData = await UserService.getCurrentUser();
-      setCurrentUser(userData);
+      const token = (userData as { token?: unknown })?.token;
+      if (typeof token === "string") {
+        setStoredAuthToken(token);
+      }
+      setCurrentUser(userData as ICurrentUser);
       setIsAuthenticated(true);
 
       const brandingColors = localStorage.getItem("brandingColors");
-      if (brandingColors && userData.user.organization?.branding?.colors) {
-        updateThemeColors(userData.user.organization.branding.colors);
+      if (brandingColors && (userData as ICurrentUser).user.organization?.branding?.colors) {
+        updateThemeColors((userData as ICurrentUser).user.organization.branding.colors);
       } else {
         loadThemeColors();
       }

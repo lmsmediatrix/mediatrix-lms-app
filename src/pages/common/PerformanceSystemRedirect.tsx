@@ -30,7 +30,7 @@ export default function PerformanceSystemRedirect() {
 
   const targetUrl = useMemo(() => {
     const url = new URL(toAbsoluteUrl(PERFORMANCE_SYSTEM_URL));
-    const authToken = getStoredAuthToken();
+    const authToken = getStoredAuthToken() || currentUser?.token;
     url.searchParams.set("source", "lms");
     url.searchParams.set("returnTo", lmsReturnUrl);
     if (authToken) {
