@@ -323,7 +323,7 @@ export default function InstructorCompletionPage() {
                         {/* Action */}
                         <div className="shrink-0">
                           <button
-                            onClick={() => navigate(`/${orgCode}/instructor/performance/${student._id}`)}
+                            onClick={() => navigate(`/${orgCode}/instructor/completion/${student._id}`)}
                             className="text-xs font-medium hover:underline transition-colors"
                             style={{ color: "var(--color-primary, #2563eb)" }}
                           >

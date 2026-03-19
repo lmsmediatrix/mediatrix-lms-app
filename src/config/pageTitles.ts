@@ -44,9 +44,13 @@ export const pageTitles: TitleMapping = {
   "/:orgCode/admin/voucher": "Vouchers",
   "/:orgCode/admin/profile": "Admin Profile",
   "/:orgCode/admin/settings": "Settings",
-  "/:orgCode/admin/performance": "Performance Management",
+  "/:orgCode/admin/performance": "Compliance Management",
+  "/:orgCode/admin/compliance": "Compliance Management",
   "/:orgCode/admin/performance/:studentId": () =>
-    `${getTerms().studentTerm} Performance Details`,
+    `${getTerms().studentTerm} Compliance Details`,
+  "/:orgCode/admin/compliance/:studentId": () =>
+    `${getTerms().studentTerm} Compliance Details`,
+  "/:orgCode/admin/performance-system": "Performance System",
 
   // Instructor Routes
   "/:orgCode/instructor/dashboard": "Instructor Dashboard",
@@ -64,8 +68,12 @@ export const pageTitles: TitleMapping = {
     "Assessment Results",
   "/:orgCode/instructor/sections/:courseCode/lessons/:lessonId":
     "Lesson Details",
-  "/:orgCode/instructor/performance": "Performance Management",
+  "/:orgCode/instructor/performance": "Performance System",
+  "/:orgCode/instructor/performance-system": "Performance System",
+  "/:orgCode/instructor/completion": "Completion",
   "/:orgCode/instructor/performance/:studentId": () =>
+    `${getTerms().studentTerm} Performance Details`,
+  "/:orgCode/instructor/completion/:studentId": () =>
     `${getTerms().studentTerm} Performance Details`,
 
   // Student Routes

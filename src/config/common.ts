@@ -103,8 +103,13 @@ export const BASE_NAVIGATION: {
       ],
     },
     {
-      LABEL: "Performance",
-      PATH: "/:code/admin/performance",
+      LABEL: "Compliance",
+      PATH: "/:code/admin/compliance",
+      ICON: ChartNoAxesCombinedIcon,
+    },
+    {
+      LABEL: "Performance System",
+      PATH: "/:code/admin/performance-system",
       ICON: ChartNoAxesCombinedIcon,
     },
   ],
@@ -118,6 +123,11 @@ export const BASE_NAVIGATION: {
       LABEL: "My Sections",
       PATH: "/:code/instructor/sections",
       ICON: LayoutGridIcon,
+    },
+    {
+      LABEL: "Completion",
+      PATH: "/:code/instructor/completion",
+      ICON: ChartNoAxesCombinedIcon,
     },
     {
       LABEL: "Performance",
