@@ -26,11 +26,12 @@ interface CourseToDelete {
 
 export default function CoursePage() {
   const { currentUser } = useAuth();
+  const isCorporate = currentUser.user.organization.type === "corporate";
   const [searchParams, setSearchParams] = useSearchParams();
   const [filters, setFilters] = useState({
     status: searchParams.get("status") || "",
     level: searchParams.get("level") || "",
-    category: searchParams.get("category") || "",
+    category: isCorporate ? "" : searchParams.get("category") || "",
   });
   const [archiveStatus, setArchiveStatus] = useState<"only" | "none">(
     (searchParams.get("archiveStatus") as "only" | "none") || "none"
@@ -50,7 +51,9 @@ export default function CoursePage() {
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
 
   const filtersArray = Object.entries(filters)
-    .filter(([_, value]) => value !== "")
+    .filter(
+      ([key, value]) => value !== "" && (!isCorporate || key !== "category")
+    )
     .map(([key, value]) => ({ key, value }));
 
   const { data, isLoading, isError } = useCourses({
@@ -65,6 +68,7 @@ export default function CoursePage() {
   const { data: categoriesData, isLoading: isLoadingCategories } =
     useCategoriesForDropdown({
       organizationId: currentUser.user.organization._id,
+      enabled: !isCorporate,
     });
 
   const exportCourse = useExportCourseToCsv();
@@ -75,6 +79,9 @@ export default function CoursePage() {
     filterType: keyof typeof filters,
     value: string
   ) => {
+    if (isCorporate && filterType === "category") {
+      return;
+    }
     setFilters((prev) => ({ ...prev, [filterType]: value }));
     setSearchParams((prev) => {
       if (value) {
@@ -141,10 +148,67 @@ export default function CoursePage() {
     });
   };
 
+  const filterConfigs = [
+    {
+      key: "status",
+      label: "Status",
+      value: filters.status,
+      options: [
+        { value: "published", label: "Published" },
+        { value: "draft", label: "Draft" },
+      ],
+      onChange: (value: string) => handleFilterChange("status", value),
+      placeholder: "All Status",
+    },
+    {
+      key: "level",
+      label: "Level",
+      value: filters.level,
+      options: [
+        { value: "beginner", label: "Beginner" },
+        { value: "intermediate", label: "Intermediate" },
+        { value: "advance", label: "Advance" },
+      ],
+      onChange: (value: string) => handleFilterChange("level", value),
+      placeholder: "All Levels",
+    },
+    ...(!isCorporate
+      ? [
+          {
+            key: "category",
+            label: "Category",
+            value: filters.category,
+            options:
+              categoriesData?.map((category: any) => ({
+                value: category._id,
+                label: category.name,
+              })) || [],
+            onChange: (value: string) => handleFilterChange("category", value),
+            loading: isLoadingCategories,
+            placeholder: "All Categories",
+          },
+        ]
+      : []),
+  ];
+
+  const activeFiltersCount =
+    (filters.status ? 1 : 0) +
+    (filters.level ? 1 : 0) +
+    (!isCorporate && filters.category ? 1 : 0);
+
   const columns = [
     { key: "code", header: "Course Code", width: "120px", hideOnMobile: true },
     { key: "course", header: "Course", width: "300px" },
-    { key: "category", header: "Category", width: "150px", hideOnMobile: true },
+    ...(!isCorporate
+      ? [
+          {
+            key: "category",
+            header: "Category",
+            width: "150px",
+            hideOnMobile: true,
+          },
+        ]
+      : []),
     { key: "level", header: "Level", width: "120px", hideOnMobile: true },
     { key: "status", header: "Status", width: "120px" },
     { key: "actions", header: "Actions", width: "140px" },
@@ -153,17 +217,19 @@ export default function CoursePage() {
   const courseTableColumns = [
     { width: "120px" }, // Course Code
     { width: "300px" }, // Course
-    { width: "150px" }, // Category
+    ...(!isCorporate ? [{ width: "150px" }] : []), // Category (school only)
     { width: "120px" }, // Level
     { width: "120px" }, // Status
     { width: "140px", alignment: "center" as const }, // Actions
   ];
 
+  const tableColSpan = isCorporate ? 5 : 6;
+
   const renderTableRows = () => {
     if (isError) {
       return (
         <tr className="border-b border-gray-200">
-          <td colSpan={6} className="py-4 px-4 text-center text-gray-500">
+          <td colSpan={tableColSpan} className="py-4 px-4 text-center text-gray-500">
             Error loading courses
           </td>
         </tr>
@@ -175,7 +241,7 @@ export default function CoursePage() {
         searchTerm ||
           filters.status ||
           filters.level ||
-          filters.category ||
+          (!isCorporate && filters.category) ||
           archiveStatus !== "none"
       );
       return (
@@ -184,7 +250,7 @@ export default function CoursePage() {
           description="Start by creating a course. You'll need courses before you can create sections."
           primaryActionLabel="Add Course"
           primaryActionPath="?modal=create-course"
-          colSpan={6}
+          colSpan={tableColSpan}
           type="course"
           isFiltered={isFiltered}
         />
@@ -206,7 +272,9 @@ export default function CoursePage() {
             <span className="font-medium">{course.title}</span>
             <div className="md:hidden text-sm text-gray-500 mt-1 space-y-1">
               <div>Code: {course.code}</div>
-              <div>Category: {course.category?.name || "N/A"}</div>
+              {!isCorporate && (
+                <div>Category: {course.category?.name || "N/A"}</div>
+              )}
               <div>
                 Level:{" "}
                 {course.level.charAt(0).toUpperCase() + course.level.slice(1)}
@@ -214,9 +282,11 @@ export default function CoursePage() {
             </div>
           </div>
         </td>
-        <td className="py-4 px-4 text-gray-600 hidden md:table-cell">
-          {course.category?.name || "N/A"}
-        </td>
+        {!isCorporate && (
+          <td className="py-4 px-4 text-gray-600 hidden md:table-cell">
+            {course.category?.name || "N/A"}
+          </td>
+        )}
         <td className="py-4 px-4 text-gray-600 hidden md:table-cell">
           {course.level.charAt(0).toUpperCase() + course.level.slice(1)}
         </td>
@@ -307,47 +377,8 @@ export default function CoursePage() {
             {/* Mobile Filter Button - Next to search on mobile, hidden on tablet+ */}
             <div className="md:hidden">
               <ResponsiveFilterButton
-                filters={[
-                  {
-                    key: "status",
-                    label: "Status",
-                    value: filters.status,
-                    options: [
-                      { value: "published", label: "Published" },
-                      { value: "draft", label: "Draft" },
-                    ],
-                    onChange: (value) => handleFilterChange("status", value),
-                    placeholder: "All Status",
-                  },
-                  {
-                    key: "level",
-                    label: "Level",
-                    value: filters.level,
-                    options: [
-                      { value: "beginner", label: "Beginner" },
-                      { value: "intermediate", label: "Intermediate" },
-                      { value: "advance", label: "Advance" },
-                    ],
-                    onChange: (value) => handleFilterChange("level", value),
-                    placeholder: "All Levels",
-                  },
-                  {
-                    key: "category",
-                    label: "Category",
-                    value: filters.category,
-                    options:
-                      categoriesData?.map((category: any) => ({
-                        value: category._id,
-                        label: category.name,
-                      })) || [],
-                    onChange: (value) => handleFilterChange("category", value),
-                    loading: isLoadingCategories,
-                    placeholder: "All Categories",
-                  },
-                ]}
-                activeFiltersCount={
-                  Object.values(filters).filter((value) => value !== "").length
-                }
+                filters={filterConfigs}
+                activeFiltersCount={activeFiltersCount}
               />
             </div>
           </div>
@@ -377,19 +408,21 @@ export default function CoursePage() {
               placeholder="All Levels"
             />
 
-            <FilterDropdownButton
-              label="Category"
-              value={filters.category}
-              options={
-                categoriesData?.map((category: any) => ({
-                  value: category._id,
-                  label: category.name,
-                })) || []
-              }
-              onChange={(value) => handleFilterChange("category", value)}
-              loading={isLoadingCategories}
-              placeholder="All Categories"
-            />
+            {!isCorporate && (
+              <FilterDropdownButton
+                label="Category"
+                value={filters.category}
+                options={
+                  categoriesData?.map((category: any) => ({
+                    value: category._id,
+                    label: category.name,
+                  })) || []
+                }
+                onChange={(value) => handleFilterChange("category", value)}
+                loading={isLoadingCategories}
+                placeholder="All Categories"
+              />
+            )}
           </div>
         </div>
 
@@ -398,47 +431,8 @@ export default function CoursePage() {
           {/* Tablet Filter Button - Hidden on mobile and desktop */}
           <div className="hidden md:block xl:hidden">
             <ResponsiveFilterButton
-              filters={[
-                {
-                  key: "status",
-                  label: "Status",
-                  value: filters.status,
-                  options: [
-                    { value: "published", label: "Published" },
-                    { value: "draft", label: "Draft" },
-                  ],
-                  onChange: (value) => handleFilterChange("status", value),
-                  placeholder: "All Status",
-                },
-                {
-                  key: "level",
-                  label: "Level",
-                  value: filters.level,
-                  options: [
-                    { value: "beginner", label: "Beginner" },
-                    { value: "intermediate", label: "Intermediate" },
-                    { value: "advance", label: "Advance" },
-                  ],
-                  onChange: (value) => handleFilterChange("level", value),
-                  placeholder: "All Levels",
-                },
-                {
-                  key: "category",
-                  label: "Category",
-                  value: filters.category,
-                  options:
-                    categoriesData?.map((category: any) => ({
-                      value: category._id,
-                      label: category.name,
-                    })) || [],
-                  onChange: (value) => handleFilterChange("category", value),
-                  loading: isLoadingCategories,
-                  placeholder: "All Categories",
-                },
-              ]}
-              activeFiltersCount={
-                Object.values(filters).filter((value) => value !== "").length
-              }
+              filters={filterConfigs}
+              activeFiltersCount={activeFiltersCount}
             />
           </div>
           <Button

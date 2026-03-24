@@ -30,7 +30,7 @@ const courseSchema = z.object({
     .string()
     .min(10, "Description must be at least 10 characters")
     .max(500, "Description cannot exceed 500 characters"),
-  category: z.string().min(1, "Category is required"),
+  category: z.string().optional(),
   level: z.enum(["beginner", "intermediate", "advance"]),
   language: z.string().min(2, "Language is required"),
   status: z.enum(["draft", "published", "archived"]),
@@ -54,7 +54,7 @@ interface CourseData {
   _id: string;
   title: string;
   description: string;
-  category: string | { _id: string; name: string };
+  category?: string | { _id: string; name: string } | null;
   level: string;
   language: string;
   status: string;
@@ -69,6 +69,7 @@ interface ICategory {
 
 const UpsertCourseModal = ({ isOpen, onClose }: UpsertCourseModalProps) => {
   const { currentUser } = useAuth();
+  const isCorporate = currentUser.user.organization.type === "corporate";
   const [searchParams] = useSearchParams();
   const modal = searchParams.get("modal");
   const courseId = searchParams.get("id");
@@ -104,6 +105,7 @@ const UpsertCourseModal = ({ isOpen, onClose }: UpsertCourseModalProps) => {
     organizationId: currentUser.user.organization._id,
     searchTerm: debouncedCategorySearchTerm,
     limit: 10,
+    enabled: !isCorporate,
   });
 
   // Flatten the paginated data
@@ -140,11 +142,15 @@ const UpsertCourseModal = ({ isOpen, onClose }: UpsertCourseModalProps) => {
     if (courseId && courseData) {
       setValue("title", courseData.title);
       setValue("description", courseData.description);
-      const categoryId =
-        typeof courseData.category === "string"
-          ? courseData.category
-          : courseData.category._id;
-      setValue("category", categoryId);
+      if (!isCorporate) {
+        const categoryId =
+          typeof courseData.category === "string"
+            ? courseData.category
+            : courseData.category?._id || "";
+        setValue("category", categoryId || "");
+      } else {
+        setValue("category", "");
+      }
       setValue(
         "level",
         courseData.level as "beginner" | "intermediate" | "advance"
@@ -161,7 +167,7 @@ const UpsertCourseModal = ({ isOpen, onClose }: UpsertCourseModalProps) => {
         setValue("thumbnail", "existing-thumbnail");
       }
     }
-  }, [courseId, courseData, setValue]);
+  }, [courseId, courseData, setValue, isCorporate]);
 
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -202,6 +208,7 @@ const UpsertCourseModal = ({ isOpen, onClose }: UpsertCourseModalProps) => {
 
     const formData = createCourseFormData({
       ...data,
+      category: isCorporate ? "" : data.category,
       _id: courseId || undefined,
       thumbnail: thumbnailFile || undefined,
       orgId: currentUser.user.organization._id,
@@ -305,16 +312,23 @@ const UpsertCourseModal = ({ isOpen, onClose }: UpsertCourseModalProps) => {
           </div>
 
           {/* Category and Level Skeleton */}
-          <div className="grid grid-cols-5 gap-4">
-            <div className="col-span-3">
-              <div className="h-4 w-24 bg-gray-200 rounded mb-1"></div>
-              <div className="h-9 w-full bg-gray-200 rounded"></div>
+          {!isCorporate ? (
+            <div className="grid grid-cols-5 gap-4">
+              <div className="col-span-3">
+                <div className="h-4 w-24 bg-gray-200 rounded mb-1"></div>
+                <div className="h-9 w-full bg-gray-200 rounded"></div>
+              </div>
+              <div className="col-span-2">
+                <div className="h-4 w-16 bg-gray-200 rounded mb-1"></div>
+                <div className="h-9 w-full bg-gray-200 rounded"></div>
+              </div>
             </div>
-            <div className="col-span-2">
+          ) : (
+            <div>
               <div className="h-4 w-16 bg-gray-200 rounded mb-1"></div>
               <div className="h-9 w-full bg-gray-200 rounded"></div>
             </div>
-          </div>
+          )}
 
           {/* Language and Status Skeleton */}
           <div className="grid grid-cols-2 gap-4">
@@ -487,47 +501,72 @@ const UpsertCourseModal = ({ isOpen, onClose }: UpsertCourseModalProps) => {
           </div>
 
           {/* Category and Level in one row */}
-          <div className="grid grid-cols-5 gap-4">
-            <div className="col-span-3">
-              <label
-                className={`block text-sm font-medium mb-1 ${
-                  errors.category ? "text-red-500" : "text-gray-700"
-                }`}
-              >
-                Category
-              </label>
-              <SearchableSelect
-                options={
-                  categories?.map((category: ICategory) => ({
-                    value: category._id,
-                    label: category.name,
-                  })) || []
-                }
-                value={watch("category")}
-                onChange={(value) =>
-                  setValue("category", value, { shouldDirty: true })
-                }
-                onSearch={(term) => setCategorySearchTerm(term)}
-                placeholder="Select a category"
-                loading={isLoadingCategories}
-                emptyMessage="No categories available"
-                emptyAction={{
-                  label: "Create a new category",
-                  path: `/${currentUser.user.organization.code}/admin/category?modal=create-category`,
-                }}
-                hasNextPage={hasNextCategoryPage}
-                isFetchingNextPage={isFetchingNextCategoryPage}
-                onLoadMore={fetchNextCategoryPage}
-                paginationInfo={categoriesPaginationInfo}
-              />
-              {errors.category && (
-                <p className="text-red-500 text-sm mt-1">
-                  {errors.category.message}
-                </p>
-              )}
-            </div>
+          {!isCorporate ? (
+            <div className="grid grid-cols-5 gap-4">
+              <div className="col-span-3">
+                <label
+                  className={`block text-sm font-medium mb-1 ${
+                    errors.category ? "text-red-500" : "text-gray-700"
+                  }`}
+                >
+                  Category (Optional)
+                </label>
+                <SearchableSelect
+                  options={
+                    categories?.map((category: ICategory) => ({
+                      value: category._id,
+                      label: category.name,
+                    })) || []
+                  }
+                  value={watch("category") || ""}
+                  onChange={(value) =>
+                    setValue("category", value, { shouldDirty: true })
+                  }
+                  onSearch={(term) => setCategorySearchTerm(term)}
+                  placeholder="Select a category"
+                  loading={isLoadingCategories}
+                  emptyMessage="No categories available"
+                  emptyAction={{
+                    label: "Create a new category",
+                    path: `/${currentUser.user.organization.code}/admin/category?modal=create-category`,
+                  }}
+                  hasNextPage={hasNextCategoryPage}
+                  isFetchingNextPage={isFetchingNextCategoryPage}
+                  onLoadMore={fetchNextCategoryPage}
+                  paginationInfo={categoriesPaginationInfo}
+                />
+                {errors.category && (
+                  <p className="text-red-500 text-sm mt-1">{errors.category.message}</p>
+                )}
+              </div>
 
-            <div className="col-span-2">
+              <div className="col-span-2">
+                <label
+                  className={`block text-sm font-medium mb-1 ${
+                    errors.level ? "text-red-500" : "text-gray-700"
+                  }`}
+                >
+                  Level
+                </label>
+                <select
+                  {...register("level")}
+                  className={`w-full px-3 py-2 border rounded-md ${
+                    errors.level ? "border-red-500" : "border-gray-300"
+                  }`}
+                >
+                  <option value="beginner">Beginner</option>
+                  <option value="intermediate">Intermediate</option>
+                  <option value="advanced">Advanced</option>
+                </select>
+                {errors.level && (
+                  <p className="text-red-500 text-sm mt-1">
+                    {errors.level.message}
+                  </p>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div>
               <label
                 className={`block text-sm font-medium mb-1 ${
                   errors.level ? "text-red-500" : "text-gray-700"
@@ -551,7 +590,7 @@ const UpsertCourseModal = ({ isOpen, onClose }: UpsertCourseModalProps) => {
                 </p>
               )}
             </div>
-          </div>
+          )}
 
           {/* Language and Status in one row */}
           <div className="grid grid-cols-2 gap-4">

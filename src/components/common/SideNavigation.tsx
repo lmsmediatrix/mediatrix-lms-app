@@ -341,6 +341,26 @@ export default function SideNavigation({
     };
   }, [isMenuOpen]);
 
+  const navigationItems: NavItem[] = role
+    ? BASE_NAVIGATION[role]
+        .map((item: NavItem) => {
+          if (orgType !== "corporate" || !item.SUBMENU) {
+            return item;
+          }
+
+          const filteredSubmenu = item.SUBMENU.filter(
+            (subItem: NavItem) => subItem.LABEL !== "Category"
+          );
+
+          if (filteredSubmenu.length === 0 && !item.PATH) {
+            return null;
+          }
+
+          return { ...item, SUBMENU: filteredSubmenu };
+        })
+        .filter((item): item is NavItem => item !== null)
+    : [];
+
   return (
     <>
       <button
@@ -434,17 +454,9 @@ export default function SideNavigation({
         </div>
 
         <div className="flex-1 px-2 py-2 space-y-1">
-          {role &&
-            BASE_NAVIGATION[role]
-              .filter((item: NavItem) => {
-                if (orgType === "corporate") {
-                  return item.LABEL !== "Faculty" && item.LABEL !== "Program";
-                }
-                return true;
-              })
-              .map((item: NavItem) => (
-                <div key={item.PATH || item.LABEL}>{renderNavItem(item)}</div>
-              ))}
+          {navigationItems.map((item: NavItem) => (
+            <div key={item.PATH || item.LABEL}>{renderNavItem(item)}</div>
+          ))}
         </div>
 
         <div className="border-t border-gray-200 relative">
