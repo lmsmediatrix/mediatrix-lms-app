@@ -133,9 +133,10 @@ export default function FacultyPage() {
     return data.faculties.map((faculty: any) => (
       <tr
         key={faculty._id}
-        className={`border-b border-gray-200 hover:bg-gray-50 ${
+        className={`border-b border-gray-200 hover:bg-gray-50 cursor-pointer ${
           archiveStatus === "only" ? "text-gray-500 line-through" : ""
         }`}
+        onClick={() => setSearchParams({ modal: "view-faculty", id: faculty._id })}
       >
         <td className="py-4 px-4">
           <div>
@@ -168,16 +169,18 @@ export default function FacultyPage() {
         <td className="py-4 px-4">
           <div className="flex gap-2">
             <button
-              onClick={() =>
+              onClick={(e) => {
+                e.stopPropagation();
                 setSearchParams({ modal: "view-faculty", id: faculty._id })
-              }
+              }}
               className="p-2 rounded-full hover:bg-gray-100 text-primary"
               title="View Faculty Details"
             >
               <FaEye className="w-4 h-4" />
             </button>
             <button
-              onClick={() => {
+              onClick={(e) => {
+                e.stopPropagation();
                 if (archiveStatus !== "only") {
                   setSearchParams({ modal: "edit-faculty", id: faculty._id });
                 }
@@ -193,7 +196,8 @@ export default function FacultyPage() {
               <FiEdit2 className="w-4 h-4" />
             </button>
             <button
-              onClick={() => {
+              onClick={(e) => {
+                e.stopPropagation();
                 if (archiveStatus !== "only") {
                   handleDeleteClick(faculty);
                 }

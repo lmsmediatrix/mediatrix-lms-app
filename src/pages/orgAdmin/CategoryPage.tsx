@@ -155,9 +155,10 @@ export default function CategoryPage() {
     return data.categories.map((category: any) => (
       <tr
         key={category._id}
-        className={`border-b border-gray-200 hover:bg-gray-50 ${
+        className={`border-b border-gray-200 hover:bg-gray-50 cursor-pointer ${
           archiveStatus === "only" ? "text-gray-500 line-through" : ""
         }`}
+        onClick={() => setSearchParams({ modal: "view-category", id: category._id })}
       >
         <td className="py-4 px-4">
           <span className="font-semibold">{category.name}</span>
@@ -181,16 +182,18 @@ export default function CategoryPage() {
         <td className="py-4 px-4">
           <div className="flex gap-2">
             <button
-              onClick={() =>
+              onClick={(e) => {
+                e.stopPropagation();
                 setSearchParams({ modal: "view-category", id: category._id })
-              }
+              }}
               className="p-2 rounded-full hover:bg-gray-100 text-primary"
               title="View Category Details"
             >
               <FaEye className="w-4 h-4" />
             </button>
             <button
-              onClick={() => {
+              onClick={(e) => {
+                e.stopPropagation();
                 if (archiveStatus !== "only") {
                   setSearchParams({ modal: "edit-category", id: category._id });
                 }
@@ -206,7 +209,8 @@ export default function CategoryPage() {
               <FiEdit2 className="w-4 h-4" />
             </button>
             <button
-              onClick={() => {
+              onClick={(e) => {
+                e.stopPropagation();
                 if (archiveStatus !== "only") {
                   handleDeleteClick(category);
                 }

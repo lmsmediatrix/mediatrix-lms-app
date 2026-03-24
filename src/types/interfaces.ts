@@ -70,8 +70,7 @@ export interface IInstructor extends IBaseUser {
     | "freelance"
     | "temporary"
     | "volunteer"
-    | "retired"
-    | "resigned";
+    | "retired";
   faculty: { _id: string; name: string };
   socialLinks: {
     linkedIn: string;
