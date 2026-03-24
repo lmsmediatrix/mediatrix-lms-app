@@ -290,7 +290,9 @@ type TAssessmentType =
   | "monthly_test"
   | "periodical_test"
   | "assignment"
-  | "activity";
+  | "activity"
+  | "final_exam"
+  | "exam";
 
 export interface IAssessment {
   _id: string;

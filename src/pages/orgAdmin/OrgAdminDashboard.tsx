@@ -246,12 +246,14 @@ export default function OrgAdminDashboard() {
       <DashboardHeader
         coverPhoto={coverPhoto}
         subTitle={
-          <Button
-            onClick={() => navigate(`/${orgCode}/admin/section/new`)}
-            className="hidden mt-4 xl:flex bg-secondary w-fit justify-center text-white hover:bg-white hover:text-secondary transition-all duration-300"
-          >
-            <PlusIcon size={14} /> Create New {getTerm("group", orgType)}
-          </Button>
+          orgType !== "corporate" ? (
+            <Button
+              onClick={() => navigate(`/${orgCode}/admin/section/new`)}
+              className="hidden mt-4 xl:flex bg-secondary w-fit justify-center text-white hover:bg-white hover:text-secondary transition-all duration-300"
+            >
+              <PlusIcon size={14} /> Create New {getTerm("group", orgType)}
+            </Button>
+          ) : null
         }
         statCard={
           <div className="flex md:flex gap-2 md:gap-4 md:mt-6">

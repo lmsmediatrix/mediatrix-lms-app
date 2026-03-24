@@ -28,13 +28,32 @@ interface CreateAssessmentModalProps {
   sectionName?: string;
 }
 
+const ASSESSMENT_TYPES = [
+  "quiz",
+  "assignment",
+  "activity",
+  "monthly_test",
+  "periodical_test",
+  "final_exam",
+] as const;
+
+type TAssessmentTypeValue = (typeof ASSESSMENT_TYPES)[number];
+
+const normalizeAssessmentType = (type?: string): TAssessmentTypeValue => {
+  if (type === "exam") return "final_exam";
+  if (ASSESSMENT_TYPES.includes(type as TAssessmentTypeValue)) {
+    return type as TAssessmentTypeValue;
+  }
+  return "quiz";
+};
+
 const assignmentFormSchema = z
   .object({
     title: z
       .string()
       .min(1, "Title must be at least 1 character")
       .max(100, "Title must be at most 100 characters"),
-    assessmentType: z.enum(["quiz", "assignment", "activity", "exam"]),
+    assessmentType: z.enum(ASSESSMENT_TYPES),
     startDate: z
       .string()
       .min(1, "Start date is required")
@@ -206,7 +225,7 @@ export default function CreateAssessmentModal({
     if (data && !isPending) {
       reset({
         title: data.title,
-        assessmentType: data.assessmentType || data.type,
+        assessmentType: normalizeAssessmentType(data.assessmentType || data.type),
         startDate: new Date(data.startDate || data.dueDate)
           .toISOString()
           .split("T")[0],
@@ -262,7 +281,7 @@ export default function CreateAssessmentModal({
       gradeMethod: data.gradeMethod,
       attemptsAllowed: data.attemptsAllowed,
       description: data.description,
-      type: data.assessmentType,
+      type: normalizeAssessmentType(data.assessmentType),
       questions: questionsList,
       author: currentUser?.user.id,
       orgCode,
@@ -396,12 +415,14 @@ export default function CreateAssessmentModal({
                     }`}
                     {...register("assessmentType")}
                     disabled={isSubmitting}
-                    defaultValue="assignment"
+                    defaultValue="quiz"
                   >
                     <option value="quiz">Quiz</option>
                     <option value="assignment">Assignment</option>
                     <option value="activity">Activity</option>
-                    <option value="exam">Exam</option>
+                    <option value="monthly_test">Monthly Test</option>
+                    <option value="periodical_test">Periodical Test</option>
+                    <option value="final_exam">Final Exam</option>
                   </select>
                   {errors.assessmentType && (
                     <p className="mt-1 text-sm text-red-600">
