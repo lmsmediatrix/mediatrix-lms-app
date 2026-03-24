@@ -218,7 +218,9 @@ export const createCourseFormData = (data: any): FormData => {
   formData.append("description", data.description);
   formData.append("status", data.status);
   formData.append("level", data.level);
-  formData.append("category", data.category);
+  if (typeof data.category === "string" && data.category.trim() !== "") {
+    formData.append("category", data.category);
+  }
   formData.append(
     "path",
     `/lms/${env}/organizations/${data.orgCode}/courses/${data.code}/assets`

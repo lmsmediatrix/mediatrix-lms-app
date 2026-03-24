@@ -161,6 +161,26 @@ export default function TopNavigation() {
     };
   }, [isMobileMenuOpen]);
 
+  const navigationItems: NavItem[] = role
+    ? BASE_NAVIGATION[role]
+        .map((item: NavItem) => {
+          if (orgType !== "corporate" || !item.SUBMENU) {
+            return item;
+          }
+
+          const filteredSubmenu = item.SUBMENU.filter(
+            (subItem: NavItem) => subItem.LABEL !== "Category"
+          );
+
+          if (filteredSubmenu.length === 0 && !item.PATH) {
+            return null;
+          }
+
+          return { ...item, SUBMENU: filteredSubmenu };
+        })
+        .filter((item): item is NavItem => item !== null)
+    : [];
+
   return (
     <>
       <nav className="bg-white border-b-[1px] border-gray-200 relative z-50">
@@ -185,18 +205,7 @@ export default function TopNavigation() {
 
             {/* Desktop Navigation */}
             <div className="hidden md:flex md:space-x-4">
-              {role &&
-                BASE_NAVIGATION[role]
-                  .filter((item) => {
-                    // Hide Faculty and Program for corporate organizations
-                    if (orgType === "corporate") {
-                      return (
-                        item.LABEL !== "Faculty" && item.LABEL !== "Program"
-                      );
-                    }
-                    return true;
-                  })
-                  .map((item) => renderNavItem(item, false))}
+              {navigationItems.map((item) => renderNavItem(item, false))}
             </div>
           </div>
 
@@ -244,17 +253,7 @@ export default function TopNavigation() {
           <div className="absolute top-[50px] inset-x-0 bottom-0 bg-white z-40 h-[calc(100vh-50px)]">
             <div className="flex flex-col h-full px-8 pt-6 max-w-md mx-auto w-full">
               {role &&
-                BASE_NAVIGATION[role]
-                  .filter((item) => {
-                    // Hide Faculty and Program for corporate organizations
-                    if (orgType === "corporate") {
-                      return (
-                        item.LABEL !== "Faculty" && item.LABEL !== "Program"
-                      );
-                    }
-                    return true;
-                  })
-                  .map((item) => renderNavItem(item, true))}
+                navigationItems.map((item) => renderNavItem(item, true))}
 
               {/* User Profile and Logout Section */}
               <div className="mt-auto border-t">

@@ -102,7 +102,7 @@ export const useDeleteCategory = () => {
 };
 
 export const useCategoriesForDropdown = (
-  apiParams?: Partial<ApiParams> & { organizationId?: string }
+  apiParams?: Partial<ApiParams> & { organizationId?: string; enabled?: boolean }
 ) => {
   return useQuery({
     queryKey: ["categories-dropdown", apiParams],
@@ -127,11 +127,12 @@ export const useCategoriesForDropdown = (
         .withArchive("none")
         .searchCategory();
     },
+    enabled: apiParams?.enabled ?? true,
   });
 };
 
 export const useInfiniteCategoriesForDropdown = (
-  apiParams?: Partial<ApiParams> & { organizationId?: string }
+  apiParams?: Partial<ApiParams> & { organizationId?: string; enabled?: boolean }
 ) => {
   const limit = apiParams?.limit || 10;
 
@@ -172,5 +173,6 @@ export const useInfiniteCategoriesForDropdown = (
       return undefined;
     },
     initialPageParam: 0,
+    enabled: apiParams?.enabled ?? true,
   });
 };

@@ -1,7 +1,7 @@
 import Button from "../../components/common/Button";
 import Table from "../../components/common/Table";
 import { FaPlus, FaEye } from "react-icons/fa";
-import { useSearchParams } from "react-router-dom";
+import { Navigate, useSearchParams } from "react-router-dom";
 import { FiEdit2, FiTrash2 } from "react-icons/fi";
 import { useCategories } from "../../hooks/useCategory";
 import { useState } from "react";
@@ -27,6 +27,13 @@ interface CategoryToDelete {
 
 export default function CategoryPage() {
   const { currentUser } = useAuth();
+  const isCorporate = currentUser.user.organization.type === "corporate";
+  const orgCode = currentUser.user.organization.code;
+
+  if (isCorporate) {
+    return <Navigate to={`/${orgCode}/admin/course`} replace />;
+  }
+
   const [searchParams, setSearchParams] = useSearchParams();
   const [selectedStatus, setSelectedStatus] = useState<string>(
     searchParams.get("status") || "" // No default filter
