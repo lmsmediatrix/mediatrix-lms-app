@@ -41,6 +41,7 @@ export const useGetStudentProfile = (studentId: string) => {
         .select([
           "studentId",
           "program",
+          "person",
           "firstName",
           "lastName",
           "email",
@@ -55,6 +56,10 @@ export const useGetStudentProfile = (studentId: string) => {
         .populate([
           {
             path: "program",
+            select: "name",
+          },
+          {
+            path: "person.department",
             select: "name",
           },
         ])

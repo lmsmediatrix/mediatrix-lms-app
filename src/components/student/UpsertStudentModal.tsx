@@ -17,8 +17,9 @@ import { useAuth } from "../../context/AuthContext";
 import { getTerm } from "../../lib/utils";
 import { SearchableSelect } from "../SearchableSelect";
 import { useInfiniteProgramsForDropdown } from "../../hooks/useProgram";
+import { useInfiniteDepartmentsForDropdown } from "../../hooks/useDepartment";
 import { useDebounce } from "../../hooks/useDebounce";
-import { IProgram } from "../../types/interfaces";
+import { IDepartment, IProgram } from "../../types/interfaces";
 import { createStudentFormData } from "../../lib/formDataUtils";
 import ImageCropper from "../ImageCropper";
 
@@ -51,6 +52,7 @@ const studentSchema = (orgType: string) =>
             .min(1, "Program is required")
             .max(50, "Program cannot exceed 50 characters")
         : z.string().optional(),
+    personDepartment: z.string().optional(),
     avatar: z.any().refine((val) => {
       return val !== null;
     }, "Avatar is required"),
@@ -69,7 +71,10 @@ interface StudentData {
   studentId: string;
   createdAt: string;
   updatedAt: string;
-  program: { _id: string; name: string };
+  program?: { _id: string; name: string };
+  person?: {
+    department?: { _id: string; name: string } | string;
+  };
 }
 
 interface UpsertStudentModalProps {
@@ -108,6 +113,8 @@ export default function UpsertStudentModal({
   // Add state for program search
   const [programSearchTerm, setProgramSearchTerm] = useState("");
   const debouncedProgramSearchTerm = useDebounce(programSearchTerm, 300);
+  const [departmentSearchTerm, setDepartmentSearchTerm] = useState("");
+  const debouncedDepartmentSearchTerm = useDebounce(departmentSearchTerm, 300);
 
   // Programs dropdown hook with infinite scrolling
   const {
@@ -128,6 +135,23 @@ export default function UpsertStudentModal({
   const programsPaginationInfo =
     programsData?.pages[programsData.pages.length - 1]?.pagination;
 
+  const {
+    data: departmentsData,
+    isLoading: isLoadingDepartments,
+    fetchNextPage: fetchNextDepartmentPage,
+    hasNextPage: hasNextDepartmentPage,
+    isFetchingNextPage: isFetchingNextDepartmentPage,
+  } = useInfiniteDepartmentsForDropdown({
+    organizationId: currentUser.user.organization._id,
+    searchTerm: debouncedDepartmentSearchTerm,
+    limit: 10,
+  });
+
+  const departments =
+    departmentsData?.pages.flatMap((page) => page.departments || []) || [];
+  const departmentsPaginationInfo =
+    departmentsData?.pages[departmentsData.pages.length - 1]?.pagination;
+
   const schema = studentSchema(orgType);
   const {
     register,
@@ -146,6 +170,7 @@ export default function UpsertStudentModal({
       email: "",
       studentId: "",
       program: "",
+      personDepartment: "",
       avatar: null,
     },
   });
@@ -161,6 +186,11 @@ export default function UpsertStudentModal({
       // Handle program - it could be a string (ID) or an object with _id
       const programId = studentData.program?._id;
       setValue("program", programId);
+      const departmentId =
+        typeof studentData.person?.department === "string"
+          ? studentData.person.department
+          : studentData.person?.department?._id || "";
+      setValue("personDepartment", departmentId);
 
       // Set avatar preview if available
       if (studentData.avatar) {
@@ -203,6 +233,10 @@ export default function UpsertStudentModal({
     const formData = createStudentFormData({
       ...data,
       avatar: avatarFile || undefined,
+      person:
+        orgType === "corporate" && data.personDepartment
+          ? { department: data.personDepartment }
+          : undefined,
       _id: studentId || undefined,
       orgCode: currentUser.user.organization.code,
     });
@@ -563,6 +597,40 @@ export default function UpsertStudentModal({
                     {errors.program.message}
                   </p>
                 )}
+              </div>
+            )}
+
+            {/* Department field (Corporate only) */}
+            {orgType === "corporate" && (
+              <div>
+                <label className="block text-sm font-medium mb-1 text-gray-700">
+                  Department (Optional)
+                </label>
+                <SearchableSelect
+                  options={[
+                    { value: "", label: "No Department" },
+                    ...(departments?.map((department: IDepartment) => ({
+                      value: department._id,
+                      label: department.name,
+                    })) || []),
+                  ]}
+                  value={watch("personDepartment")}
+                  onChange={(value) =>
+                    setValue("personDepartment", value, { shouldDirty: true })
+                  }
+                  onSearch={(term) => setDepartmentSearchTerm(term)}
+                  placeholder="Select a department"
+                  loading={isLoadingDepartments}
+                  emptyMessage="No departments available"
+                  emptyAction={{
+                    label: "Create a new department",
+                    path: `/${currentUser.user.organization.code}/admin/department?modal=create-department`,
+                  }}
+                  hasNextPage={hasNextDepartmentPage}
+                  isFetchingNextPage={isFetchingNextDepartmentPage}
+                  onLoadMore={fetchNextDepartmentPage}
+                  paginationInfo={departmentsPaginationInfo}
+                />
               </div>
             )}
 

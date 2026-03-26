@@ -256,6 +256,15 @@ export const API_ENDPOINTS = {
     CODE: "/faculty/code",
   },
 
+  DEPARTMENT: {
+    GET_ALL: "/department/get/all",
+    GET_BY_ID: "/department/get/:id",
+    CREATE: "/department/create",
+    UPDATE: "/department/update",
+    REMOVE: "/department/remove/:id",
+    SEARCH: "/department/search",
+  },
+
   CATEGORY: {
     GET_ALL: "/category/get/all",
     GET_BY_ID: "/category/get/:id",

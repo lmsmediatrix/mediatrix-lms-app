@@ -100,6 +100,10 @@ export const BASE_NAVIGATION: {
           LABEL: "Program",
           PATH: "/:code/admin/program",
         },
+        {
+          LABEL: "Department",
+          PATH: "/:code/admin/department",
+        },
       ],
     },
     {

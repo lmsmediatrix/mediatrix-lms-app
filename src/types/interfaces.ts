@@ -81,6 +81,10 @@ export interface IInstructor extends IBaseUser {
 export interface IStudent extends IBaseUser {
   studentId: string;
   program?: { _id: string; name: string };
+  department?: { _id: string; name: string };
+  person?: {
+    department?: { _id: string; name: string } | string;
+  };
   yearLevel?: number;
   gpa?: number;
   socialLinks: {
@@ -347,6 +351,18 @@ export interface ICategory {
 }
 
 export interface IFaculty {
+  _id: string;
+  name: string;
+  code: string;
+  description: string;
+  isActive: boolean;
+  organizationId: string;
+  archive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface IDepartment {
   _id: string;
   name: string;
   code: string;

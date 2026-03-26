@@ -166,6 +166,7 @@ export const createStudentFormData = (data: any): FormData => {
   if (data.studentId) formData.append("studentId", data.studentId);
   if (data.yearLevel) formData.append("yearLevel", data.yearLevel);
   if (data.program) formData.append("program", data.program);
+  if (data.person) formData.append("person", JSON.stringify(data.person));
   if (data._id) formData.append("_id", data._id); //include _id if update
   if (data.socialLinks)
     formData.append("socialLinks", JSON.stringify(data.socialLinks));
