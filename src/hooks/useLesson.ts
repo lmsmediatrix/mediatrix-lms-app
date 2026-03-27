@@ -38,7 +38,7 @@ export const useGetLessonBySectionCode = (
     queryKey: ["student-section-by-code", sectionCode, lessonId, moduleId],
     queryFn: async () => {
       SectionService.resetQuery();
-      return SectionService.select(["code", "title", "name", "schedule"])
+      return SectionService.select(["_id", "code", "title", "name", "schedule"])
         .populate([
           { path: "instructor", select: "firstName lastName avatar" },
           {
@@ -47,9 +47,14 @@ export const useGetLessonBySectionCode = (
             populate: {
               path: "lessons",
               select:
-                "title description mainContent information category videoUrl startDate endDate time isPublished liveDiscussion duration author files progress createdAt updatedAt",
+                "title description mainContent information category videoUrl startDate endDate time isPublished liveDiscussion duration author files progress assessments createdAt updatedAt",
+              populate: {
+                path: "assessments",
+                select:
+                  "_id title type assessmentNo endDate numberOfItems totalPoints lesson",
+              },
               match: { _id: lessonId },
-            },
+            } as any,
             match: { _id: moduleId },
           },
         ])

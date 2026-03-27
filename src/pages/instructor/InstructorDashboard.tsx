@@ -1,8 +1,9 @@
-import { FaAngleRight, FaChevronDown } from "react-icons/fa";
+﻿import { FaAngleRight } from "react-icons/fa";
 import { ChartLineIcon } from "@/components/ui/chart-line-icon";
 import { BellIcon } from "@/components/ui/bell-icon";
 import Button from "../../components/common/Button";
 import DashboardHeader from "../../components/common/DashboardHeader";
+import ModernDatePicker from "../../components/common/ModernDatePicker";
 import StatCard from "../../components/common/StatCard";
 import SidePanel from "../../components/common/SidePanel";
 import DashboardSkeleton from "../../components/skeleton/DashboardSkeleton";
@@ -38,7 +39,7 @@ function RefetchCard({
   );
 }
 
-// ── Animated icon helper ──────────────────────────────────────────────────
+// â”€â”€ Animated icon helper â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 interface AnimIconHandle {
   startAnimation: () => void;
   stopAnimation: () => void;
@@ -82,7 +83,6 @@ export default function InstructorDashboard() {
   );
   const [scheduleCardHovered, setScheduleCardHovered] = useState(false);
   const [summaryCardHovered, setSummaryCardHovered] = useState(false);
-  const dateInputRef = useRef<HTMLInputElement>(null);
   const { currentUser } = useAuth();
   const orgType = currentUser.user.organization.type;
   const orgCode = currentUser.user.organization.code;
@@ -196,48 +196,25 @@ export default function InstructorDashboard() {
         }
         dateFilter={
           <div className="flex items-center gap-2">
-            {/* Hidden native date input — triggered programmatically */}
-            <input
-              ref={dateInputRef}
-              type="date"
+            <ModernDatePicker
               value={selectedDate}
+              onChange={setSelectedDate}
               max={today}
-              onChange={(e) => setSelectedDate(e.target.value)}
-              className="absolute opacity-0 pointer-events-none w-0 h-0"
-              tabIndex={-1}
             />
-            <button
-              type="button"
-              onClick={() => dateInputRef.current?.showPicker?.()}
-              className="inline-flex items-center gap-2 rounded-lg border border-white/25 bg-white/10 px-3.5 py-2 text-sm font-medium text-white hover:bg-white/20 transition-all cursor-pointer select-none backdrop-blur-sm"
-            >
-              <BellIcon size={12} className="text-white/70 shrink-0" />
-              <span>
-                {new Date(selectedDate + "T00:00:00").toLocaleDateString(
-                  "en-US",
-                  {
-                    month: "short",
-                    day: "numeric",
-                    year: "numeric",
-                  },
-                )}
-              </span>
-              <FaChevronDown className="text-white/60 h-2.5 w-2.5 shrink-0" />
-            </button>
             {selectedDate !== today && (
               <button
                 type="button"
                 onClick={() => setSelectedDate(today)}
                 className="inline-flex items-center gap-1.5 rounded-lg border border-dashed border-white/30 px-2.5 py-2 text-xs font-medium text-white/70 hover:border-white/50 hover:text-white transition-all"
               >
-                ↺ Today
+                Today
               </button>
             )}
           </div>
         }
       />
 
-      {/* Content area — fills the rest of the viewport */}
+      {/* Content area â€” fills the rest of the viewport */}
       <div className="flex flex-1 min-h-0">
         <div className="flex flex-1 min-w-0 max-w-[1400px] mx-auto w-full">
           {/* Main scrollable column */}
@@ -328,7 +305,7 @@ export default function InstructorDashboard() {
                         }}
                       >
                         <p className="text-2xl font-bold text-gray-900">{newEnrollments}</p>
-                        <p className="text-xs" style={{ color: "var(--color-primary, #2563eb)" }}>New Enrollments ↗</p>
+                        <p className="text-xs" style={{ color: "var(--color-primary, #2563eb)" }}>New Enrollments â†—</p>
                       </button>
                       <div
                         className="rounded-xl border p-4 flex flex-col justify-center"
@@ -349,7 +326,7 @@ export default function InstructorDashboard() {
                         }}
                       >
                         <p className="text-2xl font-bold text-gray-900">{pendingSubmissions}</p>
-                        <p className="text-xs" style={{ color: "var(--color-primary, #2563eb)" }}>Pending Grading ↗</p>
+                        <p className="text-xs" style={{ color: "var(--color-primary, #2563eb)" }}>Pending Grading â†—</p>
                       </button>
                     </div>
                   </div>
@@ -430,7 +407,7 @@ export default function InstructorDashboard() {
                           }}
                         >
                           <p className={`text-2xl font-bold ${color}`}>{value}</p>
-                          <p className="text-xs text-gray-500 mt-0.5">{label} ↗</p>
+                          <p className="text-xs text-gray-500 mt-0.5">{label} â†—</p>
                         </button>
                       ))}
                     </div>
@@ -528,7 +505,7 @@ export default function InstructorDashboard() {
           </div>
           {/* end main scrollable column */}
 
-          {/* Sidebar — stays visible, only main column scrolls */}
+          {/* Sidebar â€” stays visible, only main column scrolls */}
           <div className="hidden lg:block w-[360px] shrink-0 overflow-y-auto px-4 pt-8 pb-8">
             <SidePanel
               comingUpData={upComingClassSchedule}
@@ -548,3 +525,4 @@ export default function InstructorDashboard() {
     </div>
   );
 }
+

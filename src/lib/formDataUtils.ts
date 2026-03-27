@@ -187,6 +187,9 @@ export const createLessonFormData = (data: any): FormData => {
   formData.append("endDate", data.endDate);
   formData.append("description", data.description);
   formData.append("moduleId", data.moduleId);
+  if (data.information !== undefined) {
+    formData.append("information", data.information);
+  }
 
   if (data.lessonId) {
     formData.append("_id", data.lessonId);
@@ -256,6 +259,7 @@ export const createAssessmentFormData = (data: any): FormData => {
   if (data._id) formData.append("_id", data._id);
   formData.append("organizationId", data.organizationId);
   formData.append("section", data.section);
+  if (data.lesson) formData.append("lesson", data.lesson);
   formData.append("title", data.title);
   formData.append("startDate", data.startDate);
   formData.append("endDate", data.endDate);

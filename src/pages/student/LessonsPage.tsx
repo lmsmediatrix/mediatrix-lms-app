@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { useLocation, useSearchParams } from "react-router-dom";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import BreadCrumbs from "../../components/common/BreadCrumbs";
 import { IoMdDownload } from "react-icons/io";
 
@@ -10,6 +10,8 @@ import {
   useUpdateLessonProgress,
 } from "../../hooks/useLesson";
 import { useAuth } from "../../context/AuthContext";
+import { formatDateMMMDDYYY } from "../../lib/dateUtils";
+import CreateAssessmentModal from "../../components/instructor/CreateAssessmentModal";
 
 const contentTypes = {
   video: ["mp4"],
@@ -18,17 +20,32 @@ const contentTypes = {
   youtube: ["youtube.com", "youtu.be"],
 };
 
-const getContentType = (url: string): string | null => {
-  const lowerUrl = url.toLowerCase();
-  if (contentTypes.video.some((ext) => lowerUrl.endsWith(`.${ext}`)))
+type LessonMainContentType = "video" | "office" | "pdf" | "youtube" | "url" | "rich-text" | null;
+
+const hasHtmlTags = (value: string) => /<\/?[a-z][\s\S]*>/i.test(value);
+const isHttpUrl = (value: string) => /^https?:\/\/\S+$/i.test(value.trim());
+
+const getContentType = (value: string): LessonMainContentType => {
+  const trimmedValue = value.trim();
+  if (!trimmedValue) return null;
+
+  if (hasHtmlTags(trimmedValue) || !isHttpUrl(trimmedValue)) {
+    return "rich-text";
+  }
+
+  const lowerUrl = trimmedValue.toLowerCase();
+  const normalizedUrl = lowerUrl.split("?")[0];
+
+  if (contentTypes.video.some((ext) => normalizedUrl.endsWith(`.${ext}`)))
     return "video";
-  if (contentTypes.pdf.some((ext) => lowerUrl.endsWith(`.${ext}`)))
+  if (contentTypes.pdf.some((ext) => normalizedUrl.endsWith(`.${ext}`)))
     return "pdf";
-  if (contentTypes.office.some((ext) => lowerUrl.endsWith(`.${ext}`)))
+  if (contentTypes.office.some((ext) => normalizedUrl.endsWith(`.${ext}`)))
     return "office";
   if (contentTypes.youtube.some((domain) => lowerUrl.includes(domain)))
     return "youtube";
-  return null;
+
+  return "url";
 };
 
 const getYouTubeEmbedUrl = (url: string): string => {
@@ -52,14 +69,30 @@ const getOfficeViewerUrl = (url: string) => {
 const getInitials = (firstName: string, lastName: string): string =>
   `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
 
+interface ILessonAssessment {
+  _id: string;
+  title: string;
+  type: string;
+  assessmentNo?: number;
+  endDate?: string;
+  numberOfItems?: number;
+  totalPoints?: number;
+}
+
 export default function LessonsPage() {
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const location = useLocation();
   const pathList = location.pathname.split("/");
   const sectionCode = pathList[4];
   const lessonId = pathList.pop() || "";
   const moduleId = searchParams.get("module") || "";
   const { currentUser } = useAuth();
+  const role = currentUser?.user?.role;
+  const orgCode = currentUser?.user?.organization?.code;
+  const isInstructor = role === "instructor";
+  const isStudent = role === "student";
+  const modal = searchParams.get("modal");
   const userId = currentUser?.user?.id;
   const { data, isPending } = useGetLessonBySectionCode(
     sectionCode,
@@ -69,24 +102,64 @@ export default function LessonsPage() {
   const { mutate: updateProgress, isPending: isUpdating } =
     useUpdateLessonProgress();
 
-  const lesson = data?.sections?.[0]?.modules?.[0]?.lessons?.[0];
+  const section = data?.sections?.[0];
+  const lesson = section?.modules?.[0]?.lessons?.[0];
+  const lessonAssessments: ILessonAssessment[] = Array.isArray(lesson?.assessments)
+    ? lesson.assessments
+    : [];
   const progressEntry = lesson?.progress?.find(
     (p: { userId: string }) => p.userId === userId,
   );
   const progressStatus = progressEntry?.status || "not-started";
 
   useEffect(() => {
-    if (lesson && progressStatus === "not-started") {
+    if (isStudent && lesson && progressStatus === "not-started") {
       updateProgress({ lessonId, status: "in-progress" });
     }
-  }, [lesson?._id]);
+  }, [isStudent, lesson?._id, progressStatus, lessonId, updateProgress]);
 
   if (isPending) return <LessonsPageSkeleton />;
 
-  const { instructor } = data.sections[0];
+  if (!section || !lesson) {
+    return (
+      <div className="mx-auto max-w-7xl p-6 text-gray-600">
+        Lesson not found.
+      </div>
+    );
+  }
+
+  const { instructor } = section;
   const mainContent = lesson.mainContent;
   const contentType = mainContent ? getContentType(mainContent) : null;
-  const isFullHeight = contentType !== null;
+  const isMediaContent = Boolean(contentType && contentType !== "rich-text");
+  const canDownloadMainContent =
+    contentType === "video" ||
+    contentType === "pdf" ||
+    contentType === "office" ||
+    contentType === "url";
+
+  const openAddAssessmentModal = () => {
+    if (!section?._id || !lesson?._id) return;
+    const params = new URLSearchParams(searchParams);
+    params.set("modal", "create-assessment");
+    params.set("sectionId", section._id);
+    params.set("lessonId", lesson._id);
+    setSearchParams(params);
+  };
+
+  const closeAddAssessmentModal = () => {
+    const params = new URLSearchParams(searchParams);
+    params.delete("modal");
+    params.delete("assessmentId");
+    params.delete("sectionId");
+    params.delete("lessonId");
+    setSearchParams(params);
+  };
+
+  const openAssessment = (assessmentId: string) => {
+    if (!orgCode || !role) return;
+    navigate(`/${orgCode}/${role}/sections/${sectionCode}/assessment/${assessmentId}`);
+  };
 
   const renderContent = () => {
     if (!mainContent) {
@@ -135,6 +208,27 @@ export default function LessonsPage() {
             allowFullScreen
           />
         );
+      case "rich-text":
+        return (
+          <article
+            className="lesson-rich-text p-4 md:p-6"
+            dangerouslySetInnerHTML={{ __html: mainContent }}
+          />
+        );
+      case "url":
+        return (
+          <div className="flex h-full flex-col items-center justify-center gap-4 text-gray-500">
+            <p>Main content is available as a download link.</p>
+            <a
+              href={mainContent}
+              download
+              className="flex items-center gap-2 rounded-lg px-4 py-2 text-primary hover:underline"
+            >
+              <IoMdDownload className="h-5 w-5" />
+              Download File
+            </a>
+          </div>
+        );
       default:
         return (
           <div className="flex h-full flex-col items-center justify-center gap-4 text-gray-500">
@@ -165,20 +259,29 @@ export default function LessonsPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold">{lesson.title}</h1>
         <div className="flex items-center gap-3">
-          {progressStatus === "completed" ? (
-            <span className="flex items-center gap-1.5 rounded-lg bg-green-100 px-3 py-2 text-sm font-medium text-green-700">
-              <FaCheck className="h-4 w-4" /> Completed
-            </span>
-          ) : (
+          {isStudent &&
+            (progressStatus === "completed" ? (
+              <span className="flex items-center gap-1.5 rounded-lg bg-green-100 px-3 py-2 text-sm font-medium text-green-700">
+                <FaCheck className="h-4 w-4" /> Completed
+              </span>
+            ) : (
+              <button
+                onClick={() => updateProgress({ lessonId, status: "completed" })}
+                disabled={isUpdating}
+                className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 disabled:opacity-50"
+              >
+                {isUpdating ? "Updating..." : "Mark as Complete"}
+              </button>
+            ))}
+          {isInstructor && (
             <button
-              onClick={() => updateProgress({ lessonId, status: "completed" })}
-              disabled={isUpdating}
-              className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 disabled:opacity-50"
+              onClick={openAddAssessmentModal}
+              className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90"
             >
-              {isUpdating ? "Updating..." : "Mark as Complete"}
+              Add Assessment
             </button>
           )}
-          {mainContent && contentType !== "youtube" && (
+          {mainContent && canDownloadMainContent && (
             <a
               href={mainContent}
               download
@@ -191,13 +294,19 @@ export default function LessonsPage() {
         </div>
       </div>
 
-      <div
-        className={`mt-6 w-full overflow-hidden rounded-lg bg-gray-100 ${
-          isFullHeight ? "h-[300px] md:h-[600px]" : "h-[200px]"
-        }`}
-      >
-        {renderContent()}
-      </div>
+      {mainContent ? (
+        <div
+          className={`mt-6 w-full overflow-hidden rounded-lg bg-gray-100 ${
+            isMediaContent ? "h-[300px] md:h-[600px]" : "min-h-[220px]"
+          }`}
+        >
+          {renderContent()}
+        </div>
+      ) : !lesson.information ? (
+        <div className="mt-6 flex min-h-[220px] items-center justify-center rounded-lg bg-gray-100 text-gray-500">
+          No content available
+        </div>
+      ) : null}
 
       <div className="mt-6 flex gap-4 rounded-lg border bg-white p-4 md:p-6">
         <div className="flex-1 space-y-4 rounded-lg bg-gray-100 p-2 shadow-md md:p-6">
@@ -218,6 +327,15 @@ export default function LessonsPage() {
             </div>
           </div>
           <p className="text-gray-600">{lesson.description}</p>
+          {lesson.information && (
+            <div className="rounded-lg border border-gray-200 bg-white p-4">
+              <h3 className="mb-2 font-semibold text-gray-800">Reading Content</h3>
+              <article
+                className="lesson-rich-text"
+                dangerouslySetInnerHTML={{ __html: lesson.information }}
+              />
+            </div>
+          )}
           {lesson.files?.length > 0 && (
             <div className="mt-4">
               <h3 className="mb-1 font-semibold">Additional Files:</h3>
@@ -250,8 +368,57 @@ export default function LessonsPage() {
               </div>
             </div>
           )}
+          <div className="mt-4 border-t border-gray-200 pt-4">
+            <div className="mb-2 flex items-center justify-between">
+              <h3 className="font-semibold">Assessments</h3>
+              <span className="text-xs text-gray-500">
+                {lessonAssessments.length} linked
+              </span>
+            </div>
+            {lessonAssessments.length === 0 ? (
+              <p className="text-sm text-gray-500">
+                No assessments linked to this lesson yet.
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {lessonAssessments.map((assessment: ILessonAssessment) => (
+                  <button
+                    key={assessment._id}
+                    type="button"
+                    onClick={() => openAssessment(assessment._id)}
+                    className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-left hover:bg-gray-50"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="line-clamp-1 font-medium text-gray-800">
+                        {assessment.title}
+                      </p>
+                      <span className="text-xs capitalize text-primary">
+                        {assessment.type}
+                        {assessment.assessmentNo ? ` ${assessment.assessmentNo}` : ""}
+                      </span>
+                    </div>
+                    <p className="text-xs text-gray-500">
+                      {assessment.numberOfItems || 0} questions |{" "}
+                      {assessment.totalPoints || 0} pts
+                      {assessment.endDate
+                        ? ` | Due ${formatDateMMMDDYYY(assessment.endDate)}`
+                        : ""}
+                    </p>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
+
+      {isInstructor && modal === "create-assessment" && (
+        <CreateAssessmentModal
+          isOpen={true}
+          onClose={closeAddAssessmentModal}
+          sectionName={section.name}
+        />
+      )}
     </div>
   );
 }
