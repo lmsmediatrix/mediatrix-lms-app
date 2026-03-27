@@ -600,15 +600,15 @@ export default function UpsertStudentModal({
               </div>
             )}
 
-            {/* Department field (Corporate only) */}
+            {/* Batch field (Corporate only) */}
             {orgType === "corporate" && (
               <div>
                 <label className="block text-sm font-medium mb-1 text-gray-700">
-                  Department (Optional)
+                  Batch (Optional)
                 </label>
                 <SearchableSelect
                   options={[
-                    { value: "", label: "No Department" },
+                    { value: "", label: "No Batch" },
                     ...(departments?.map((department: IDepartment) => ({
                       value: department._id,
                       label: department.name,
@@ -619,11 +619,11 @@ export default function UpsertStudentModal({
                     setValue("personDepartment", value, { shouldDirty: true })
                   }
                   onSearch={(term) => setDepartmentSearchTerm(term)}
-                  placeholder="Select a department"
+                  placeholder="Select a batch"
                   loading={isLoadingDepartments}
-                  emptyMessage="No departments available"
+                  emptyMessage="No batches available"
                   emptyAction={{
-                    label: "Create a new department",
+                    label: "Create a new batch",
                     path: `/${currentUser.user.organization.code}/admin/department?modal=create-department`,
                   }}
                   hasNextPage={hasNextDepartmentPage}

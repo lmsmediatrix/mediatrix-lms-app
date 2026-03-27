@@ -39,9 +39,9 @@ export default function DeleteDepartmentModal({
         },
       }),
       {
-        pending: "Deleting department...",
-        success: "Department deleted successfully",
-        error: "Failed to delete department",
+        pending: "Deleting batch...",
+        success: "Batch deleted successfully",
+        error: "Failed to delete batch",
       }
     );
   };
@@ -50,7 +50,7 @@ export default function DeleteDepartmentModal({
     <Dialog
       isOpen={isOpen}
       onClose={onClose}
-      title="Delete Department"
+      title="Delete Batch"
       className="w-full max-w-md"
     >
       <div className="space-y-4">
@@ -71,10 +71,10 @@ export default function DeleteDepartmentModal({
             </svg>
           </div>
           <h3 className="text-lg font-medium text-gray-900 mb-2">
-            Delete Department
+            Delete Batch
           </h3>
           <p className="text-sm text-gray-500 mb-4">
-            Are you sure you want to delete the department{" "}
+            Are you sure you want to delete the batch{" "}
             <span className="font-semibold text-gray-900">
               "{department.name}"
             </span>
@@ -97,7 +97,7 @@ export default function DeleteDepartmentModal({
             onClick={handleDelete}
             disabled={isLoading}
           >
-            {isLoading ? "Deleting..." : "Delete Department"}
+            {isLoading ? "Deleting..." : "Delete Batch"}
           </Button>
         </div>
       </div>

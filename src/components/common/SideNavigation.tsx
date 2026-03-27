@@ -217,7 +217,7 @@ export default function SideNavigation({
     role !== "SUPERADMIN" ? currentUser?.user.organization.type : undefined;
 
   const learnerTerm = orgType ? getTerm("learner", orgType) : "Student";
-  const groupTerm = orgType ? getTerm("group", orgType) : "Section";
+  const groupTermPlural = orgType ? getTerm("group", orgType, true) : "Sections";
 
   const toggleSubmenu = (label: string) => {
     if (!isCollapsed || isMobileMenuOpen) {
@@ -237,7 +237,7 @@ export default function SideNavigation({
       if (item.LABEL === "Student Database")
         displayName = `${learnerTerm} Database`;
       if (item.LABEL === "Sections" || item.LABEL === "My Sections")
-        displayName = `${groupTerm}s`;
+        displayName = groupTermPlural;
     }
     return { displayName };
   };
@@ -350,7 +350,8 @@ export default function SideNavigation({
             }
 
             const schoolSubmenu = item.SUBMENU.filter(
-              (subItem: NavItem) => subItem.LABEL !== "Department"
+              (subItem: NavItem) =>
+                subItem.LABEL !== "Department" && subItem.LABEL !== "Batch"
             );
 
             if (schoolSubmenu.length === 0 && !item.PATH) {

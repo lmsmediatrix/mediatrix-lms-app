@@ -114,7 +114,7 @@ export default function DepartmentPage() {
       return (
         <tr className="border-b border-gray-200">
           <td colSpan={5} className="py-4 px-4 text-center text-gray-500">
-            Error loading departments
+            Error loading batches
           </td>
         </tr>
       );
@@ -126,9 +126,9 @@ export default function DepartmentPage() {
       );
       return (
         <TableEmptyState
-          title="Create Your First Department"
-          description="Start by creating a department to organize your corporate workforce."
-          primaryActionLabel="Add Department"
+          title="Create Your First Batch"
+          description="Start by creating a batch to organize your corporate workforce."
+          primaryActionLabel="Add Batch"
           primaryActionPath="?modal=create-department"
           colSpan={5}
           isFiltered={isFiltered}
@@ -182,7 +182,7 @@ export default function DepartmentPage() {
                 setSearchParams({ modal: "view-department", id: department._id });
               }}
               className="p-2 rounded-full hover:bg-gray-100 text-primary"
-              title="View Department Details"
+              title="View Batch Details"
             >
               <FaEye className="w-4 h-4" />
             </button>
@@ -199,7 +199,7 @@ export default function DepartmentPage() {
                   : "hover:bg-gray-100"
               }`}
               disabled={archiveStatus === "only"}
-              title="Edit Department"
+              title="Edit Batch"
             >
               <FiEdit2 className="w-4 h-4" />
             </button>
@@ -216,7 +216,7 @@ export default function DepartmentPage() {
                   : "hover:bg-gray-100 text-red-600"
               }`}
               disabled={archiveStatus === "only"}
-              title="Delete Department"
+              title="Delete Batch"
             >
               <FiTrash2 className="w-4 h-4" />
             </button>
@@ -227,8 +227,8 @@ export default function DepartmentPage() {
   };
 
   const columns = [
-    { key: "code", header: "Department Code", width: "15%" },
-    { key: "name", header: "Department Name", width: "25%" },
+    { key: "code", header: "Batch Code", width: "15%" },
+    { key: "name", header: "Batch Name", width: "25%" },
     { key: "description", header: "Description", width: "25%" },
     { key: "status", header: "Status", width: "15%" },
     { key: "actions", header: "Actions", width: "20%" },
@@ -244,9 +244,9 @@ export default function DepartmentPage() {
 
   return (
     <div className="pt-14 pb-6 px-6 lg:p-6">
-      <h1 className="text-3xl font-bold">Departments</h1>
+      <h1 className="text-3xl font-bold">Batches</h1>
       <p className="text-gray-400">
-        Organize and manage your corporate departments.
+        Organize and manage your corporate batches.
       </p>{" "}
 
       <div className="flex flex-col gap-4 py-6 md:flex-row md:items-center md:justify-between">
@@ -254,7 +254,7 @@ export default function DepartmentPage() {
           <div className="flex gap-2 items-center flex-1 md:min-w-0">
             <input
               type="text"
-              placeholder="Search departments..."
+              placeholder="Search batches..."
               value={searchTerm}
               onChange={(e) => handleSearchChange(e.target.value)}
               className="flex-1 md:max-w-[400px] px-4 py-2.5 h-[42px] border border-gray-200 rounded-lg focus:outline-none focus:border-primary text-base md:text-sm"
@@ -310,7 +310,7 @@ export default function DepartmentPage() {
             className="whitespace-nowrap text-sm flex-1 md:flex-initial"
           >
             <FaPlus />
-            <span className="hidden sm:inline">Add Department</span>
+            <span className="hidden sm:inline">Add Batch</span>
             <span className="sm:hidden">Add</span>
           </Button>
           <div className="flex items-center gap-2">

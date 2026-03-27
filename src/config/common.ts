@@ -177,7 +177,7 @@ export const roleLabels = {
   },
   group: {
     school: { singular: "Section", plural: "Sections" },
-    corporate: { singular: "Department", plural: "Departments" },
+    corporate: { singular: "Batch", plural: "Batches" },
   },
   instructor: {
     school: { singular: "Instructor", plural: "Instructors" },

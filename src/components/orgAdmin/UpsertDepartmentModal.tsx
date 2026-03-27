@@ -125,13 +125,13 @@ export default function UpsertDepartmentModal({
           },
         }),
         {
-          pending: "Updating department...",
-          success: "Department updated successfully",
+          pending: "Updating batch...",
+          success: "Batch updated successfully",
           error: {
             render({ data }) {
               return (
                 (data as { message?: string })?.message ||
-                "Failed to update department"
+                "Failed to update batch"
               );
             },
           },
@@ -151,13 +151,13 @@ export default function UpsertDepartmentModal({
           },
         }),
         {
-          pending: "Creating department...",
-          success: "Department created successfully",
+          pending: "Creating batch...",
+          success: "Batch created successfully",
           error: {
             render({ data }) {
               return (
                 (data as { message?: string })?.message ||
-                "Failed to create department"
+                "Failed to create batch"
               );
             },
           },
@@ -170,7 +170,7 @@ export default function UpsertDepartmentModal({
     <Dialog
       isOpen={isOpen}
       onClose={handleCloseModal}
-      title={isEditMode ? "Edit Department" : "Create Department"}
+      title={isEditMode ? "Edit Batch" : "Create Batch"}
       className="w-full max-w-md"
     >
       {isEditMode && isDepartmentLoading ? (
@@ -204,14 +204,14 @@ export default function UpsertDepartmentModal({
                 errors.name ? "text-red-500" : "text-gray-700"
               }`}
             >
-              Department Name
+              Batch Name
             </label>
             <input
               {...register("name")}
               className={`w-full px-3 py-2 border rounded-md ${
                 errors.name ? "border-red-500" : "border-gray-300"
               }`}
-              placeholder="Enter department name"
+              placeholder="Enter batch name"
               disabled={isLoading}
             />
             {errors.name && (
@@ -225,14 +225,14 @@ export default function UpsertDepartmentModal({
                 errors.code ? "text-red-500" : "text-gray-700"
               }`}
             >
-              Department Code
+              Batch Code
             </label>
             <input
               {...register("code")}
               className={`w-full px-3 py-2 border rounded-md ${
                 errors.code ? "border-red-500" : "border-gray-300"
               }`}
-              placeholder="Enter department code"
+              placeholder="Enter batch code"
               disabled={isLoading}
             />
             {errors.code && (
@@ -254,7 +254,7 @@ export default function UpsertDepartmentModal({
               className={`w-full px-3 py-2 border rounded-md ${
                 errors.description ? "border-red-500" : "border-gray-300"
               }`}
-              placeholder="Enter department description"
+              placeholder="Enter batch description"
               disabled={isLoading}
             />
             {errors.description && (
@@ -310,8 +310,8 @@ export default function UpsertDepartmentModal({
                   ? "Updating..."
                   : "Creating..."
                 : isEditMode
-                ? "Update Department"
-                : "Create Department"}
+                ? "Update Batch"
+                : "Create Batch"}
             </Button>
           </div>
         </form>
