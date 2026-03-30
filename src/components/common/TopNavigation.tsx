@@ -25,6 +25,7 @@ export default function TopNavigation() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [openMenus, setOpenMenus] = useState<string[]>([]);
   const notificationButtonRef = useRef<HTMLButtonElement>(null);
+  const logoMenuRef = useRef<HTMLDivElement>(null);
 
   const role = currentUser?.user.role?.toUpperCase() as
     | keyof typeof BASE_NAVIGATION
@@ -35,9 +36,18 @@ export default function TopNavigation() {
     role !== "SUPERADMIN" ? currentUser?.user.organization.type : undefined;
 
   const learnerTerm = orgType ? getTerm("learner", orgType) : "Student";
-  const groupTermPlural = orgType ? getTerm("group", orgType, true) : "Sections";
 
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
+  const [isLogoMenuOpen, setIsLogoMenuOpen] = useState(false);
+
+  const performancePath =
+    role === "ADMIN" && code
+      ? `/${code}/admin/performance-system`
+      : role === "INSTRUCTOR" && code
+        ? `/${code}/instructor/performance-system`
+        : role === "STUDENT" && code
+          ? `/${code}/student/performance-system`
+          : null;
 
   const toggleSubmenu = (label: string) => {
     setOpenMenus((prev) =>
@@ -48,12 +58,12 @@ export default function TopNavigation() {
   };
 
   const transformItem = (item: NavItem) => {
-    let displayName = item.LABEL;
+    let displayName = item.LABEL === "Schedule" ? "Calendar" : item.LABEL;
     if (orgType === "corporate") {
       if (item.LABEL === "Student Database")
         displayName = `${learnerTerm} Database`;
       if (item.LABEL === "Sections" || item.LABEL === "My Sections")
-        displayName = groupTermPlural;
+        displayName = "Program";
     }
     return { displayName };
   };
@@ -133,6 +143,22 @@ export default function TopNavigation() {
       "/";
     navigate(homePath);
     setIsMobileMenuOpen(false);
+    setIsLogoMenuOpen(false);
+  };
+
+  const navigateToPerformance = () => {
+    if (!performancePath) return;
+    navigate(performancePath);
+    setIsMobileMenuOpen(false);
+    setIsLogoMenuOpen(false);
+  };
+
+  const handleLogoClick = () => {
+    if (!performancePath) {
+      navigateToHome();
+      return;
+    }
+    setIsLogoMenuOpen((prev) => !prev);
   };
 
   const navigateToProfile = () => {
@@ -145,6 +171,7 @@ export default function TopNavigation() {
       await logout();
       navigate("/login", { replace: true });
       setIsMobileMenuOpen(false);
+      setIsLogoMenuOpen(false);
     } catch (error) {
       console.error("Logout failed:", error);
     }
@@ -160,6 +187,25 @@ export default function TopNavigation() {
       document.body.style.overflow = "unset";
     };
   }, [isMobileMenuOpen]);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        logoMenuRef.current &&
+        !logoMenuRef.current.contains(event.target as Node)
+      ) {
+        setIsLogoMenuOpen(false);
+      }
+    };
+
+    if (isLogoMenuOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isLogoMenuOpen]);
 
   const navigationItems: NavItem[] = role
     ? BASE_NAVIGATION[role]
@@ -203,19 +249,33 @@ export default function TopNavigation() {
         <div className="max-w-8xl mx-auto flex justify-between items-center px-2 md:px-8 h-[50px]">
           {/* Left side */}
           <div className="flex items-center gap-2 sm:gap-[5vw] md:gap-[10vw]">
-            <div className="flex-shrink-0 flex items-center">
-              {role === "SUPERADMIN" ? (
-                <FaGraduationCap
-                  onClick={navigateToHome}
-                  className="h-10 w-10 cursor-pointer hover:scale-105 transition-transform text-primary"
-                />
-              ) : (
-                <img
-                  src={currentUser.user.organization.branding.logo}
-                  alt="Organization Logo"
-                  onClick={navigateToHome}
-                  className="h-10 w-10 cursor-pointer hover:scale-105 transition-transform rounded-full"
-                />
+            <div ref={logoMenuRef} className="flex-shrink-0 flex items-center relative">
+              <button
+                onClick={handleLogoClick}
+                className="focus:outline-none"
+                aria-label="Open logo menu"
+              >
+                {role === "SUPERADMIN" ? (
+                  <FaGraduationCap
+                    className="h-10 w-10 cursor-pointer hover:scale-105 transition-transform text-primary"
+                  />
+                ) : (
+                  <img
+                    src={currentUser.user.organization.branding.logo}
+                    alt="Organization Logo"
+                    className="h-10 w-10 cursor-pointer hover:scale-105 transition-transform rounded-full"
+                  />
+                )}
+              </button>
+              {isLogoMenuOpen && performancePath && (
+                <div className="absolute top-12 left-0 min-w-[220px] bg-white border border-gray-200 rounded-lg shadow-lg z-50 py-1">
+                  <button
+                    onClick={navigateToPerformance}
+                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                  >
+                    Performance Management
+                  </button>
+                </div>
               )}
             </div>
 

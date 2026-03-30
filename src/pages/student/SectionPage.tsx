@@ -33,9 +33,9 @@ export default function StudentSectionPage() {
 
   const tabs = [
     { name: "Modules", value: "modules" },
-    { name: "Announcements", value: "announcements" },
     { name: "Assessments", value: "assessments" },
     { name: "Grades", value: "grades" },
+    { name: "Announcements", value: "announcements" },
   ];
 
   const [currentMobileTabIndex, setCurrentMobileTabIndex] = useState(0);
@@ -114,7 +114,13 @@ export default function StudentSectionPage() {
     if (isPending || !sectionData) return null;
     switch (activeTab) {
       case "modules":
-        return <ModuleTab sectionCode={sectionCode} />;
+        return (
+          <ModuleTab
+            sectionCode={sectionCode}
+            sectionId={sectionData?._id}
+            sectionName={sectionData?.name}
+          />
+        );
       case "announcements":
         return <AnnouncementTab sectionCode={sectionCode} />;
       case "assessments":
@@ -122,7 +128,13 @@ export default function StudentSectionPage() {
       case "grades":
         return <GradeTab sectionCode={sectionCode} />;
       default:
-        return <ModuleTab sectionCode={sectionCode} />;
+        return (
+          <ModuleTab
+            sectionCode={sectionCode}
+            sectionId={sectionData?._id}
+            sectionName={sectionData?.name}
+          />
+        );
     }
   };
 

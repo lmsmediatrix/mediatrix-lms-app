@@ -143,10 +143,20 @@ export const useGetLateMissingList = (userId: string, orgId: string) => {
 export const useGetNewEnrollmentsList = (
   userId: string,
   orgId: string,
-  date?: string,
+  dateFrom?: string,
+  dateTo?: string,
 ) => {
+  const normalizedDateFrom = dateFrom?.trim();
+  const normalizedDateTo = dateTo?.trim();
+
   return useQuery({
-    queryKey: ["new-enrollments-list", userId, orgId, date || ""],
+    queryKey: [
+      "new-enrollments-list",
+      userId,
+      orgId,
+      normalizedDateFrom || "",
+      normalizedDateTo || "",
+    ],
     queryFn: () =>
       metricsService
         .metrics({
@@ -155,7 +165,12 @@ export const useGetNewEnrollmentsList = (
           filter: {
             instructorId: userId,
             organizationId: orgId,
-            ...(date ? { date } : {}),
+            ...(normalizedDateFrom && normalizedDateTo
+              ? {
+                  dateFrom: normalizedDateFrom,
+                  dateTo: normalizedDateTo,
+                }
+              : {}),
           },
         })
         .searchMetrics(),

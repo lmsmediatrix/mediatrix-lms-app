@@ -116,6 +116,8 @@ export const API_ENDPOINTS = {
     UPDATE: "/module/update",
     REMOVE: "/module/remove/:id",
     SEARCH: "/module/search",
+    POPULATE_ASSESSMENTS: "/module/:id/assessments/populate",
+    ASSESSMENT_DRAFT: "/module/:id/assessments/draft",
   },
 
   // Lesson API Endpoint
@@ -286,6 +288,7 @@ export const API_ENDPOINTS = {
   TNA: {
     SKILL_CREATE: "/tna/skill/create",
     SKILL_GET_ALL: "/tna/skill/get/all",
+    ROLE_REQUIREMENT_GET_ALL: "/tna/role-requirement/get/all",
     ROLE_REQUIREMENT_UPSERT: "/tna/role-requirement/upsert",
     EMPLOYEE_SKILL_UPSERT: "/tna/employee-skill/upsert",
     ANALYZE: "/tna/analyze",

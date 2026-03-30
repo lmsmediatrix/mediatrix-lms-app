@@ -18,6 +18,7 @@ export default function AssessmentTab({ sectionCode }: AssessmentTabProps) {
   const { currentUser } = useAuth();
   const navigate = useNavigate();
   const role = currentUser.user.role;
+  const isLearner = role === "student" || role === "employee";
   const assessmentId = searchParams.get("id");
   const { data: assessmentData, isPending } = useSectionAssessment(sectionCode);
   if (isPending || !assessmentData) return <AssessmentTabSkeleton />;
@@ -51,7 +52,7 @@ export default function AssessmentTab({ sectionCode }: AssessmentTabProps) {
       <tr
         key={index}
         className={`border-b border-gray-200 bg-white cursor-pointer hover:bg-gray-50 transition-all`}
-        onClick={() => handleAssessmentClick(assessment._id)}
+      onClick={() => handleAssessmentClick(assessment._id)}
       >
         <td className="px-2 py-1 md:py-4 md:px-6">
           {formatDateMMMDDYYY(assessment.endDate)}
@@ -84,7 +85,7 @@ export default function AssessmentTab({ sectionCode }: AssessmentTabProps) {
   };
 
   const handleAssessmentClick = (id: string) => {
-    if (role === "student") {
+    if (isLearner) {
       const tab = searchParams.get("tab");
       setSearchParams({ tab: tab ?? "", id });
     } else {
@@ -95,7 +96,7 @@ export default function AssessmentTab({ sectionCode }: AssessmentTabProps) {
   return (
     <div className="space-y-6">
       {/* Assessment Progress (student only) */}
-      {role === "student" && totalAssessments > 0 && (
+      {isLearner && totalAssessments > 0 && (
         <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-100">
           <h2 className="text-lg font-semibold text-gray-800 mb-4">
             Assessment Progress

@@ -305,7 +305,9 @@ export default function InstructorDashboard() {
                         }}
                       >
                         <p className="text-2xl font-bold text-gray-900">{newEnrollments}</p>
-                        <p className="text-xs" style={{ color: "var(--color-primary, #2563eb)" }}>New Enrollments â†—</p>
+                        <p className="text-xs" style={{ color: "var(--color-primary, #2563eb)" }}>
+                          New Enrollments <span aria-hidden="true">&#8599;</span>
+                        </p>
                       </button>
                       <div
                         className="rounded-xl border p-4 flex flex-col justify-center"
@@ -326,7 +328,9 @@ export default function InstructorDashboard() {
                         }}
                       >
                         <p className="text-2xl font-bold text-gray-900">{pendingSubmissions}</p>
-                        <p className="text-xs" style={{ color: "var(--color-primary, #2563eb)" }}>Pending Grading â†—</p>
+                        <p className="text-xs" style={{ color: "var(--color-primary, #2563eb)" }}>
+                          Pending Grading <span aria-hidden="true">&#8599;</span>
+                        </p>
                       </button>
                     </div>
                   </div>
@@ -407,7 +411,9 @@ export default function InstructorDashboard() {
                           }}
                         >
                           <p className={`text-2xl font-bold ${color}`}>{value}</p>
-                          <p className="text-xs text-gray-500 mt-0.5">{label} â†—</p>
+                          <p className="text-xs text-gray-500 mt-0.5">
+                            {label} <span aria-hidden="true">&#8599;</span>
+                          </p>
                         </button>
                       ))}
                     </div>

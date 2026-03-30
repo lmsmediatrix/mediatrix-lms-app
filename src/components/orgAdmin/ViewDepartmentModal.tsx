@@ -28,7 +28,7 @@ export default function ViewDepartmentModal({
       <Dialog
         isOpen={isOpen}
         onClose={handleClose}
-        title="Batch Details"
+        title="Department Details"
         backdrop="blur"
         size="2xl"
       >
@@ -44,12 +44,12 @@ export default function ViewDepartmentModal({
       <Dialog
         isOpen={isOpen}
         onClose={handleClose}
-        title="Batch Details"
+        title="Department Details"
         backdrop="blur"
         size="2xl"
       >
         <div className="text-center py-8">
-          <p className="text-gray-500">Batch not found</p>
+          <p className="text-gray-500">Department not found</p>
         </div>
       </Dialog>
     );
@@ -59,7 +59,7 @@ export default function ViewDepartmentModal({
     <Dialog
       isOpen={isOpen}
       onClose={handleClose}
-      title="Batch Details"
+      title="Department Details"
       backdrop="blur"
       size="2xl"
     >
@@ -84,7 +84,7 @@ export default function ViewDepartmentModal({
             <div className="flex items-center gap-3">
               <FaHashtag className="text-gray-400" />
               <div>
-                <p className="text-sm text-gray-500">Batch Code</p>
+                <p className="text-sm text-gray-500">Department Code</p>
                 <p className="font-medium">{data.code}</p>
               </div>
             </div>

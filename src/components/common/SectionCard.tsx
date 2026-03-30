@@ -33,6 +33,14 @@ const SectionCard = ({
   instructor,
   progress,
 }: SectionCardProps) => {
+  const truncateText = (text: string, maxLength: number) =>
+    text.length > maxLength ? `${text.slice(0, maxLength - 1)}…` : text;
+
+  const sectionName = name || "Untitled Section";
+  const displayName = truncateText(sectionName, 70);
+  const displayCode = truncateText(code, 24);
+  const displayInstructor = instructor ? truncateText(instructor, 34) : "";
+
   const resolvedProgress = progress ?? {
     percent: 0,
     completedLessons: 0,
@@ -66,31 +74,44 @@ const SectionCard = ({
 
       {/* Content section */}
       <div className="flex flex-col justify-between p-4 flex-1">
-        <h3 className="text-lg font-semibold text-gray-800 mb-3">
-          {name || "Untitled Section"}
+        <h3
+          className="text-lg font-semibold text-gray-800 mb-3 leading-snug min-h-[3.5rem]"
+          title={sectionName}
+          style={{
+            display: "-webkit-box",
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: "vertical",
+            overflow: "hidden",
+          }}
+        >
+          {displayName}
         </h3>
 
         <div>
           <div className="space-y-2 text-sm">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 min-w-0">
               <SiGoogleclassroom className="text-primary" />
-              <span className="text-gray-500 w-24">Code:</span>
-              <span className="text-gray-700 font-bold">{code}</span>
+              <span className="text-gray-500 w-24 shrink-0">Code:</span>
+              <span className="text-gray-700 font-bold truncate flex-1 min-w-0">
+                {displayCode}
+              </span>
             </div>
 
             {instructor && (
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 min-w-0">
                 <FaUserGraduate className="text-accent" />
-                <span className="text-gray-500 w-24">Instructor:</span>
-                <span className="text-gray-700 font-bold">{instructor}</span>
+                <span className="text-gray-500 w-24 shrink-0">Instructor:</span>
+                <span className="text-gray-700 font-bold truncate flex-1 min-w-0">
+                  {displayInstructor}
+                </span>
               </div>
             )}
 
             {updatedAt && (
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 min-w-0">
                 <FaClock className="text-p" />
-                <span className="text-gray-500 w-24">Last Updated:</span>
-                <span className="text-gray-700 font-bold">
+                <span className="text-gray-500 w-24 shrink-0">Last Updated:</span>
+                <span className="text-gray-700 font-bold truncate flex-1 min-w-0">
                   {formatDate(updatedAt)}
                 </span>
               </div>

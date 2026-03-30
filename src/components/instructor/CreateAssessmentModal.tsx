@@ -1,4 +1,4 @@
-import { FaPlus, FaRegMinusSquare } from "react-icons/fa";
+import { FaLightbulb, FaPlus, FaRegMinusSquare } from "react-icons/fa";
 import Button from "../common/Button";
 import Dialog from "../common/Dialog";
 import { AiOutlineDelete, AiOutlineEdit } from "react-icons/ai";
@@ -27,6 +27,12 @@ interface CreateAssessmentModalProps {
   isOpen: boolean;
   onClose: () => void;
   sectionName?: string;
+  sectionIdOverride?: string;
+  prefillData?: Partial<AssignmentFormData> & {
+    moduleId?: string;
+    lessonId?: string;
+    questions?: IQuestion[];
+  };
 }
 
 const ASSESSMENT_TYPES = [
@@ -101,6 +107,8 @@ export default function CreateAssessmentModal({
   isOpen,
   onClose,
   sectionName,
+  sectionIdOverride,
+  prefillData,
 }: CreateAssessmentModalProps) {
   const [showAddQuestion, setShowAddQuestion] = useState(false);
   const [questionsList, setQuestionsList] = useState<IQuestion[]>([]);
@@ -134,6 +142,7 @@ export default function CreateAssessmentModal({
 
   const createAssessment = useCreateAssessment();
   const updateAssessment = useUpdateAssessment();
+  const resolvedSectionId = sectionIdOverride || sectionId;
 
   const {
     register,
@@ -166,10 +175,12 @@ export default function CreateAssessmentModal({
   const gradeMethod = watch("gradeMethod");
 
   const isEditMode = modal === "edit-assessment";
+  const prefilledLessonId = prefillData?.lessonId || lessonId;
   const isLessonPreselected =
     !isEditMode &&
-    !!lessonId &&
-    availableLessons.some((lesson: { _id: string }) => lesson._id === lessonId);
+    !!prefilledLessonId &&
+    availableLessons.some((lesson: { _id: string }) => lesson._id === prefilledLessonId);
+  const isModuleAssessmentDraft = Boolean(prefillData?.moduleId);
   const draftKey = `assessment-draft-${sectionId || sectionCode}`;
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const [hasDraft, setHasDraft] = useState(false);
@@ -179,7 +190,7 @@ export default function CreateAssessmentModal({
 
   // Restore saved draft when modal opens (create mode only)
   useEffect(() => {
-    if (isEditMode || !isOpen || assessmentId) return;
+    if (isEditMode || !isOpen || assessmentId || prefillData) return;
     const saved = localStorage.getItem(draftKey);
     if (!saved) return;
     try {
@@ -190,7 +201,7 @@ export default function CreateAssessmentModal({
     } catch {
       localStorage.removeItem(draftKey);
     }
-  }, [isOpen]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [isOpen, isEditMode, assessmentId, prefillData, draftKey, reset]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Keep ref in sync + save when questionsList changes
   useEffect(() => {
@@ -243,12 +254,49 @@ export default function CreateAssessmentModal({
   }, [questionsList, setValue]);
 
   useEffect(() => {
-    if (!isOpen || isEditMode || !isLessonPreselected || !lessonId) return;
-    setValue("lesson", lessonId, {
+    if (!isOpen || isEditMode || !isLessonPreselected || !prefilledLessonId) return;
+    setValue("lesson", prefilledLessonId, {
       shouldDirty: true,
       shouldValidate: true,
     });
-  }, [isOpen, isEditMode, isLessonPreselected, lessonId, setValue]);
+  }, [isOpen, isEditMode, isLessonPreselected, prefilledLessonId, setValue]);
+
+  useEffect(() => {
+    if (!isOpen || isEditMode || !prefillData) return;
+
+    const startDateRaw = prefillData.startDate
+      ? new Date(prefillData.startDate)
+      : new Date();
+    const endDateRaw = prefillData.endDate
+      ? new Date(prefillData.endDate)
+      : new Date();
+
+    const safeStartDate = !isNaN(startDateRaw.getTime())
+      ? startDateRaw.toISOString().split("T")[0]
+      : new Date().toISOString().split("T")[0];
+    const safeEndDate = !isNaN(endDateRaw.getTime())
+      ? endDateRaw.toISOString().split("T")[0]
+      : "";
+
+    reset({
+      title: prefillData.title || "",
+      lesson: prefillData.lesson || prefillData.lessonId || "",
+      assessmentType: normalizeAssessmentType(prefillData.assessmentType),
+      startDate: safeStartDate,
+      endDate: safeEndDate,
+      timeLimit: prefillData.timeLimit || 30,
+      gradeMethod: prefillData.gradeMethod || "auto",
+      attemptsAllowed: prefillData.attemptsAllowed || 1,
+      description: prefillData.description || "",
+      shuffleQuestions: prefillData.shuffleQuestions || false,
+      shuffleChoices: prefillData.shuffleChoices || false,
+      questionsToDisplay:
+        prefillData.questionsToDisplay || prefillData.questions?.length || 1,
+    });
+
+    setQuestionsList(Array.isArray(prefillData.questions) ? prefillData.questions : []);
+    setCsvFile(null);
+  }, [isOpen, isEditMode, prefillData, reset]);
 
   useEffect(() => {
     if (data && !isPending) {
@@ -305,10 +353,16 @@ export default function CreateAssessmentModal({
       return;
     }
 
+    if (!resolvedSectionId) {
+      toast.error("Section ID is missing. Please reopen this section and try again.");
+      return;
+    }
+
     const formData = createAssessmentFormData({
       ...(assessmentId && { _id: assessmentId }),
       organizationId: organizationId!,
-      section: sectionId,
+      section: resolvedSectionId,
+      moduleId: prefillData?.moduleId,
       lesson: data.lesson,
       title: data.title,
       startDate: new Date(data.startDate),
@@ -531,6 +585,16 @@ export default function CreateAssessmentModal({
                 <p className="mt-1 text-sm text-amber-700">
                   Add at least one lesson in this section before creating an assessment.
                 </p>
+              )}
+              {isModuleAssessmentDraft && (
+                <div className="mt-2 flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 p-3">
+                  <FaLightbulb className="mt-0.5 text-amber-500 shrink-0" />
+                  <p className="text-sm text-amber-800">
+                    Module-level assessment info: this draft was generated from
+                    lesson assessments in the selected module. Review and adjust
+                    questions before publishing.
+                  </p>
+                </div>
               )}
               {isLessonPreselected && (
                 <p className="mt-1 text-sm text-gray-500">

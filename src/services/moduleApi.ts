@@ -65,6 +65,35 @@ class ModuleService extends APIService {
       throw new Error("Error deleting module data");
     }
   };
+
+  populateModuleAssessments = async (moduleId: string) => {
+    try {
+      const response = await apiClient.post(
+        `${BASE_URL}${MODULE.POPULATE_ASSESSMENTS.replace(":id", moduleId)}`,
+        {},
+        {
+          withCredentials: true,
+        }
+      );
+      return response.data;
+    } catch (error) {
+      throw new Error("Error populating module assessments");
+    }
+  };
+
+  getModuleAssessmentDraft = async (moduleId: string) => {
+    try {
+      const response = await apiClient.get(
+        `${BASE_URL}${MODULE.ASSESSMENT_DRAFT.replace(":id", moduleId)}`,
+        {
+          withCredentials: true,
+        }
+      );
+      return response.data;
+    } catch (error) {
+      throw new Error("Error generating module assessment draft");
+    }
+  };
 }
 
 export default new ModuleService();

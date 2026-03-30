@@ -259,7 +259,7 @@ export default function SidePanel({
                                 {item.sectionCode && (
                                   <>
                                     <span className="text-[10px] text-gray-300">
-                                      •
+                                      &bull;
                                     </span>
                                     <span className="text-[10px] text-gray-400">
                                       {item.sectionCode}
@@ -269,7 +269,7 @@ export default function SidePanel({
                                 {item.points > 0 && (
                                   <>
                                     <span className="text-[10px] text-gray-300">
-                                      •
+                                      &bull;
                                     </span>
                                     <span className="text-[10px] text-gray-400">
                                       {item.points} pts

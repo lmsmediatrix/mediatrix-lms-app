@@ -7,6 +7,7 @@ import {
   Tooltip,
   Legend,
   ResponsiveContainer,
+  Rectangle,
 } from "recharts";
 import { useAuth } from "../../context/AuthContext";
 import { useGetAttendanceByDate } from "../../hooks/useMetrics";
@@ -67,6 +68,20 @@ const CustomLegend = ({ payload }: any) => (
   </div>
 );
 
+type BarRadius = [number, number, number, number];
+
+const getSegmentRadius = (
+  present: number,
+  absent: number,
+  segment: "Present" | "Absent",
+): BarRadius => {
+  if (segment === "Present") {
+    return absent === 0 && present > 0 ? [5, 5, 0, 0] : [0, 0, 0, 0];
+  }
+
+  return absent > 0 ? [5, 5, 0, 0] : [0, 0, 0, 0];
+};
+
 export default function AttendanceChart({
   variant = "card",
   heightClass = "h-[300px] md:h-[400px]",
@@ -118,7 +133,7 @@ export default function AttendanceChart({
         data={chartData}
         margin={{ top: 4, right: 8, left: -16, bottom: 0 }}
         barCategoryGap="30%"
-        barGap={3}
+        barGap={0}
       >
         <CartesianGrid
           vertical={false}
@@ -144,15 +159,35 @@ export default function AttendanceChart({
         <Legend content={<CustomLegend />} />
         <Bar
           dataKey="Present"
+          stackId="attendance"
           fill="#3b82f6"
-          radius={[5, 5, 0, 0]}
           maxBarSize={40}
+          shape={(props: any) => (
+            <Rectangle
+              {...props}
+              radius={getSegmentRadius(
+                props.payload?.Present ?? 0,
+                props.payload?.Absent ?? 0,
+                "Present",
+              )}
+            />
+          )}
         />
         <Bar
           dataKey="Absent"
+          stackId="attendance"
           fill="#f87171"
-          radius={[5, 5, 0, 0]}
           maxBarSize={40}
+          shape={(props: any) => (
+            <Rectangle
+              {...props}
+              radius={getSegmentRadius(
+                props.payload?.Present ?? 0,
+                props.payload?.Absent ?? 0,
+                "Absent",
+              )}
+            />
+          )}
         />
       </BarChart>
     </ResponsiveContainer>

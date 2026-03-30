@@ -48,3 +48,21 @@ export const useDeleteModule = () => {
     },
   });
 };
+
+export const usePopulateModuleAssessments = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (moduleId: string) => ModuleService.populateModuleAssessments(moduleId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["section-module"] });
+      queryClient.invalidateQueries({ queryKey: ["module-by-id"] });
+    },
+  });
+};
+
+export const useModuleAssessmentDraft = () => {
+  return useMutation({
+    mutationFn: (moduleId: string) => ModuleService.getModuleAssessmentDraft(moduleId),
+  });
+};

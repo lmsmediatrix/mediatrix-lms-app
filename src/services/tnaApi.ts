@@ -20,6 +20,21 @@ class TnaService extends APIService {
     return response.data;
   };
 
+  getRoleRequirements = async (params?: {
+    keyword?: string;
+    limit?: number;
+    skip?: number;
+  }) => {
+    const response = await apiClient.get(
+      `${BASE_URL}${TNA.ROLE_REQUIREMENT_GET_ALL}`,
+      {
+        withCredentials: true,
+        params,
+      },
+    );
+    return response.data;
+  };
+
   upsertRoleRequirement = async (body: {
     jobRole: string;
     requiredSkills: Array<{ skillId?: string; skillName?: string; requiredLevel: number }>;

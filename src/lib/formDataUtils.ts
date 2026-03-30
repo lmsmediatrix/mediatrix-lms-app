@@ -259,6 +259,7 @@ export const createAssessmentFormData = (data: any): FormData => {
   if (data._id) formData.append("_id", data._id);
   formData.append("organizationId", data.organizationId);
   formData.append("section", data.section);
+  if (data.moduleId) formData.append("moduleId", data.moduleId);
   if (data.lesson) formData.append("lesson", data.lesson);
   formData.append("title", data.title);
   formData.append("startDate", data.startDate);

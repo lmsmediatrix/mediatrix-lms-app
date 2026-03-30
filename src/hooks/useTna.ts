@@ -8,6 +8,17 @@ export const useGetTnaSkills = (params?: { keyword?: string; limit?: number; ski
   });
 };
 
+export const useGetTnaRoleRequirements = (params?: {
+  keyword?: string;
+  limit?: number;
+  skip?: number;
+}) => {
+  return useQuery({
+    queryKey: ["tna-role-requirements", params],
+    queryFn: () => TnaService.getRoleRequirements(params),
+  });
+};
+
 export const useCreateTnaSkill = () => {
   const queryClient = useQueryClient();
   return useMutation({
@@ -19,12 +30,16 @@ export const useCreateTnaSkill = () => {
 };
 
 export const useUpsertRoleRequirement = () => {
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (payload: {
       jobRole: string;
       requiredSkills: Array<{ skillId?: string; skillName?: string; requiredLevel: number }>;
       preAssessmentThreshold?: number;
     }) => TnaService.upsertRoleRequirement(payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["tna-role-requirements"] });
+    },
   });
 };
 
