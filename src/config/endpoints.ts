@@ -283,5 +283,16 @@ export const API_ENDPOINTS = {
     SEARCH: "/program/search",
   },
 
+  TNA: {
+    SKILL_CREATE: "/tna/skill/create",
+    SKILL_GET_ALL: "/tna/skill/get/all",
+    ROLE_REQUIREMENT_UPSERT: "/tna/role-requirement/upsert",
+    EMPLOYEE_SKILL_UPSERT: "/tna/employee-skill/upsert",
+    ANALYZE: "/tna/analyze",
+    RECOMMENDATION_GET_ALL: "/tna/recommendation/get/all",
+    RECOMMENDATION_BY_EMPLOYEE: "/tna/recommendation/employee/:employeeId",
+    RECOMMENDATION_UPDATE_STATUS: "/tna/recommendation/status/update",
+  },
+
   //... Add more API endpoints here
 };

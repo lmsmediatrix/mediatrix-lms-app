@@ -351,7 +351,9 @@ export default function SideNavigation({
 
             const schoolSubmenu = item.SUBMENU.filter(
               (subItem: NavItem) =>
-                subItem.LABEL !== "Department" && subItem.LABEL !== "Batch"
+                subItem.LABEL !== "Department" &&
+                subItem.LABEL !== "Batch" &&
+                subItem.LABEL !== "Training Needs"
             );
 
             if (schoolSubmenu.length === 0 && !item.PATH) {

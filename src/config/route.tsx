@@ -43,6 +43,7 @@ import AuditLogs from "../pages/superadmin/AuditLogs";
 import FacultyPage from "../pages/orgAdmin/FacultyPage";
 import ProgramPage from "../pages/orgAdmin/ProgramPage";
 import DepartmentPage from "../pages/orgAdmin/DepartmentPage";
+import TnaPage from "../pages/orgAdmin/TnaPage";
 import FAQ from "../pages/common/FAQ";
 import TermsAndCondition from "../pages/common/TermsAndCondition";
 import PrivacyPolicy from "../pages/common/PrivacyPolicy";
@@ -152,6 +153,10 @@ export const appRoutes = [
       {
         path: "/:orgCode/admin/department",
         element: <DepartmentPage />,
+      },
+      {
+        path: "/:orgCode/admin/tna",
+        element: <TnaPage />,
       },
       {
         path: "/:orgCode/admin/voucher",
