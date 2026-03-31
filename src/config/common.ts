@@ -108,6 +108,10 @@ export const BASE_NAVIGATION: {
           LABEL: "Training Needs",
           PATH: "/:code/admin/tna",
         },
+        {
+          LABEL: "TNA Deployment",
+          PATH: "/:code/admin/tna/execution",
+        },
       ],
     },
     {

@@ -1,12 +1,14 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { FaArrowLeft, FaCheckCircle, FaTimesCircle } from "react-icons/fa";
+import { FaArrowLeft } from "react-icons/fa";
 import { useAuth } from "../../context/AuthContext";
-import { useSearchStudents } from "../../hooks/useStudent";
 import {
-  useGetEmployeeTnaRecommendations,
-  useGetTnaRecommendations,
-} from "../../hooks/useTna";
+  GroupedTableColumn,
+  GroupedTableGroup,
+  default as GroupedDataTable,
+} from "../../components/common/GroupedDataTable";
+import { useSearchStudents } from "../../hooks/useStudent";
+import { useGetTnaRecommendations } from "../../hooks/useTna";
 import { getTerm } from "../../lib/utils";
 
 type EmployeeOption = {
@@ -49,6 +51,14 @@ type TnaRecommendation = {
   performanceGaps?: string[];
   managerRecommendations?: string[];
   employeeRequests?: string[];
+};
+
+type EmployeeSummaryRow = {
+  employee: EmployeeOption;
+  latest?: TnaRecommendation;
+  hasTna: boolean;
+  skillGapCount: number;
+  recommendedTrainingCount: number;
 };
 
 type RecommendationStatus = "pending" | "assigned" | "completed";
@@ -124,63 +134,63 @@ export default function TnaEmployeeRecommendationsPage() {
     for (const recommendation of recommendations) {
       const employeeId = getEmployeeIdFromRecommendation(recommendation);
       if (!employeeId) continue;
-      if (!map.has(employeeId)) {
+      const existing = map.get(employeeId);
+      if (!existing) {
+        map.set(employeeId, recommendation);
+        continue;
+      }
+
+      const existingDate = new Date(existing.createdAt || 0).getTime();
+      const currentDate = new Date(recommendation.createdAt || 0).getTime();
+      if (currentDate > existingDate) {
         map.set(employeeId, recommendation);
       }
     }
     return map;
   }, [recommendations]);
 
-  const [selectedEmployeeId, setSelectedEmployeeId] = useState("");
-  const [searchTerm, setSearchTerm] = useState("");
+  const [viewDetails, setViewDetails] = useState<{
+    employee: EmployeeOption;
+    recommendation: TnaRecommendation | null;
+  } | null>(null);
 
-  useEffect(() => {
-    if (selectedEmployeeId && employees.some((employee) => employee._id === selectedEmployeeId)) {
-      return;
-    }
-    if (employees.length > 0) {
-      setSelectedEmployeeId(employees[0]._id);
-    }
-  }, [employees, selectedEmployeeId]);
+  const openDetails = (
+    employee: EmployeeOption,
+    recommendation?: TnaRecommendation,
+  ) => {
+    setViewDetails({
+      employee,
+      recommendation: recommendation || null,
+    });
+  };
 
-  const filteredEmployees = useMemo(() => {
-    const query = searchTerm.trim().toLowerCase();
-    const withSearch = employees.filter((employee) => {
-      if (!query) return true;
-      const haystack = `${employee.firstName || ""} ${employee.lastName || ""} ${employee.email || ""}`
-        .toLowerCase()
-        .trim();
-      return haystack.includes(query);
+  const selectedRecommendation = viewDetails?.recommendation || null;
+
+  const employeeRows = useMemo((): EmployeeSummaryRow[] => {
+    const rows = employees.map((employee) => {
+      const latest = latestRecommendationByEmployee.get(employee._id);
+      const hasTna = Boolean(latest);
+      const skillGapCount = Array.isArray(latest?.skillGaps) ? latest?.skillGaps.length : 0;
+      const recommendedTrainingCount = Array.isArray(latest?.recommendedTrainings)
+        ? latest.recommendedTrainings.length
+        : 0;
+
+      return {
+        employee,
+        latest,
+        hasTna,
+        skillGapCount,
+        recommendedTrainingCount,
+      };
     });
 
-    return withSearch.sort((a, b) => {
-      const aHasTna = latestRecommendationByEmployee.has(a._id) ? 1 : 0;
-      const bHasTna = latestRecommendationByEmployee.has(b._id) ? 1 : 0;
+    return rows.sort((a, b) => {
+      const aHasTna = a.hasTna ? 1 : 0;
+      const bHasTna = b.hasTna ? 1 : 0;
       if (aHasTna !== bHasTna) return bHasTna - aHasTna;
-      return getEmployeeDisplayName(a).localeCompare(getEmployeeDisplayName(b));
+      return getEmployeeDisplayName(a.employee).localeCompare(getEmployeeDisplayName(b.employee));
     });
-  }, [employees, latestRecommendationByEmployee, searchTerm]);
-
-  const selectedEmployee = useMemo(
-    () => employees.find((employee) => employee._id === selectedEmployeeId),
-    [employees, selectedEmployeeId],
-  );
-
-  const latestSelectedRecommendation = selectedEmployeeId
-    ? latestRecommendationByEmployee.get(selectedEmployeeId)
-    : undefined;
-
-  const selectedEmployeeRecommendationsQuery = useGetEmployeeTnaRecommendations(
-    selectedEmployeeId,
-    { limit: 100, skip: 0 },
-  );
-
-  const selectedEmployeeRecommendations = useMemo(() => {
-    const response = selectedEmployeeRecommendationsQuery.data as
-      | { data?: TnaRecommendation[] }
-      | undefined;
-    return Array.isArray(response?.data) ? response.data : [];
-  }, [selectedEmployeeRecommendationsQuery.data]);
+  }, [employees, latestRecommendationByEmployee]);
 
   const employeesWithTna = useMemo(
     () =>
@@ -191,8 +201,188 @@ export default function TnaEmployeeRecommendationsPage() {
 
   const employeesWithoutTna = employees.length - employeesWithTna;
 
-  const inputClassName =
-    "w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20";
+  const tableGroups = useMemo(
+    (): GroupedTableGroup<EmployeeSummaryRow>[] => [
+      {
+        key: "all-employees",
+        title: `All ${employeesTerm}`,
+        rows: employeeRows,
+        badgeText: `${employeeRows.length} total`,
+      },
+    ],
+    [employeeRows, employeesTerm],
+  );
+
+  const tableColumns = useMemo(
+    (): GroupedTableColumn<EmployeeSummaryRow>[] => [
+      {
+        key: "employee",
+        label: employeeTerm,
+        sortable: true,
+        filterable: true,
+        filterPlaceholder: `Search ${employeeTerm.toLowerCase()}`,
+        sortAccessor: (row) => getEmployeeDisplayName(row.employee),
+        filterAccessor: (row) =>
+          `${getEmployeeDisplayName(row.employee)} ${row.employee.email || ""}`.trim(),
+        className: "min-w-[220px]",
+        render: (row) => (
+          <span className="text-sm font-semibold text-slate-900">
+            {getEmployeeDisplayName(row.employee)}
+          </span>
+        ),
+      },
+      {
+        key: "email",
+        label: "Email",
+        sortable: true,
+        filterable: true,
+        filterPlaceholder: "Search email",
+        sortAccessor: (row) => row.employee.email || "",
+        filterAccessor: (row) => row.employee.email || "",
+        className: "min-w-[220px] hidden md:table-cell",
+        render: (row) => (
+          <span className="text-sm text-slate-600">{row.employee.email || "--"}</span>
+        ),
+      },
+      {
+        key: "role",
+        label: "Role",
+        sortable: true,
+        filterable: true,
+        filterPlaceholder: "Search role",
+        sortAccessor: (row) => row.latest?.jobRole || "",
+        filterAccessor: (row) => row.latest?.jobRole || "",
+        className: "min-w-[150px]",
+        render: (row) => <span className="text-sm text-slate-700">{row.latest?.jobRole || "--"}</span>,
+      },
+      {
+        key: "latestTna",
+        label: "Latest TNA",
+        sortable: true,
+        filterable: true,
+        filterPlaceholder: "Search date",
+        sortAccessor: (row) => (row.latest?.createdAt ? new Date(row.latest.createdAt).getTime() : 0),
+        filterAccessor: (row) =>
+          row.latest?.createdAt ? new Date(row.latest.createdAt).toLocaleString() : "",
+        className: "min-w-[200px] hidden md:table-cell",
+        render: (row) => (
+          <span className="text-sm text-slate-600 whitespace-nowrap">
+            {row.latest?.createdAt ? new Date(row.latest.createdAt).toLocaleString() : "--"}
+          </span>
+        ),
+      },
+      {
+        key: "status",
+        label: "Status",
+        sortable: true,
+        filterable: true,
+        filterPlaceholder: "Search status",
+        sortAccessor: (row) => normalizeStatus(row.latest?.status),
+        filterAccessor: (row) => normalizeStatus(row.latest?.status),
+        className: "min-w-[130px]",
+        render: (row) =>
+          row.latest ? (
+            <span className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-700 capitalize">
+              {normalizeStatus(row.latest.status)}
+            </span>
+          ) : (
+            <span className="text-slate-400">--</span>
+          ),
+      },
+      {
+        key: "skillGaps",
+        label: "Skill Gaps",
+        sortable: true,
+        filterable: true,
+        filterPlaceholder: "Search count",
+        sortAccessor: (row) => row.skillGapCount,
+        filterAccessor: (row) => String(row.skillGapCount),
+        align: "right",
+        className: "min-w-[120px]",
+        render: (row) => <span className="text-sm text-slate-700">{row.skillGapCount}</span>,
+      },
+      {
+        key: "recommended",
+        label: "Recommended",
+        sortable: true,
+        filterable: true,
+        filterPlaceholder: "Search count",
+        sortAccessor: (row) => row.recommendedTrainingCount,
+        filterAccessor: (row) => String(row.recommendedTrainingCount),
+        align: "right",
+        className: "min-w-[130px]",
+        render: (row) => <span className="text-sm text-slate-700">{row.recommendedTrainingCount}</span>,
+      },
+      {
+        key: "preTest",
+        label: "Pre-test",
+        sortable: true,
+        filterable: true,
+        filterPlaceholder: "Search pre-test",
+        sortAccessor: (row) => row.latest?.preAssessment?.score ?? -1,
+        filterAccessor: (row) =>
+          typeof row.latest?.preAssessment?.score === "number"
+            ? `${row.latest.preAssessment.score}% / ${row.latest.preAssessment.threshold ?? 70}%`
+            : "",
+        className: "min-w-[170px] hidden md:table-cell",
+        render: (row) => {
+          const hasPreTest = typeof row.latest?.preAssessment?.score === "number";
+          return (
+            <span className="text-sm text-slate-700 whitespace-nowrap">
+              {hasPreTest
+                ? `${row.latest?.preAssessment?.score}% / ${row.latest?.preAssessment?.threshold ?? 70}%`
+                : "--"}
+            </span>
+          );
+        },
+      },
+      {
+        key: "tna",
+        label: "TNA",
+        sortable: true,
+        filterable: true,
+        filterPlaceholder: "Search TNA status",
+        sortAccessor: (row) => (row.hasTna ? "has tna" : "no tna"),
+        filterAccessor: (row) => (row.hasTna ? "has tna" : "no tna"),
+        className: "min-w-[120px]",
+        render: (row) => (
+          <span
+            className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${
+              row.hasTna
+                ? "border-emerald-300 bg-emerald-50 text-emerald-700"
+                : "border-slate-300 bg-slate-50 text-slate-500"
+            }`}
+          >
+            {row.hasTna ? "Has TNA" : "No TNA"}
+          </span>
+        ),
+      },
+      {
+        key: "action",
+        label: "Action",
+        align: "right",
+        className: "min-w-[120px]",
+        render: (row) => (
+          <button
+            type="button"
+            data-row-click-stop="true"
+            onClick={(event) => {
+              event.stopPropagation();
+              openDetails(row.employee, row.latest);
+            }}
+            className={`inline-flex items-center justify-center rounded-md border px-3 py-1.5 text-xs font-medium ${
+              row.latest
+                ? "border-primary text-primary hover:bg-primary/5"
+                : "border-slate-300 text-slate-500 hover:bg-slate-50"
+            }`}
+          >
+            {row.latest ? "View" : "No TNA"}
+          </button>
+        ),
+      },
+    ],
+    [employeeTerm],
+  );
 
   return (
     <div className="pt-14 pb-6 px-4 md:px-6 lg:p-6 space-y-6">
@@ -237,283 +427,201 @@ export default function TnaEmployeeRecommendationsPage() {
         </div>
       </section>
 
-      <div className="grid grid-cols-1 xl:grid-cols-[340px_minmax(0,1fr)] gap-6">
-        <aside className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm space-y-3 h-fit xl:sticky xl:top-20">
+      <section className="rounded-2xl border border-slate-200 bg-white p-4 md:p-5 shadow-sm space-y-4 min-h-[480px]">
+        <div className="border-b border-slate-200 pb-4">
           <div>
-            <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-600">
-              {employeesTerm}
-            </h2>
-            <p className="text-xs text-slate-500 mt-1">
-              Select an employee to view TNA details.
+            <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+              All {employeesTerm}
+            </p>
+            <h2 className="text-xl font-semibold text-slate-900">Employee TNA Summary Table</h2>
+            <p className="text-sm text-slate-500 mt-1">
+              One row per employee. Click a row (or view) to open full skill gaps and recommendations.
             </p>
           </div>
+        </div>
 
-          <input
-            value={searchTerm}
-            onChange={(event) => setSearchTerm(event.target.value)}
-            className={inputClassName}
-            placeholder={`Search ${employeeTerm.toLowerCase()} by name or email`}
+        {studentsQuery.isLoading ? (
+          <p className="text-sm text-slate-500">Loading {employeesTerm.toLowerCase()}...</p>
+        ) : employeeRows.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-5 text-sm text-slate-600">
+            No matching {employeesTerm.toLowerCase()} found.
+          </div>
+        ) : (
+          <GroupedDataTable
+            groups={tableGroups}
+            columns={tableColumns}
+            rowKey={(row) => row.employee._id}
+            emptyFilteredText={`No matching ${employeesTerm.toLowerCase()} found.`}
+            tableMinWidthClassName="min-w-[1250px]"
+            cardless
+            showGroupHeader={false}
+            onRowClick={(row) => openDetails(row.employee, row.latest)}
           />
+        )}
+      </section>
 
-          {studentsQuery.isLoading ? (
-            <p className="text-sm text-slate-500">Loading {employeesTerm.toLowerCase()}...</p>
-          ) : filteredEmployees.length === 0 ? (
-            <p className="text-sm text-slate-500">No matching {employeesTerm.toLowerCase()} found.</p>
-          ) : (
-            <div className="space-y-2 max-h-[65vh] overflow-y-auto pr-1">
-              {filteredEmployees.map((employee) => {
-                const latest = latestRecommendationByEmployee.get(employee._id);
-                const hasTna = Boolean(latest);
-                const isActive = selectedEmployeeId === employee._id;
-                const skillGapCount = Array.isArray(latest?.skillGaps)
-                  ? latest.skillGaps.length
-                  : 0;
-                const recommendedTrainingCount = Array.isArray(
-                  latest?.recommendedTrainings,
-                )
-                  ? latest.recommendedTrainings.length
-                  : 0;
-
-                return (
-                  <button
-                    key={employee._id}
-                    type="button"
-                    onClick={() => setSelectedEmployeeId(employee._id)}
-                    className={`w-full rounded-xl border p-3 text-left transition-colors ${
-                      isActive
-                        ? "border-primary bg-primary/5"
-                        : "border-slate-200 hover:border-slate-300"
-                    }`}
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0">
-                        <p className="text-sm font-semibold text-slate-900 truncate">
-                          {getEmployeeDisplayName(employee)}
-                        </p>
-                        <p className="text-xs text-slate-500 truncate mt-0.5">
-                          {employee.email || "--"}
-                        </p>
-                      </div>
-                      <span
-                        className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium ${
-                          hasTna
-                            ? "border-emerald-300 bg-emerald-50 text-emerald-700"
-                            : "border-slate-300 bg-slate-50 text-slate-500"
-                        }`}
-                      >
-                        {hasTna ? <FaCheckCircle className="h-3 w-3" /> : <FaTimesCircle className="h-3 w-3" />}
-                        {hasTna ? "Has TNA" : "No TNA"}
-                      </span>
-                    </div>
-
-                    {hasTna && (
-                      <div className="mt-2 flex flex-wrap gap-1.5 text-[11px]">
-                        <span className="rounded-full border border-slate-200 bg-white px-2 py-0.5 text-slate-700">
-                          {latest ? normalizeStatus(latest.status) : "pending"}
-                        </span>
-                        <span className="rounded-full border border-slate-200 bg-white px-2 py-0.5 text-slate-700">
-                          Skill gaps: {skillGapCount}
-                        </span>
-                        <span className="rounded-full border border-slate-200 bg-white px-2 py-0.5 text-slate-700">
-                          Trainings: {recommendedTrainingCount}
-                        </span>
-                      </div>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          )}
-        </aside>
-
-        <main className="rounded-2xl border border-slate-200 bg-white p-4 md:p-5 shadow-sm space-y-4 min-h-[480px]">
-          {selectedEmployee ? (
-            <>
-              <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-3 border-b border-slate-200 pb-4">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-                    Selected {employeeTerm}
+      {viewDetails && (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-900/45 p-4">
+          <div className="w-full max-w-5xl rounded-2xl border border-slate-200 bg-white shadow-2xl max-h-[88vh] overflow-hidden">
+            <div className="flex items-start justify-between gap-3 border-b border-slate-200 px-5 py-4">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                  {selectedRecommendation ? "TNA Recommendation Details" : "TNA Status"}
+                </p>
+                <h3 className="text-lg font-semibold text-slate-900 mt-1">
+                  {getEmployeeDisplayName(viewDetails.employee)} |{" "}
+                  {selectedRecommendation?.jobRole || "No TNA Yet"}
+                </h3>
+                {selectedRecommendation ? (
+                  <p className="text-xs text-slate-500 mt-1">
+                    {new Date(selectedRecommendation.createdAt || Date.now()).toLocaleString()} | status:{" "}
+                    <span className="capitalize">{normalizeStatus(selectedRecommendation.status)}</span>
                   </p>
-                  <h2 className="text-xl font-semibold text-slate-900">
-                    {getEmployeeDisplayName(selectedEmployee)}
-                  </h2>
-                  <p className="text-sm text-slate-500 mt-1">
-                    {selectedEmployee.email || "--"}
+                ) : (
+                  <p className="text-xs text-slate-500 mt-1">
+                    This employee does not have a generated TNA recommendation yet.
                   </p>
-                </div>
-                <div className="text-sm text-slate-600">
-                  {latestSelectedRecommendation ? (
-                    <p>
-                      Latest TNA:{" "}
-                      <span className="font-medium text-slate-800">
-                        {new Date(
-                          latestSelectedRecommendation.createdAt || Date.now(),
-                        ).toLocaleString()}
-                      </span>
-                    </p>
-                  ) : (
-                    <p>No TNA record yet for this {employeeTerm.toLowerCase()}.</p>
-                  )}
-                </div>
+                )}
               </div>
+              <button
+                type="button"
+                onClick={() => setViewDetails(null)}
+                className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-slate-200 text-slate-600 hover:bg-slate-50"
+                aria-label="Close details modal"
+              >
+                <span className="text-base leading-none">x</span>
+              </button>
+            </div>
 
-              {selectedEmployeeRecommendationsQuery.isLoading ? (
-                <p className="text-sm text-slate-500">Loading TNA details...</p>
-              ) : selectedEmployeeRecommendations.length === 0 ? (
-                <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-5 text-sm text-slate-600">
-                  No TNA recommendations found for this {employeeTerm.toLowerCase()}.
-                  Run Step 4 in the TNA page first.
+            <div className="max-h-[calc(88vh-80px)] overflow-y-auto px-5 py-4 space-y-4">
+              {!selectedRecommendation ? (
+                <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-6">
+                  <p className="text-sm font-semibold text-slate-800">No TNA record available yet</p>
+                  <p className="text-sm text-slate-600 mt-1">
+                    Run TNA analysis for this employee to generate skill gaps and training
+                    recommendations.
+                  </p>
                 </div>
               ) : (
-                <div className="space-y-3">
-                  {selectedEmployeeRecommendations.map((recommendation) => (
-                    <div
-                      key={recommendation._id}
-                      className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-3"
-                    >
-                      <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-2">
-                        <div>
-                          <p className="text-sm font-semibold text-slate-900">
-                            {recommendation.jobRole || "No role"}
-                          </p>
-                          <p className="text-xs text-slate-500 mt-0.5">
-                            {new Date(
-                              recommendation.createdAt || Date.now(),
-                            ).toLocaleString()}
-                          </p>
-                        </div>
-                        <span className="inline-flex h-fit items-center rounded-full border border-slate-300 bg-white px-2.5 py-1 text-xs font-medium text-slate-700">
-                          Status: {normalizeStatus(recommendation.status)}
-                        </span>
-                      </div>
-
-                      <div className="flex flex-wrap gap-2 text-xs">
-                        <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-slate-700">
-                          Skill gaps:{" "}
-                          {Array.isArray(recommendation.skillGaps)
-                            ? recommendation.skillGaps.length
-                            : 0}
-                        </span>
-                        <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-slate-700">
-                          Recommended trainings:{" "}
-                          {Array.isArray(recommendation.recommendedTrainings)
-                            ? recommendation.recommendedTrainings.length
-                            : 0}
-                        </span>
-                        {typeof recommendation.preAssessment?.score === "number" && (
-                          <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-slate-700">
-                            Pre-test: {recommendation.preAssessment.score}% (threshold{" "}
-                            {recommendation.preAssessment.threshold ?? 70}%)
-                          </span>
-                        )}
-                      </div>
-
-                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-                        <div className="rounded-lg border border-slate-200 bg-white p-3">
-                          <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-                            Skill Gaps
-                          </p>
-                          {!Array.isArray(recommendation.skillGaps) ||
-                          recommendation.skillGaps.length === 0 ? (
-                            <p className="text-sm text-slate-500 mt-2">No skill gaps.</p>
-                          ) : (
-                            <ul className="mt-2 space-y-1.5 text-sm text-slate-700">
-                              {recommendation.skillGaps.map((gapItem, index) => (
-                                <li key={`${recommendation._id}-gap-${index}`}>
-                                  <span className="font-medium">
-                                    {gapItem.skillName || "Unnamed skill"}
-                                  </span>{" "}
-                                  - required {gapItem.requiredLevel ?? 0}, current{" "}
-                                  {gapItem.currentLevel ?? 0}, gap {gapItem.gap ?? 0}
-                                </li>
-                              ))}
-                            </ul>
-                          )}
-                        </div>
-
-                        <div className="rounded-lg border border-slate-200 bg-white p-3">
-                          <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-                            Recommended Trainings
-                          </p>
-                          {!Array.isArray(recommendation.recommendedTrainings) ||
-                          recommendation.recommendedTrainings.length === 0 ? (
-                            <p className="text-sm text-slate-500 mt-2">
-                              No training recommendations generated.
-                            </p>
-                          ) : (
-                            <ul className="mt-2 space-y-2 text-sm text-slate-700">
-                              {recommendation.recommendedTrainings.map((item, index) => {
-                                const courseLabel = getCourseLabel(item.course);
-                                return (
-                                  <li
-                                    key={`${recommendation._id}-training-${index}`}
-                                    className="rounded-md border border-slate-200 bg-slate-50 px-2.5 py-2"
-                                  >
-                                    <p className="font-medium text-slate-900">
-                                      {item.title || "Untitled training"}
-                                    </p>
-                                    <p className="text-xs text-slate-500 mt-0.5">
-                                      {formatReasonType(item.reasonType)} | priority:{" "}
-                                      {item.priority || "medium"} |{" "}
-                                      {item.mandatory ? "mandatory" : "optional"}
-                                    </p>
-                                    {item.reasonDetail && (
-                                      <p className="text-xs text-slate-500 mt-0.5">
-                                        {item.reasonDetail}
-                                      </p>
-                                    )}
-                                    {courseLabel && (
-                                      <p className="text-xs text-slate-500 mt-0.5">
-                                        Linked course: {courseLabel}
-                                      </p>
-                                    )}
-                                  </li>
-                                );
-                              })}
-                            </ul>
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-xs">
-                        <div className="rounded-md border border-slate-200 bg-white px-2.5 py-2">
-                          <p className="font-semibold text-slate-600 mb-1">
-                            Performance Gaps
-                          </p>
-                          <p className="text-slate-500">
-                            {(recommendation.performanceGaps || []).join(", ") || "--"}
-                          </p>
-                        </div>
-                        <div className="rounded-md border border-slate-200 bg-white px-2.5 py-2">
-                          <p className="font-semibold text-slate-600 mb-1">
-                            Manager Recommendations
-                          </p>
-                          <p className="text-slate-500">
-                            {(recommendation.managerRecommendations || []).join(", ") ||
-                              "--"}
-                          </p>
-                        </div>
-                        <div className="rounded-md border border-slate-200 bg-white px-2.5 py-2">
-                          <p className="font-semibold text-slate-600 mb-1">
-                            Employee Requests
-                          </p>
-                          <p className="text-slate-500">
-                            {(recommendation.employeeRequests || []).join(", ") || "--"}
-                          </p>
-                        </div>
-                      </div>
+                <>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-xs">
+                    <div className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2">
+                      <p className="font-semibold text-slate-600 mb-1">Skill Gaps</p>
+                      <p className="text-slate-800">
+                        {Array.isArray(selectedRecommendation.skillGaps)
+                          ? selectedRecommendation.skillGaps.length
+                          : 0}
+                      </p>
                     </div>
-                  ))}
-                </div>
+                    <div className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2">
+                      <p className="font-semibold text-slate-600 mb-1">Recommended Trainings</p>
+                      <p className="text-slate-800">
+                        {Array.isArray(selectedRecommendation.recommendedTrainings)
+                          ? selectedRecommendation.recommendedTrainings.length
+                          : 0}
+                      </p>
+                    </div>
+                    <div className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2">
+                      <p className="font-semibold text-slate-600 mb-1">Pre-test</p>
+                      <p className="text-slate-800">
+                        {typeof selectedRecommendation.preAssessment?.score === "number"
+                          ? `${selectedRecommendation.preAssessment.score}% (threshold ${selectedRecommendation.preAssessment.threshold ?? 70}%)`
+                          : "--"}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                    <div className="rounded-lg border border-slate-200 bg-white p-3">
+                      <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                        Skill Gaps
+                      </p>
+                      {!Array.isArray(selectedRecommendation.skillGaps) ||
+                      selectedRecommendation.skillGaps.length === 0 ? (
+                        <p className="text-sm text-slate-500 mt-2">No skill gaps.</p>
+                      ) : (
+                        <ul className="mt-2 space-y-1.5 text-sm text-slate-700">
+                          {selectedRecommendation.skillGaps.map((gapItem, index) => (
+                            <li key={`${selectedRecommendation._id}-gap-${index}`}>
+                              <span className="font-medium">{gapItem.skillName || "Unnamed skill"}</span>{" "}
+                              - required {gapItem.requiredLevel ?? 0}, current{" "}
+                              {gapItem.currentLevel ?? 0}, gap {gapItem.gap ?? 0}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+
+                    <div className="rounded-lg border border-slate-200 bg-white p-3">
+                      <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                        Recommended Trainings
+                      </p>
+                      {!Array.isArray(selectedRecommendation.recommendedTrainings) ||
+                      selectedRecommendation.recommendedTrainings.length === 0 ? (
+                        <p className="text-sm text-slate-500 mt-2">
+                          No training recommendations generated.
+                        </p>
+                      ) : (
+                        <ul className="mt-2 space-y-2 text-sm text-slate-700">
+                          {selectedRecommendation.recommendedTrainings.map((item, index) => {
+                            const courseLabel = getCourseLabel(item.course);
+                            return (
+                              <li
+                                key={`${selectedRecommendation._id}-training-${index}`}
+                                className="rounded-md border border-slate-200 bg-slate-50 px-2.5 py-2"
+                              >
+                                <p className="font-medium text-slate-900">
+                                  {item.title || "Untitled training"}
+                                </p>
+                                <p className="text-xs text-slate-500 mt-0.5">
+                                  {formatReasonType(item.reasonType)} | priority:{" "}
+                                  {item.priority || "medium"} |{" "}
+                                  {item.mandatory ? "mandatory" : "optional"}
+                                </p>
+                                {item.reasonDetail && (
+                                  <p className="text-xs text-slate-500 mt-0.5">
+                                    {item.reasonDetail}
+                                  </p>
+                                )}
+                                {courseLabel && (
+                                  <p className="text-xs text-slate-500 mt-0.5">
+                                    Linked course: {courseLabel}
+                                  </p>
+                                )}
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-xs">
+                    <div className="rounded-md border border-slate-200 bg-white px-2.5 py-2">
+                      <p className="font-semibold text-slate-600 mb-1">Performance Gaps</p>
+                      <p className="text-slate-500">
+                        {(selectedRecommendation.performanceGaps || []).join(", ") || "--"}
+                      </p>
+                    </div>
+                    <div className="rounded-md border border-slate-200 bg-white px-2.5 py-2">
+                      <p className="font-semibold text-slate-600 mb-1">Manager Recommendations</p>
+                      <p className="text-slate-500">
+                        {(selectedRecommendation.managerRecommendations || []).join(", ") || "--"}
+                      </p>
+                    </div>
+                    <div className="rounded-md border border-slate-200 bg-white px-2.5 py-2">
+                      <p className="font-semibold text-slate-600 mb-1">Employee Requests</p>
+                      <p className="text-slate-500">
+                        {(selectedRecommendation.employeeRequests || []).join(", ") || "--"}
+                      </p>
+                    </div>
+                  </div>
+                </>
               )}
-            </>
-          ) : (
-            <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-5 text-sm text-slate-600">
-              Select an {employeeTerm.toLowerCase()} to view TNA details.
             </div>
-          )}
-        </main>
-      </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

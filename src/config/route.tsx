@@ -45,6 +45,7 @@ import ProgramPage from "../pages/orgAdmin/ProgramPage";
 import DepartmentPage from "../pages/orgAdmin/DepartmentPage";
 import TnaPage from "../pages/orgAdmin/TnaPage";
 import TnaEmployeeRecommendationsPage from "../pages/orgAdmin/TnaEmployeeRecommendationsPage";
+import TnaExecutionPipelinePage from "../pages/orgAdmin/TnaExecutionPipelinePage";
 import FAQ from "../pages/common/FAQ";
 import TermsAndCondition from "../pages/common/TermsAndCondition";
 import PrivacyPolicy from "../pages/common/PrivacyPolicy";
@@ -162,6 +163,10 @@ export const appRoutes = [
       {
         path: "/:orgCode/admin/tna/employees",
         element: <TnaEmployeeRecommendationsPage />,
+      },
+      {
+        path: "/:orgCode/admin/tna/execution",
+        element: <TnaExecutionPipelinePage />,
       },
       {
         path: "/:orgCode/admin/voucher",

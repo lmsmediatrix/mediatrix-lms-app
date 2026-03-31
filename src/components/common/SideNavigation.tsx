@@ -391,7 +391,8 @@ export default function SideNavigation({
               (subItem: NavItem) =>
                 subItem.LABEL !== "Department" &&
                 subItem.LABEL !== "Batch" &&
-                subItem.LABEL !== "Training Needs"
+                subItem.LABEL !== "Training Needs" &&
+                subItem.LABEL !== "TNA Deployment"
             );
 
             if (schoolSubmenu.length === 0 && !item.PATH) {

@@ -2,12 +2,14 @@ import { useEffect, useMemo, useState } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import Button from "../../components/common/Button";
+import { SearchableSelect } from "../../components/SearchableSelect";
 import { useAuth } from "../../context/AuthContext";
 import { useCourses } from "../../hooks/useCourse";
 import { useSearchStudents } from "../../hooks/useStudent";
 import {
   useAnalyzeTna,
   useCreateTnaSkill,
+  useDeleteTnaRecommendation,
   useGetTnaRecommendations,
   useGetTnaRoleRequirements,
   useGetTnaSkills,
@@ -160,6 +162,7 @@ export default function TnaPage() {
   const upsertRoleRequirementMutation = useUpsertRoleRequirement();
   const upsertEmployeeSkillMutation = useUpsertEmployeeSkill();
   const analyzeTnaMutation = useAnalyzeTna();
+  const deleteRecommendationMutation = useDeleteTnaRecommendation();
   const updateRecommendationStatusMutation = useUpdateTnaRecommendationStatus();
 
   const skills = useMemo(() => {
@@ -215,6 +218,7 @@ export default function TnaPage() {
     { title: "", courseId: "", mandatory: true },
   ]);
   const [statusDrafts, setStatusDrafts] = useState<Record<string, RecommendationStatus>>({});
+  const [deletingRecommendationId, setDeletingRecommendationId] = useState<string | null>(null);
 
   const selectedAnalyzeRoleRequirement = useMemo(() => {
     const normalizedRole = analyzeJobRole.trim().toLowerCase();
@@ -318,9 +322,55 @@ export default function TnaPage() {
     return FLOW_STEPS[activeStepIndex + 1].title;
   }, [activeStepIndex]);
 
-  const activeStepGuide = useMemo(
-    () => STEP_GUIDANCE[activeStep] || STEP_GUIDANCE["skill-library"],
-    [activeStep]
+  const skillSelectOptions = useMemo(
+    () =>
+      skills.map((skill) => ({
+        value: String(skill._id || ""),
+        label: String(skill.name || "Unnamed skill"),
+      })),
+    [skills]
+  );
+
+  const employeeSelectOptions = useMemo(
+    () =>
+      employees.map((employee) => {
+        const firstName = String(employee.firstName || "").trim();
+        const lastName = String(employee.lastName || "").trim();
+        const fullName = `${firstName} ${lastName}`.trim() || employee.email || "Unnamed employee";
+        return {
+          value: String(employee._id || ""),
+          label: fullName,
+          description: employee.email || undefined,
+        };
+      }),
+    [employees]
+  );
+
+  const roleSelectOptions = useMemo(
+    () =>
+      roleOptions.map((roleOption) => ({
+        value: roleOption,
+        label: roleOption,
+      })),
+    [roleOptions]
+  );
+
+  const courseSelectOptions = useMemo(
+    () =>
+      courses.map((course) => ({
+        value: String(course._id || ""),
+        label: `${course.code ? `${course.code} - ` : ""}${course.title || "Untitled course"}`,
+      })),
+    [courses]
+  );
+
+  const recommendationStatusOptions = useMemo(
+    () => [
+      { value: "pending", label: "Pending" },
+      { value: "assigned", label: "Assigned" },
+      { value: "completed", label: "Completed" },
+    ],
+    []
   );
 
   const getStepStatusMeta = (stepKey: StepKey) => {
@@ -347,12 +397,14 @@ export default function TnaPage() {
   }
 
   const inputClassName =
-    "w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition duration-200 focus:outline-none focus:border-[color:var(--color-primary,#2563eb)] focus:ring-4 focus:ring-[color:color-mix(in_srgb,var(--color-primary,#2563eb)_18%,transparent)]";
+    "h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-800 placeholder:text-slate-400 shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition duration-200 focus:outline-none focus:border-[color:var(--color-primary,#2563eb)] focus:ring-2 focus:ring-[color:color-mix(in_srgb,var(--color-primary,#2563eb)_18%,transparent)]";
+  const textareaClassName =
+    "w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 placeholder:text-slate-400 shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition duration-200 focus:outline-none focus:border-[color:var(--color-primary,#2563eb)] focus:ring-2 focus:ring-[color:color-mix(in_srgb,var(--color-primary,#2563eb)_18%,transparent)]";
   const panelClassName =
     "rounded-2xl border border-slate-200 bg-white p-4 md:p-6 shadow-[0_14px_40px_-24px_rgba(15,23,42,0.35)]";
   const fieldLabelClassName = "text-xs font-semibold uppercase tracking-wider text-slate-500";
   const fieldHintClassName = "mt-1 text-xs text-slate-500";
-  const sectionSurfaceClassName = "rounded-xl border border-slate-200 bg-slate-50/80 p-4";
+  const sectionSurfaceClassName = "rounded-xl border border-slate-200 bg-white p-3.5";
   const skillLibraryStatus = getStepStatusMeta("skill-library");
   const roleRequirementsStatus = getStepStatusMeta("role-requirements");
   const employeeSkillsStatus = getStepStatusMeta("employee-skills");
@@ -444,9 +496,12 @@ export default function TnaPage() {
     }
   };
 
-  const updateStatus = async (recommendationId: string, currentStatus: RecommendationStatus) => {
-    const nextStatus = statusDrafts[recommendationId] || currentStatus;
-    if (nextStatus === currentStatus) return;
+  const updateStatus = async (
+    recommendationId: string,
+    nextStatus: RecommendationStatus,
+    currentStatus?: RecommendationStatus
+  ) => {
+    if (currentStatus && nextStatus === currentStatus) return;
     try {
       await toast.promise(
         updateRecommendationStatusMutation.mutateAsync({ recommendationId, status: nextStatus }),
@@ -454,6 +509,34 @@ export default function TnaPage() {
       );
     } catch (error) {
       toast.error(getErrorMessage(error));
+    }
+  };
+
+  const deleteRecommendation = async (recommendationId: string) => {
+    const shouldDelete = window.confirm(
+      "Delete this recommendation? This action cannot be undone."
+    );
+    if (!shouldDelete) return;
+
+    setDeletingRecommendationId(recommendationId);
+    try {
+      await toast.promise(
+        deleteRecommendationMutation.mutateAsync({ recommendationId }),
+        {
+          pending: "Deleting recommendation...",
+          success: "Recommendation deleted",
+          error: "Failed to delete recommendation",
+        }
+      );
+      setStatusDrafts((previous) => {
+        const next = { ...previous };
+        delete next[recommendationId];
+        return next;
+      });
+    } catch (error) {
+      toast.error(getErrorMessage(error));
+    } finally {
+      setDeletingRecommendationId(null);
     }
   };
 
@@ -532,128 +615,64 @@ export default function TnaPage() {
         </div>
 
         <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-2">
-          {FLOW_STEPS.map((step, index) => {
-            const isActive = activeStep === step.key;
-            const isComplete = completionByStep[step.key];
-            const statusMeta = getStepStatusMeta(step.key);
-            return (
-              <button
-                key={`flow-chip-${step.key}`}
-                type="button"
-                onClick={() => setActiveStep(step.key)}
-                className={`rounded-xl border px-3 py-2 text-left transition-colors ${
-                  isActive
-                    ? "border-primary bg-primary/10"
-                    : isComplete
-                    ? "border-emerald-200 bg-emerald-50/70"
-                    : "border-slate-200 bg-slate-50/70 hover:border-slate-300"
-                }`}
-              >
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-                  Step {index + 1}
-                </p>
-                <p className="text-sm font-medium text-slate-900 mt-0.5">{step.title}</p>
-                <span
-                  className={`mt-1 inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-semibold ${statusMeta.className}`}
-                >
-                  {statusMeta.label}
-                </span>
-              </button>
-            );
-          })}
+  {FLOW_STEPS.map((step, index) => {
+    const isActive = activeStep === step.key;
+    const isComplete = completionByStep[step.key];
+    const statusMeta = getStepStatusMeta(step.key);
+    const stepGuide = STEP_GUIDANCE[step.key] || STEP_GUIDANCE["skill-library"];
+    const hoverAlignClass = index >= FLOW_STEPS.length - 2 ? "right-0" : "left-0";
+
+    return (
+      <div key={`flow-chip-${step.key}`} className="relative group">
+        <button
+          type="button"
+          onClick={() => setActiveStep(step.key)}
+          className={`w-full rounded-xl border px-3 py-2 text-left transition-colors ${
+            isActive
+              ? "border-primary bg-primary/10"
+              : isComplete
+              ? "border-emerald-200 bg-emerald-50/70"
+              : "border-slate-200 bg-slate-50/70 hover:border-slate-300"
+          }`}
+        >
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+            Step {index + 1}
+          </p>
+          <p className="mt-0.5 flex items-center gap-2 text-sm font-medium text-slate-900">
+            <span className="h-1.5 w-1.5 rounded-full bg-slate-500" />
+            <span>{step.title}</span>
+          </p>
+          <span
+            className={`mt-1 inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-semibold ${statusMeta.className}`}
+          >
+            {statusMeta.label}
+          </span>
+        </button>
+
+        <div
+          className={`pointer-events-none absolute ${hoverAlignClass} top-full z-30 mt-2 w-[320px] max-w-[calc(100vw-2rem)] rounded-xl border border-slate-200 bg-white/95 p-3 shadow-[0_20px_50px_-22px_rgba(15,23,42,0.45)] backdrop-blur-sm opacity-0 translate-y-1 transition-all duration-200 group-hover:opacity-100 group-hover:translate-y-0 group-focus-within:opacity-100 group-focus-within:translate-y-0`}
+        >
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+            Step {index + 1}
+          </p>
+          <p className="mt-1 text-sm font-semibold text-slate-900">{step.title}</p>
+          <p className="mt-1 text-xs leading-5 text-slate-600">{step.description}</p>
+          <div className="mt-2 space-y-1.5">
+            {stepGuide.checklist.map((item) => (
+              <div key={`${step.key}-${item}`} className="flex items-start gap-2">
+                <span className="mt-1 h-1.5 w-1.5 rounded-full bg-primary/80" />
+                <p className="text-xs leading-5 text-slate-700">{item}</p>
+              </div>
+            ))}
+          </div>
         </div>
+      </div>
+    );
+  })}
+</div>
       </section>
 
-      <div className="grid grid-cols-1 xl:grid-cols-[300px_minmax(0,1fr)] gap-6">
-        <aside className="xl:sticky xl:top-20 h-fit space-y-4">
-          <section className={`${panelClassName} space-y-3`}>
-            <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-600">TNA Steps</h2>
-            <p className="text-xs text-slate-500">Select any step to navigate the workflow.</p>
-            <div className="space-y-2">
-              {FLOW_STEPS.map((step, index) => {
-                const isActive = activeStep === step.key;
-                const isComplete = completionByStep[step.key];
-                const statusMeta = getStepStatusMeta(step.key);
-                return (
-                  <a
-                    key={step.key}
-                    href={`#${step.key}`}
-                    onClick={() => setActiveStep(step.key)}
-                    className={`block rounded-xl border p-3 transition-colors ${
-                      isActive
-                        ? "border-primary bg-primary/5"
-                        : isComplete
-                        ? "border-emerald-200 bg-emerald-50/60"
-                        : "border-slate-200 hover:border-slate-300"
-                    }`}
-                  >
-                    <div className="flex items-start gap-3">
-                      <span
-                        className={`mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold ${
-                          isComplete
-                            ? "bg-emerald-600 text-white"
-                            : isActive
-                            ? "bg-primary text-white"
-                            : "bg-slate-100 text-slate-600"
-                        }`}
-                      >
-                        {index + 1}
-                      </span>
-                      <div className="min-w-0">
-                        <p className="text-sm font-semibold text-slate-900">{step.title}</p>
-                        <p className="text-xs text-slate-600 mt-1">{step.description}</p>
-                        <span
-                          className={`mt-2 inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-semibold ${statusMeta.className}`}
-                        >
-                          {statusMeta.label}
-                        </span>
-                      </div>
-                    </div>
-                  </a>
-                );
-              })}
-            </div>
-          </section>
-
-          <section className={`${panelClassName} space-y-3`}>
-            <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Current Step Guide</p>
-            <div>
-              <h3 className="text-sm font-semibold text-slate-900">
-                {FLOW_STEPS[Math.max(activeStepIndex, 0)]?.title}
-              </h3>
-              <p className="text-xs text-slate-600 mt-1">{activeStepGuide.goal}</p>
-            </div>
-            <div className="space-y-2">
-              {activeStepGuide.checklist.map((item) => (
-                <div
-                  key={item}
-                  className="flex items-start gap-2 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-2"
-                >
-                  <span className="mt-1 h-1.5 w-1.5 rounded-full bg-primary/80" />
-                  <p className="text-xs text-slate-700 leading-5">{item}</p>
-                </div>
-              ))}
-            </div>
-          </section>
-
-          <section className={panelClassName}>
-            <h3 className="text-sm font-semibold text-slate-800">Level Guide</h3>
-            <p className="text-xs text-slate-600 mt-1">
-              Use consistent scoring for role requirements and employee current skills.
-            </p>
-            <div className="mt-3 grid grid-cols-2 gap-2 text-xs text-slate-700">
-              <div className="rounded-md bg-slate-50 border border-slate-200 px-2 py-1.5">1: Beginner</div>
-              <div className="rounded-md bg-slate-50 border border-slate-200 px-2 py-1.5">2: Basic</div>
-              <div className="rounded-md bg-slate-50 border border-slate-200 px-2 py-1.5">3: Working</div>
-              <div className="rounded-md bg-slate-50 border border-slate-200 px-2 py-1.5">4: Advanced</div>
-              <div className="rounded-md bg-slate-50 border border-slate-200 px-2 py-1.5 col-span-2">
-                5: Expert
-              </div>
-            </div>
-          </section>
-        </aside>
-
-        <main className="space-y-6">
+      <div className="space-y-6">
           <section
             id="skill-library"
             className={`${panelClassName} space-y-4 ${
@@ -682,14 +701,19 @@ export default function TnaPage() {
 
             <div className={sectionSurfaceClassName}>
               <p className={fieldLabelClassName}>Add New Skill</p>
-              <div className="flex flex-col md:flex-row gap-3">
+              <div className="mt-1 grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_120px] gap-2">
                 <input
                   value={skillName}
                   onChange={(event) => setSkillName(event.target.value)}
-                  className={`${inputClassName} mt-1 md:mt-0`}
+                  className={inputClassName}
                   placeholder="Skill name (e.g., Emergency Care)"
                 />
-                <Button variant="primary" onClick={saveSkill} isLoading={createSkillMutation.isPending}>
+                <Button
+                  variant="primary"
+                  onClick={saveSkill}
+                  isLoading={createSkillMutation.isPending}
+                  className="h-10 whitespace-nowrap justify-center"
+                >
                   Add Skill
                 </Button>
               </div>
@@ -782,22 +806,21 @@ export default function TnaPage() {
               </div>
               {requiredSkills.map((item, index) => (
                 <div key={`required-${index}`} className="grid grid-cols-12 gap-2">
-                  <select
-                    value={item.skillId}
-                    onChange={(event) => {
-                      const next = [...requiredSkills];
-                      next[index] = { ...next[index], skillId: event.target.value };
-                      setRequiredSkills(next);
-                    }}
-                    className={`col-span-12 md:col-span-8 ${inputClassName}`}
-                  >
-                    <option value="">Select skill</option>
-                    {skills.map((skill) => (
-                      <option key={skill._id} value={skill._id}>
-                        {skill.name}
-                      </option>
-                    ))}
-                  </select>
+                  <div className="col-span-12 md:col-span-8">
+                    <SearchableSelect
+                      options={skillSelectOptions}
+                      value={item.skillId}
+                      onChange={(value) => {
+                        const next = [...requiredSkills];
+                        next[index] = { ...next[index], skillId: value };
+                        setRequiredSkills(next);
+                      }}
+                      placeholder="Select skill"
+                      loading={skillsQuery.isLoading}
+                      emptyMessage="No skills yet. Add skills in Step 1."
+                      className="w-full"
+                    />
+                  </div>
                   <input
                     type="number"
                     min={0}
@@ -870,22 +893,17 @@ export default function TnaPage() {
 
             <div className={sectionSurfaceClassName}>
               <label className={fieldLabelClassName}>Select {employeeTerm}</label>
-              <select
-                value={employeeId}
-                onChange={(event) => setEmployeeId(event.target.value)}
-                className={`${inputClassName} mt-1`}
-              >
-                <option value="">
-                  {studentsQuery.isLoading
-                    ? `Loading ${employeeTermPlural.toLowerCase()}...`
-                    : `Select ${employeeTerm.toLowerCase()}`}
-                </option>
-                {employees.map((employee) => (
-                  <option key={employee._id} value={employee._id}>
-                    {employee.firstName} {employee.lastName}
-                  </option>
-                ))}
-              </select>
+              <div className="mt-1">
+                <SearchableSelect
+                  options={employeeSelectOptions}
+                  value={employeeId}
+                  onChange={(value) => setEmployeeId(value)}
+                  placeholder={`Select ${employeeTerm.toLowerCase()}`}
+                  loading={studentsQuery.isLoading}
+                  emptyMessage={`No ${employeeTermPlural.toLowerCase()} found.`}
+                  className="w-full"
+                />
+              </div>
               <p className={fieldHintClassName}>
                 Use the same scale from the Level Guide to keep analysis accurate.
               </p>
@@ -900,22 +918,21 @@ export default function TnaPage() {
               </div>
               {employeeSkills.map((item, index) => (
                 <div key={`employee-skill-${index}`} className="grid grid-cols-12 gap-2">
-                  <select
-                    value={item.skillId}
-                    onChange={(event) => {
-                      const next = [...employeeSkills];
-                      next[index] = { ...next[index], skillId: event.target.value };
-                      setEmployeeSkills(next);
-                    }}
-                    className={`col-span-12 md:col-span-8 ${inputClassName}`}
-                  >
-                    <option value="">Select skill</option>
-                    {skills.map((skill) => (
-                      <option key={skill._id} value={skill._id}>
-                        {skill.name}
-                      </option>
-                    ))}
-                  </select>
+                  <div className="col-span-12 md:col-span-8">
+                    <SearchableSelect
+                      options={skillSelectOptions}
+                      value={item.skillId}
+                      onChange={(value) => {
+                        const next = [...employeeSkills];
+                        next[index] = { ...next[index], skillId: value };
+                        setEmployeeSkills(next);
+                      }}
+                      placeholder="Select skill"
+                      loading={skillsQuery.isLoading}
+                      emptyMessage="No skills yet. Add skills in Step 1."
+                      className="w-full"
+                    />
+                  </div>
                   <input
                     type="number"
                     min={0}
@@ -991,40 +1008,38 @@ export default function TnaPage() {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 <div>
                   <label className={fieldLabelClassName}>{employeeTerm}</label>
-                  <select
-                    value={analyzeEmployeeId}
-                    onChange={(event) => setAnalyzeEmployeeId(event.target.value)}
-                    className={`${inputClassName} mt-1`}
-                  >
-                    <option value="">Select {employeeTerm.toLowerCase()}</option>
-                    {employees.map((employee) => (
-                      <option key={employee._id} value={employee._id}>
-                        {employee.firstName} {employee.lastName}
-                      </option>
-                    ))}
-                  </select>
+                  <div className="mt-1">
+                    <SearchableSelect
+                      options={employeeSelectOptions}
+                      value={analyzeEmployeeId}
+                      onChange={(value) => setAnalyzeEmployeeId(value)}
+                      placeholder={`Select ${employeeTerm.toLowerCase()}`}
+                      loading={studentsQuery.isLoading}
+                      emptyMessage={`No ${employeeTermPlural.toLowerCase()} found.`}
+                      className="w-full"
+                    />
+                  </div>
                   <p className={fieldHintClassName}>Choose who you want to assess now.</p>
                 </div>
                 <div>
                   <label className={fieldLabelClassName}>Job Role</label>
-                  <select
-                    value={analyzeJobRole}
-                    onChange={(event) => setAnalyzeJobRole(event.target.value)}
-                    className={`${inputClassName} mt-1`}
-                  >
-                    <option value="">
-                      {roleRequirementsQuery.isLoading
-                        ? "Loading role standards..."
-                        : roleOptions.length > 0
-                        ? "Select job role"
-                        : "No role standards yet"}
-                    </option>
-                    {roleOptions.map((roleOption) => (
-                      <option key={roleOption} value={roleOption}>
-                        {roleOption}
-                      </option>
-                    ))}
-                  </select>
+                  <div className="mt-1">
+                    <SearchableSelect
+                      options={roleSelectOptions}
+                      value={analyzeJobRole}
+                      onChange={(value) => setAnalyzeJobRole(value)}
+                      placeholder={
+                        roleRequirementsQuery.isLoading
+                          ? "Loading role standards..."
+                          : roleOptions.length > 0
+                          ? "Select job role"
+                          : "No role standards yet"
+                      }
+                      loading={roleRequirementsQuery.isLoading}
+                      emptyMessage="No role standards yet. Define Step 2 first."
+                      className="w-full"
+                    />
+                  </div>
                   {!roleRequirementsQuery.isLoading && roleOptions.length === 0 && (
                     <p className="mt-1 text-xs text-amber-700">
                       Define role standards in Step 2 first.
@@ -1105,7 +1120,7 @@ export default function TnaPage() {
                   <textarea
                     value={performanceGaps}
                     onChange={(event) => setPerformanceGaps(event.target.value)}
-                    className={`min-h-[92px] ${inputClassName} mt-1`}
+                    className={`min-h-[88px] ${textareaClassName} mt-1`}
                     placeholder="Comma or new line separated"
                   />
                   <p className={fieldHintClassName}>Examples: missed deadlines, low quality output.</p>
@@ -1115,7 +1130,7 @@ export default function TnaPage() {
                   <textarea
                     value={managerRecommendations}
                     onChange={(event) => setManagerRecommendations(event.target.value)}
-                    className={`min-h-[92px] ${inputClassName} mt-1`}
+                    className={`min-h-[88px] ${textareaClassName} mt-1`}
                     placeholder="Comma or new line separated"
                   />
                   <p className={fieldHintClassName}>Examples: mentor support, course focus areas.</p>
@@ -1125,7 +1140,7 @@ export default function TnaPage() {
                   <textarea
                     value={employeeRequests}
                     onChange={(event) => setEmployeeRequests(event.target.value)}
-                    className={`min-h-[92px] ${inputClassName} mt-1`}
+                    className={`min-h-[88px] ${textareaClassName} mt-1`}
                     placeholder="Comma or new line separated"
                   />
                   <p className={fieldHintClassName}>Examples: requested topics or certifications.</p>
@@ -1155,23 +1170,21 @@ export default function TnaPage() {
                     className={`md:col-span-5 ${inputClassName}`}
                     placeholder="Compliance training title"
                   />
-                  <select
-                    value={item.courseId}
-                    onChange={(event) => {
-                      const next = [...compliance];
-                      next[index] = { ...next[index], courseId: event.target.value };
-                      setCompliance(next);
-                    }}
-                    className={`md:col-span-4 ${inputClassName}`}
-                  >
-                    <option value="">{coursesQuery.isLoading ? "Loading courses..." : "Optional course link"}</option>
-                    {courses.map((course) => (
-                      <option key={course._id} value={course._id}>
-                        {course.code ? `${course.code} - ` : ""}
-                        {course.title}
-                      </option>
-                    ))}
-                  </select>
+                  <div className="md:col-span-4">
+                    <SearchableSelect
+                      options={courseSelectOptions}
+                      value={item.courseId}
+                      onChange={(value) => {
+                        const next = [...compliance];
+                        next[index] = { ...next[index], courseId: value };
+                        setCompliance(next);
+                      }}
+                      placeholder={coursesQuery.isLoading ? "Loading courses..." : "Optional course link"}
+                      loading={coursesQuery.isLoading}
+                      emptyMessage="No courses available"
+                      className="w-full"
+                    />
+                  </div>
                   <label className="md:col-span-2 flex items-center gap-2 text-sm text-slate-700 rounded-lg border border-slate-200 px-3">
                     <input
                       type="checkbox"
@@ -1217,7 +1230,7 @@ export default function TnaPage() {
               activeStep === "recommendations" ? "ring-2 ring-primary/20" : ""
             }`}
           >
-            <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-3">
+            <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
               <div>
                 <div className="flex items-center gap-2">
                   <p className={fieldLabelClassName}>Step 5</p>
@@ -1232,13 +1245,22 @@ export default function TnaPage() {
                   Review generated recommendations and move each one through assignment and completion.
                 </p>
               </div>
-              <Button
-                variant="outline"
-                onClick={() => navigate(`/${orgCode}/admin/tna/employees`)}
-                className="h-fit"
-              >
-                View Employee TNA Details
-              </Button>
+              <div className="flex flex-col sm:flex-row sm:flex-wrap md:justify-end gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => navigate(`/${orgCode}/admin/tna/employees`)}
+                  className="h-10 px-4 text-sm text-center leading-tight"
+                >
+                  View Employee TNA Details
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => navigate(`/${orgCode}/admin/tna/execution`)}
+                  className="h-10 px-4 text-sm text-center leading-tight"
+                >
+                  Deploy to Program and Batch
+                </Button>
+              </div>
             </div>
 
             {recommendationsQuery.isLoading ? (
@@ -1248,70 +1270,102 @@ export default function TnaPage() {
                 No recommendations yet. Complete steps 1 to 4 and run analysis.
               </div>
             ) : (
-              <div className="space-y-3">
-                {recommendations.map((recommendation) => {
-                  const currentStatus = normalizeStatus(recommendation.status);
-                  const currentDraft = statusDrafts[recommendation._id] || currentStatus;
-                  return (
-                    <div key={recommendation._id} className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                      <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-3">
-                        <div>
-                          <p className="text-base font-semibold text-slate-900">
-                            {recommendation.employee?.firstName || "--"}{" "}
-                            {recommendation.employee?.lastName || ""}
-                          </p>
-                          <p className="text-xs text-slate-500 mt-1">
-                            {recommendation.jobRole} |{" "}
-                            {new Date(recommendation.createdAt || Date.now()).toLocaleString()}
-                          </p>
-                          <div className="mt-2 flex flex-wrap gap-2 text-xs">
-                            <span className="rounded-full bg-white border border-slate-200 px-2.5 py-1 text-slate-700">
-                              Skill gaps:{" "}
-                              {Array.isArray(recommendation.skillGaps)
-                                ? recommendation.skillGaps.length
-                                : 0}
-                            </span>
-                            <span className="rounded-full bg-white border border-slate-200 px-2.5 py-1 text-slate-700">
-                              Recommended trainings:{" "}
-                              {Array.isArray(recommendation.recommendedTrainings)
-                                ? recommendation.recommendedTrainings.length
-                                : 0}
-                            </span>
-                          </div>
-                        </div>
+              <div className="rounded-xl border border-slate-200 bg-white">
+                  <table className="w-full table-auto text-sm">
+                    <thead className="bg-slate-50">
+                      <tr className="text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                        <th className="px-4 py-3">Employee</th>
+                        <th className="px-4 py-3">Role</th>
+                        <th className="px-4 py-3">Created</th>
+                        <th className="px-4 py-3">Skill Gaps</th>
+                        <th className="px-4 py-3">Recommended</th>
+                        <th className="px-4 py-3">Status</th>
+                        <th className="px-4 py-3">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {recommendations.map((recommendation) => {
+                        const currentStatus = normalizeStatus(recommendation.status);
+                        const currentDraft = statusDrafts[recommendation._id] || currentStatus;
+                        const isDeletingCurrent =
+                          deleteRecommendationMutation.isPending &&
+                          deletingRecommendationId === recommendation._id;
+                        const firstName = String(recommendation.employee?.firstName || "").trim();
+                        const lastName = String(recommendation.employee?.lastName || "").trim();
+                        const fullName =
+                          `${firstName} ${lastName}`.trim() ||
+                          recommendation.employee?.email ||
+                          "Unknown employee";
 
-                        <div className="flex items-center gap-2">
-                          <select
-                            value={currentDraft}
-                            onChange={(event) =>
-                              setStatusDrafts((previous) => ({
-                                ...previous,
-                                [recommendation._id]: event.target.value as RecommendationStatus,
-                              }))
-                            }
-                            className={`${inputClassName} min-w-[140px]`}
+                        return (
+                          <tr
+                            key={recommendation._id}
+                            className="border-t border-slate-100 align-top relative focus-within:z-20"
                           >
-                            <option value="pending">pending</option>
-                            <option value="assigned">assigned</option>
-                            <option value="completed">completed</option>
-                          </select>
-                          <Button
-                            variant="outline"
-                            isLoading={updateRecommendationStatusMutation.isPending}
-                            onClick={() => updateStatus(recommendation._id, currentStatus)}
-                          >
-                            Update
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
+                            <td className="px-4 py-3">
+                              <p className="text-sm font-semibold text-slate-900">{fullName}</p>
+                              <p className="text-xs text-slate-500 mt-1">
+                                {recommendation.employee?.email || "--"}
+                              </p>
+                            </td>
+                            <td className="px-4 py-3 text-slate-700">{recommendation.jobRole || "--"}</td>
+                            <td className="px-4 py-3 text-slate-700">
+                              {new Date(recommendation.createdAt || Date.now()).toLocaleString()}
+                            </td>
+                            <td className="px-4 py-3">
+                              <span className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-700">
+                                {Array.isArray(recommendation.skillGaps)
+                                  ? recommendation.skillGaps.length
+                                  : 0}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3">
+                              <span className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-700">
+                                {Array.isArray(recommendation.recommendedTrainings)
+                                  ? recommendation.recommendedTrainings.length
+                                  : 0}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3">
+                              <div className="w-[190px]">
+                                <SearchableSelect
+                                  options={recommendationStatusOptions}
+                                  value={currentDraft}
+                                  onChange={(value) => {
+                                    const nextStatus = value as RecommendationStatus;
+                                    setStatusDrafts((previous) => ({
+                                      ...previous,
+                                      [recommendation._id]: nextStatus,
+                                    }));
+                                    void updateStatus(recommendation._id, nextStatus, currentStatus);
+                                  }}
+                                  placeholder="Select status"
+                                  className="w-full"
+                                />
+                              </div>
+                            </td>
+                            <td className="px-4 py-3">
+                              <button
+                                type="button"
+                                className="h-10 min-w-[110px] rounded-lg border border-red-200 px-3 text-sm text-red-600 transition-colors hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+                                onClick={() => {
+                                  void deleteRecommendation(recommendation._id);
+                                }}
+                                disabled={deleteRecommendationMutation.isPending}
+                              >
+                                {isDeletingCurrent ? "Deleting..." : "Delete"}
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
               </div>
             )}
           </section>
-        </main>
       </div>
     </div>
   );
 }
+

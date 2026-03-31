@@ -294,7 +294,9 @@ export const API_ENDPOINTS = {
     ANALYZE: "/tna/analyze",
     RECOMMENDATION_GET_ALL: "/tna/recommendation/get/all",
     RECOMMENDATION_BY_EMPLOYEE: "/tna/recommendation/employee/:employeeId",
+    RECOMMENDATION_REMOVE: "/tna/recommendation/remove/:id",
     RECOMMENDATION_UPDATE_STATUS: "/tna/recommendation/status/update",
+    RECOMMENDATION_EXECUTION_UPSERT: "/tna/recommendation/execution/upsert",
   },
 
   //... Add more API endpoints here

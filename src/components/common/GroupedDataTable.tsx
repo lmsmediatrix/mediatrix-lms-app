@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import type { KeyboardEvent, MouseEvent } from "react";
 
 type SortDirection = "asc" | "desc";
 
@@ -30,6 +31,8 @@ interface GroupedDataTableProps<T> {
   emptyFilteredText?: string;
   tableMinWidthClassName?: string;
   onRowClick?: (row: T) => void;
+  cardless?: boolean;
+  showGroupHeader?: boolean;
 }
 
 export default function GroupedDataTable<T extends object>({
@@ -40,7 +43,24 @@ export default function GroupedDataTable<T extends object>({
   emptyFilteredText = "No matching rows found.",
   tableMinWidthClassName = "min-w-[980px]",
   onRowClick,
+  cardless = false,
+  showGroupHeader = true,
 }: GroupedDataTableProps<T>) {
+  const triggerRowClick = (row: T, event?: MouseEvent<HTMLElement> | KeyboardEvent<HTMLElement>) => {
+    if (!onRowClick) return;
+
+    const target = event?.target as HTMLElement | null;
+    if (
+      target?.closest(
+        "button, a, input, select, textarea, [contenteditable='true'], [data-row-click-stop='true']",
+      )
+    ) {
+      return;
+    }
+
+    onRowClick(row);
+  };
+
   const firstSortableColumn = useMemo(
     () => columns.find((c) => c.sortable)?.key || columns[0]?.key || "",
     [columns],
@@ -151,33 +171,50 @@ export default function GroupedDataTable<T extends object>({
         return (
           <div
             key={group.key}
-            className="rounded-2xl border shadow-sm overflow-hidden"
-            style={{
-              backgroundColor: "color-mix(in srgb, var(--color-primary, #3b82f6) 4%, white 96%)",
-              borderColor: "color-mix(in srgb, var(--color-primary, #3b82f6) 15%, white 85%)",
-            }}
+            className={
+              cardless
+                ? "overflow-hidden"
+                : "rounded-2xl border shadow-sm overflow-hidden"
+            }
+            style={
+              cardless
+                ? undefined
+                : {
+                    backgroundColor:
+                      "color-mix(in srgb, var(--color-primary, #3b82f6) 4%, white 96%)",
+                    borderColor:
+                      "color-mix(in srgb, var(--color-primary, #3b82f6) 15%, white 85%)",
+                  }
+            }
           >
-            <div
-              className="px-5 py-3 border-b flex items-center justify-between"
-              style={{
-                backgroundColor: "color-mix(in srgb, var(--color-primary, #3b82f6) 8%, white 92%)",
-                borderColor: "color-mix(in srgb, var(--color-primary, #3b82f6) 15%, white 85%)",
-              }}
-            >
-              <span className="text-sm font-semibold text-gray-800">{group.title}</span>
-              {group.badgeText && (
-                <span
-                  className="text-xs font-medium px-2.5 py-0.5 rounded-full border"
-                  style={{
-                    color: "color-mix(in srgb, var(--color-primary, #3b82f6) 80%, black 20%)",
-                    backgroundColor: "color-mix(in srgb, var(--color-primary, #3b82f6) 10%, white 90%)",
-                    borderColor: "color-mix(in srgb, var(--color-primary, #3b82f6) 20%, white 80%)",
-                  }}
-                >
-                  {group.badgeText}
-                </span>
-              )}
-            </div>
+            {showGroupHeader && (
+              <div
+                className="px-5 py-3 border-b flex items-center justify-between"
+                style={{
+                  backgroundColor:
+                    "color-mix(in srgb, var(--color-primary, #3b82f6) 8%, white 92%)",
+                  borderColor:
+                    "color-mix(in srgb, var(--color-primary, #3b82f6) 15%, white 85%)",
+                }}
+              >
+                <span className="text-sm font-semibold text-gray-800">{group.title}</span>
+                {group.badgeText && (
+                  <span
+                    className="text-xs font-medium px-2.5 py-0.5 rounded-full border"
+                    style={{
+                      color:
+                        "color-mix(in srgb, var(--color-primary, #3b82f6) 80%, black 20%)",
+                      backgroundColor:
+                        "color-mix(in srgb, var(--color-primary, #3b82f6) 10%, white 90%)",
+                      borderColor:
+                        "color-mix(in srgb, var(--color-primary, #3b82f6) 20%, white 80%)",
+                    }}
+                  >
+                    {group.badgeText}
+                  </span>
+                )}
+              </div>
+            )}
 
             <div className="bg-white overflow-x-auto">
               <table className={`w-full ${tableMinWidthClassName}`}>
@@ -267,7 +304,14 @@ export default function GroupedDataTable<T extends object>({
                         key={rowKey(row, index)}
                         className={`transition-colors hover:brightness-[0.98] ${onRowClick ? "cursor-pointer" : ""}`}
                         style={{ backgroundColor: "white" }}
-                        onClick={() => onRowClick?.(row)}
+                        onClick={(event) => triggerRowClick(row, event)}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter" || event.key === " ") {
+                            event.preventDefault();
+                            triggerRowClick(row, event);
+                          }
+                        }}
+                        tabIndex={onRowClick ? 0 : undefined}
                         onMouseEnter={(e) =>
                           ((e.currentTarget as HTMLTableRowElement).style.backgroundColor =
                             "color-mix(in srgb, var(--color-primary, #3b82f6) 4%, white 96%)")

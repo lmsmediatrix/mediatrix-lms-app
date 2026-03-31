@@ -98,11 +98,60 @@ export const useGetEmployeeTnaRecommendations = (
   });
 };
 
+export const useDeleteTnaRecommendation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: { recommendationId: string }) =>
+      TnaService.deleteRecommendation(payload.recommendationId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["tna-recommendations"] });
+      queryClient.invalidateQueries({ queryKey: ["employee-tna-recommendations"] });
+    },
+  });
+};
+
 export const useUpdateTnaRecommendationStatus = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (payload: { recommendationId: string; status: "pending" | "assigned" | "completed" }) =>
       TnaService.updateRecommendationStatus(payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["tna-recommendations"] });
+      queryClient.invalidateQueries({ queryKey: ["employee-tna-recommendations"] });
+    },
+  });
+};
+
+export const useUpsertTnaRecommendationExecution = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: {
+      recommendationId: string;
+      trainingProgramTitle?: string;
+      speakerName?: string;
+      speakerSource?: string;
+      scheduledAt?: string;
+      scheduleNotes?: string;
+      materialsPrepared?: boolean;
+      materialsNotes?: string;
+      conductedAt?: string;
+      examScore?: number;
+      passingScore?: number;
+      examRetakeCount?: number;
+      evaluationScore?: number;
+      evaluationNotes?: string;
+      certificateIssued?: boolean;
+      certificateCode?: string;
+      certificateIssuedAt?: string;
+      recordsFiled?: boolean;
+      recordsFiledAt?: string;
+      recordsNotes?: string;
+      trainingStatuses?: Array<{
+        trainingId: string;
+        status: "pending" | "in_progress" | "completed";
+      }>;
+      status?: "pending" | "assigned" | "completed";
+    }) => TnaService.upsertRecommendationExecution(payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["tna-recommendations"] });
       queryClient.invalidateQueries({ queryKey: ["employee-tna-recommendations"] });

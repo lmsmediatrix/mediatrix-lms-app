@@ -97,6 +97,16 @@ class TnaService extends APIService {
     return response.data;
   };
 
+  deleteRecommendation = async (recommendationId: string) => {
+    const response = await apiClient.delete(
+      `${BASE_URL}${TNA.RECOMMENDATION_REMOVE.replace(":id", recommendationId)}`,
+      {
+        withCredentials: true,
+      }
+    );
+    return response.data;
+  };
+
   updateRecommendationStatus = async (body: {
     recommendationId: string;
     status: "pending" | "assigned" | "completed";
@@ -104,6 +114,43 @@ class TnaService extends APIService {
     const response = await apiClient.put(`${BASE_URL}${TNA.RECOMMENDATION_UPDATE_STATUS}`, body, {
       withCredentials: true,
     });
+    return response.data;
+  };
+
+  upsertRecommendationExecution = async (body: {
+    recommendationId: string;
+    trainingProgramTitle?: string;
+    speakerName?: string;
+    speakerSource?: string;
+    scheduledAt?: string;
+    scheduleNotes?: string;
+    materialsPrepared?: boolean;
+    materialsNotes?: string;
+    conductedAt?: string;
+    examScore?: number;
+    passingScore?: number;
+    examRetakeCount?: number;
+    evaluationScore?: number;
+    evaluationNotes?: string;
+    certificateIssued?: boolean;
+    certificateCode?: string;
+    certificateIssuedAt?: string;
+    recordsFiled?: boolean;
+    recordsFiledAt?: string;
+    recordsNotes?: string;
+    trainingStatuses?: Array<{
+      trainingId: string;
+      status: "pending" | "in_progress" | "completed";
+    }>;
+    status?: "pending" | "assigned" | "completed";
+  }) => {
+    const response = await apiClient.put(
+      `${BASE_URL}${TNA.RECOMMENDATION_EXECUTION_UPSERT}`,
+      body,
+      {
+        withCredentials: true,
+      }
+    );
     return response.data;
   };
 }

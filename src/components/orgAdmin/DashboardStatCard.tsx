@@ -18,30 +18,18 @@ const CARD_THEMES = [
   {
     colorVar: "--color-primary",
     fallback: "#3b82f6",
-    darkFallback: "#1d4ed8",
-    lightFallback: "#eff6ff",
-    midFallback: "#bfdbfe",
   },
   {
     colorVar: "--color-secondary",
     fallback: "#8b5cf6",
-    darkFallback: "#6d28d9",
-    lightFallback: "#f5f3ff",
-    midFallback: "#ddd6fe",
   },
   {
     colorVar: "--color-success",
     fallback: "#10b981",
-    darkFallback: "#065f46",
-    lightFallback: "#ecfdf5",
-    midFallback: "#a7f3d0",
   },
   {
     colorVar: "--color-accent",
     fallback: "#f59e0b",
-    darkFallback: "#b45309",
-    lightFallback: "#fffbeb",
-    midFallback: "#fde68a",
   },
 ];
 
@@ -66,45 +54,31 @@ export default function DashboardStatCard({
 
   const t = CARD_THEMES[index % CARD_THEMES.length];
   const color = `var(${t.colorVar}, ${t.fallback})`;
-  const colorDark = `var(${t.colorVar}-dark, color-mix(in srgb, ${color} 80%, black 20%))`;
-  const colorLight = `color-mix(in srgb, ${color} 10%, white 90%)`;
-  const colorMid = `color-mix(in srgb, ${color} 22%, white 78%)`;
+  const colorDark = `color-mix(in srgb, ${color} 78%, #0f172a 22%)`;
+  const colorLight = `color-mix(in srgb, ${color} 6%, white 94%)`;
+  const colorMid = `color-mix(in srgb, ${color} 16%, white 84%)`;
   const colorBadge = `color-mix(in srgb, ${color} 16%, white 84%)`;
 
   return (
     <motion.div
-      whileHover={{ y: -5, scale: 1.01 }}
-      whileTap={{ scale: 0.98 }}
-      transition={{ type: "spring", stiffness: 300, damping: 20 }}
+      whileHover={{ y: -2, scale: 1.005 }}
+      whileTap={{ scale: 0.995 }}
+      transition={{ type: "spring", stiffness: 280, damping: 22 }}
       onClick={onClick}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      className="relative overflow-hidden rounded-2xl border cursor-pointer select-none"
+      className="rounded-2xl border cursor-pointer select-none p-5 transition-all"
       style={{
-        background: `linear-gradient(145deg, ${colorLight} 0%, white 55%, ${colorLight} 100%)`,
+        backgroundColor: colorLight,
         borderColor: colorMid,
-        boxShadow: `0 1px 3px color-mix(in srgb, ${color} 10%, transparent 90%), 0 0 0 1px ${colorMid}`,
+        boxShadow: `0 1px 2px color-mix(in srgb, ${color} 10%, transparent 90%)`,
       }}
     >
-      {/* Decorative blobs */}
-      <div
-        className="pointer-events-none absolute -right-8 -top-8 h-32 w-32 rounded-full opacity-15"
-        style={{ backgroundColor: color }}
-      />
-      <div
-        className="pointer-events-none absolute -right-3 -top-3 h-16 w-16 rounded-full opacity-10"
-        style={{ backgroundColor: color }}
-      />
-      <div
-        className="pointer-events-none absolute -bottom-4 -left-4 h-14 w-14 rounded-full opacity-8"
-        style={{ backgroundColor: color }}
-      />
-
-      <div className="relative z-10 flex flex-col gap-4 p-5">
+      <div className="flex flex-col gap-4">
         {/* Top row: label + icon badge */}
         <div className="flex items-start justify-between gap-3">
           <span
-            className="text-xs font-bold uppercase tracking-widest"
+            className="text-xs font-semibold uppercase tracking-widest"
             style={{ color: `color-mix(in srgb, ${color} 70%, #374151 30%)` }}
           >
             {label}
