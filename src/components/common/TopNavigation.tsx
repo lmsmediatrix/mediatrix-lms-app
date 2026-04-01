@@ -165,11 +165,24 @@ export default function TopNavigation() {
     ? BASE_NAVIGATION[role]
         .map((item: NavItem) => {
           if (orgType !== "corporate" || !item.SUBMENU) {
-            return item;
+            if (!item.SUBMENU) {
+              return item;
+            }
+
+            const schoolSubmenu = item.SUBMENU.filter(
+              (subItem: NavItem) => subItem.LABEL !== "Department"
+            );
+
+            if (schoolSubmenu.length === 0 && !item.PATH) {
+              return null;
+            }
+
+            return { ...item, SUBMENU: schoolSubmenu };
           }
 
           const filteredSubmenu = item.SUBMENU.filter(
-            (subItem: NavItem) => subItem.LABEL !== "Category"
+            (subItem: NavItem) =>
+              subItem.LABEL !== "Category" && subItem.LABEL !== "Faculty"
           );
 
           if (filteredSubmenu.length === 0 && !item.PATH) {

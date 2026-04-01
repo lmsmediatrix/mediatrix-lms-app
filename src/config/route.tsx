@@ -42,6 +42,7 @@ import CategoryPage from "../pages/orgAdmin/CategoryPage";
 import AuditLogs from "../pages/superadmin/AuditLogs";
 import FacultyPage from "../pages/orgAdmin/FacultyPage";
 import ProgramPage from "../pages/orgAdmin/ProgramPage";
+import DepartmentPage from "../pages/orgAdmin/DepartmentPage";
 import FAQ from "../pages/common/FAQ";
 import TermsAndCondition from "../pages/common/TermsAndCondition";
 import PrivacyPolicy from "../pages/common/PrivacyPolicy";
@@ -147,6 +148,10 @@ export const appRoutes = [
       {
         path: "/:orgCode/admin/program",
         element: <ProgramPage />,
+      },
+      {
+        path: "/:orgCode/admin/department",
+        element: <DepartmentPage />,
       },
       {
         path: "/:orgCode/admin/voucher",

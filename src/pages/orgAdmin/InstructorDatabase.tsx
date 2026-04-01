@@ -41,7 +41,6 @@ const EMPLOYMENT_TYPES = [
   "temporary",
   "volunteer",
   "retired",
-  "resigned",
 ];
 
 export default function InstructorDatabase() {

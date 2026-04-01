@@ -118,9 +118,10 @@ export default function ProgramPage() {
     return data.programs.map((program: any) => (
       <tr
         key={program._id}
-        className={`border-b border-gray-200 hover:bg-gray-50 ${
+        className={`border-b border-gray-200 hover:bg-gray-50 cursor-pointer ${
           archiveStatus === "only" ? "text-gray-500 line-through" : ""
         }`}
+        onClick={() => setSearchParams({ modal: "view-program", id: program._id })}
       >
         <td className="py-4 px-4">
           <span className="font-semibold">{program.code}</span>
@@ -134,16 +135,18 @@ export default function ProgramPage() {
         <td className="py-4 px-4">
           <div className="flex gap-2">
             <button
-              onClick={() =>
+              onClick={(e) => {
+                e.stopPropagation();
                 setSearchParams({ modal: "view-program", id: program._id })
-              }
+              }}
               className="p-2 rounded-full hover:bg-gray-100 text-primary"
               title="View Program Details"
             >
               <FaEye className="w-4 h-4" />
             </button>
             <button
-              onClick={() => {
+              onClick={(e) => {
+                e.stopPropagation();
                 if (archiveStatus !== "only") {
                   setSearchParams({ modal: "edit-program", id: program._id });
                 }
@@ -159,7 +162,8 @@ export default function ProgramPage() {
               <FiEdit2 className="w-4 h-4" />
             </button>
             <button
-              onClick={() => {
+              onClick={(e) => {
+                e.stopPropagation();
                 if (archiveStatus !== "only") {
                   handleDeleteClick(program);
                 }

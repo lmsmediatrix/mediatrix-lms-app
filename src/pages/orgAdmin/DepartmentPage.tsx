@@ -3,35 +3,35 @@ import Table from "../../components/common/Table";
 import { FaPlus, FaEye } from "react-icons/fa";
 import { Navigate, useSearchParams } from "react-router-dom";
 import { FiEdit2, FiTrash2 } from "react-icons/fi";
-import { useFaculties } from "../../hooks/useFaculty";
+import { useDepartments } from "../../hooks/useDepartment";
 import { useState } from "react";
 import { useAuth } from "../../context/AuthContext";
 import TableEmptyState from "../../components/common/TableEmptyState";
 import FilterDropdownButton from "../../components/orgAdmin/FilterDropdownButton";
 import ResponsiveFilterButton from "../../components/orgAdmin/ResponsiveFilterButton";
-import UpsertFacultyModal from "../../components/orgAdmin/UpsertFacultyModal";
-import ViewFacultyModal from "../../components/orgAdmin/ViewFacultyModal";
-import DeleteFacultyModal from "../../components/orgAdmin/DeleteFacultyModal";
+import UpsertDepartmentModal from "../../components/orgAdmin/UpsertDepartmentModal";
+import ViewDepartmentModal from "../../components/orgAdmin/ViewDepartmentModal";
+import DeleteDepartmentModal from "../../components/orgAdmin/DeleteDepartmentModal";
 import TableSkeletonClean from "../../components/skeleton/TableSkeletonClean";
 import { useDebounce } from "../../hooks/useDebounce";
 
-const FACULTY_STATUS = [
+const DEPARTMENT_STATUS = [
   { value: "true", label: "Active" },
   { value: "false", label: "Inactive" },
 ];
 
-interface FacultyToDelete {
+interface DepartmentToDelete {
   id: string;
   name: string;
 }
 
-export default function FacultyPage() {
+export default function DepartmentPage() {
   const { currentUser } = useAuth();
   const isCorporate = currentUser.user.organization.type === "corporate";
   const orgCode = currentUser.user.organization.code;
 
-  if (isCorporate) {
-    return <Navigate to={`/${orgCode}/admin/department`} replace />;
+  if (!isCorporate) {
+    return <Navigate to={`/${orgCode}/admin/faculty`} replace />;
   }
 
   const [searchParams, setSearchParams] = useSearchParams();
@@ -44,16 +44,16 @@ export default function FacultyPage() {
   const [searchTerm, setSearchTerm] = useState(
     searchParams.get("search") || ""
   );
-    const debouncedSearchTerm = useDebounce(searchTerm, 500);
-  
+  const debouncedSearchTerm = useDebounce(searchTerm, 500);
+
   const [skipLimit, setSkipLimit] = useState({
     skip: Number(searchParams.get("page") || "1") - 1,
     limit: 10,
   });
-  const [facultyToDelete, setFacultyToDelete] =
-    useState<FacultyToDelete | null>(null);
+  const [departmentToDelete, setDepartmentToDelete] =
+    useState<DepartmentToDelete | null>(null);
 
-  const { data, isLoading, isError } = useFaculties({
+  const { data, isLoading, isError } = useDepartments({
     skip: skipLimit.skip,
     limit: skipLimit.limit,
     filter: selectedStatus
@@ -61,7 +61,7 @@ export default function FacultyPage() {
       : undefined,
     searchTerm: debouncedSearchTerm,
     organizationId: currentUser.user.organization._id,
-    archiveStatus,  
+    archiveStatus,
   });
 
   const modal = searchParams.get("modal");
@@ -102,10 +102,10 @@ export default function FacultyPage() {
     });
   };
 
-  const handleDeleteClick = (faculty: any) => {
-    setFacultyToDelete({
-      id: faculty._id,
-      name: faculty.name,
+  const handleDeleteClick = (department: any) => {
+    setDepartmentToDelete({
+      id: department._id,
+      name: department.name,
     });
   };
 
@@ -114,62 +114,63 @@ export default function FacultyPage() {
       return (
         <tr className="border-b border-gray-200">
           <td colSpan={5} className="py-4 px-4 text-center text-gray-500">
-            Error loading faculties
+            Error loading departments
           </td>
         </tr>
       );
     }
 
-    if (!data?.faculties || data.faculties.length === 0) {
+    if (!data?.departments || data.departments.length === 0) {
       const isFiltered = Boolean(
         searchTerm || selectedStatus || archiveStatus !== "none"
       );
       return (
         <TableEmptyState
-          title="Create Your First Faculty"
-          description="Start by creating a faculty. Faculties help organize your academic departments."
-          primaryActionLabel="Add Faculty"
-          primaryActionPath="?modal=create-faculty"
+          title="Create Your First Department"
+          description="Start by creating a department to organize your corporate workforce."
+          primaryActionLabel="Add Department"
+          primaryActionPath="?modal=create-department"
           colSpan={5}
-          type="faculty"
           isFiltered={isFiltered}
         />
       );
     }
 
-    return data.faculties.map((faculty: any) => (
+    return data.departments.map((department: any) => (
       <tr
-        key={faculty._id}
+        key={department._id}
         className={`border-b border-gray-200 hover:bg-gray-50 cursor-pointer ${
           archiveStatus === "only" ? "text-gray-500 line-through" : ""
         }`}
-        onClick={() => setSearchParams({ modal: "view-faculty", id: faculty._id })}
+        onClick={() =>
+          setSearchParams({ modal: "view-department", id: department._id })
+        }
       >
         <td className="py-4 px-4">
           <div>
-            <span className="font-semibold">{faculty.code}</span>
+            <span className="font-semibold">{department.code}</span>
           </div>
         </td>
         <td className="py-4 px-4">
           <div>
-            <span className="font-semibold">{faculty.name}</span>
+            <span className="font-semibold">{department.name}</span>
           </div>
         </td>
         <td className="py-4 px-4">
           <div className="text-sm text-gray-900 max-w-xs truncate">
-            {faculty.description || "No description"}
+            {department.description || "No description"}
           </div>
         </td>
         <td className="py-4 px-4">
           <div className="flex items-center">
             <span
               className={`px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm text-center whitespace-normal break-words ${
-                faculty.isActive
+                department.isActive
                   ? "bg-green-100 text-green-800"
                   : "bg-red-100 text-red-800"
               }`}
             >
-              {faculty.isActive ? "Active" : "Inactive"}
+              {department.isActive ? "Active" : "Inactive"}
             </span>
           </div>
         </td>
@@ -178,10 +179,10 @@ export default function FacultyPage() {
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                setSearchParams({ modal: "view-faculty", id: faculty._id })
+                setSearchParams({ modal: "view-department", id: department._id });
               }}
               className="p-2 rounded-full hover:bg-gray-100 text-primary"
-              title="View Faculty Details"
+              title="View Department Details"
             >
               <FaEye className="w-4 h-4" />
             </button>
@@ -189,7 +190,7 @@ export default function FacultyPage() {
               onClick={(e) => {
                 e.stopPropagation();
                 if (archiveStatus !== "only") {
-                  setSearchParams({ modal: "edit-faculty", id: faculty._id });
+                  setSearchParams({ modal: "edit-department", id: department._id });
                 }
               }}
               className={`p-2 rounded-full ${
@@ -198,7 +199,7 @@ export default function FacultyPage() {
                   : "hover:bg-gray-100"
               }`}
               disabled={archiveStatus === "only"}
-              title="Edit Faculty"
+              title="Edit Department"
             >
               <FiEdit2 className="w-4 h-4" />
             </button>
@@ -206,7 +207,7 @@ export default function FacultyPage() {
               onClick={(e) => {
                 e.stopPropagation();
                 if (archiveStatus !== "only") {
-                  handleDeleteClick(faculty);
+                  handleDeleteClick(department);
                 }
               }}
               className={`p-2 rounded-full ${
@@ -215,7 +216,7 @@ export default function FacultyPage() {
                   : "hover:bg-gray-100 text-red-600"
               }`}
               disabled={archiveStatus === "only"}
-              title="Delete Faculty"
+              title="Delete Department"
             >
               <FiTrash2 className="w-4 h-4" />
             </button>
@@ -226,43 +227,39 @@ export default function FacultyPage() {
   };
 
   const columns = [
-    { key: "code", header: "Faculty Code", width: "15%" },
-    { key: "name", header: "Faculty Name", width: "25%" },
+    { key: "code", header: "Department Code", width: "15%" },
+    { key: "name", header: "Department Name", width: "25%" },
     { key: "description", header: "Description", width: "25%" },
     { key: "status", header: "Status", width: "15%" },
     { key: "actions", header: "Actions", width: "20%" },
   ];
 
-  // Skeleton configuration for faculties
-  const facultyTableColumns = [
-    { width: "15%" }, // Faculty Code
-    { width: "25%" }, // Faculty Name
-    { width: "25%" }, // Description
-    { width: "15%" }, // Status
-    { width: "20%", alignment: "center" as const }, // Actions
+  const departmentTableColumns = [
+    { width: "15%" },
+    { width: "25%" },
+    { width: "25%" },
+    { width: "15%" },
+    { width: "20%", alignment: "center" as const },
   ];
 
   return (
     <div className="pt-14 pb-6 px-6 lg:p-6">
-      <h1 className="text-3xl font-bold">Faculties</h1>
+      <h1 className="text-3xl font-bold">Departments</h1>
       <p className="text-gray-400">
-        Organize and manage your instructor faculties.
+        Organize and manage your corporate departments.
       </p>{" "}
 
       <div className="flex flex-col gap-4 py-6 md:flex-row md:items-center md:justify-between">
-        {/* Search and Filter */}
         <div className="flex flex-col gap-3 md:flex-row md:flex-1 md:items-center md:gap-2 md:min-w-0">
-          {/* Search Input and Mobile Filter Row */}
           <div className="flex gap-2 items-center flex-1 md:min-w-0">
             <input
               type="text"
-              placeholder="Search faculties..."
+              placeholder="Search departments..."
               value={searchTerm}
               onChange={(e) => handleSearchChange(e.target.value)}
               className="flex-1 md:max-w-[400px] px-4 py-2.5 h-[42px] border border-gray-200 rounded-lg focus:outline-none focus:border-primary text-base md:text-sm"
             />
 
-            {/* Mobile Filter Button - Next to search on mobile, hidden on tablet+ */}
             <div className="md:hidden">
               <ResponsiveFilterButton
                 activeFiltersCount={selectedStatus ? 1 : 0}
@@ -271,7 +268,7 @@ export default function FacultyPage() {
                     key: "status",
                     label: "Status",
                     value: selectedStatus,
-                    options: FACULTY_STATUS,
+                    options: DEPARTMENT_STATUS,
                     onChange: handleStatusChange,
                     placeholder: "All Status",
                   },
@@ -280,22 +277,18 @@ export default function FacultyPage() {
             </div>
           </div>
 
-          {/* Desktop Filter Buttons - Hidden on mobile & tablet */}
           <div className="hidden xl:flex gap-2 items-center flex-shrink-0">
-            {/* Status Filter Button */}
             <FilterDropdownButton
               label="Status"
               value={selectedStatus}
-              options={FACULTY_STATUS}
+              options={DEPARTMENT_STATUS}
               onChange={handleStatusChange}
               placeholder="All Status"
             />
           </div>
         </div>
 
-        {/* Action Buttons */}
         <div className="flex gap-2 flex-shrink-0">
-          {/* Tablet Filter Button - Hidden on mobile and desktop */}
           <div className="hidden md:block xl:hidden">
             <ResponsiveFilterButton
               activeFiltersCount={selectedStatus ? 1 : 0}
@@ -304,7 +297,7 @@ export default function FacultyPage() {
                   key: "status",
                   label: "Status",
                   value: selectedStatus,
-                  options: FACULTY_STATUS,
+                  options: DEPARTMENT_STATUS,
                   onChange: handleStatusChange,
                   placeholder: "All Status",
                 },
@@ -313,14 +306,13 @@ export default function FacultyPage() {
           </div>
           <Button
             variant="primary"
-            onClick={() => setSearchParams({ modal: "create-faculty" })}
+            onClick={() => setSearchParams({ modal: "create-department" })}
             className="whitespace-nowrap text-sm flex-1 md:flex-initial"
           >
             <FaPlus />
-            <span className="hidden sm:inline">Add Faculty</span>
+            <span className="hidden sm:inline">Add Department</span>
             <span className="sm:hidden">Add</span>
           </Button>
-          {/* Archive Status Toggle Switch */}
           <div className="flex items-center gap-2">
             <button
               onClick={() => {
@@ -354,14 +346,13 @@ export default function FacultyPage() {
       </div>
 
       {isLoading ? (
-        <TableSkeletonClean columns={facultyTableColumns} rows={10} />
+        <TableSkeletonClean columns={departmentTableColumns} rows={10} />
       ) : (
         <Table columns={columns} scrollable={true} maxHeight="580px">
           {renderTableRows()}
         </Table>
       )}
 
-      {/* Pagination */}
       {!isLoading && (
         <div className="flex justify-between items-center mt-4 text-sm text-gray-500">
           <span>
@@ -382,7 +373,7 @@ export default function FacultyPage() {
             </button>
 
             <span className="px-4 py-2 bg-gray-100 rounded-md font-medium">
-              Page {data?.pagination?.currentPage} of{" "}
+              Page {data?.pagination?.currentPage} of {" "}
               {data?.pagination?.totalPages}
             </span>
 
@@ -401,20 +392,22 @@ export default function FacultyPage() {
         </div>
       )}
 
-      {/* Modals */}
-      {(modal === "create-faculty" || modal === "edit-faculty") && (
-        <UpsertFacultyModal isOpen={true} onClose={() => setSearchParams({})} />
-      )}
-
-      {modal === "view-faculty" && (
-        <ViewFacultyModal isOpen={true} onClose={() => setSearchParams({})} />
-      )}
-
-      {facultyToDelete && (
-        <DeleteFacultyModal
+      {(modal === "create-department" || modal === "edit-department") && (
+        <UpsertDepartmentModal
           isOpen={true}
-          onClose={() => setFacultyToDelete(null)}
-          faculty={facultyToDelete}
+          onClose={() => setSearchParams({})}
+        />
+      )}
+
+      {modal === "view-department" && (
+        <ViewDepartmentModal isOpen={true} onClose={() => setSearchParams({})} />
+      )}
+
+      {departmentToDelete && (
+        <DeleteDepartmentModal
+          isOpen={true}
+          onClose={() => setDepartmentToDelete(null)}
+          department={departmentToDelete}
         />
       )}
     </div>

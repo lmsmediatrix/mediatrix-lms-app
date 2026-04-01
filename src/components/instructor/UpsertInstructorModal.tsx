@@ -51,7 +51,6 @@ const instructorSchema = (orgType: string) =>
         "temporary",
         "volunteer",
         "retired",
-        "resigned",
       ],
       {
         required_error: "Please select a Type",
@@ -147,7 +146,12 @@ export default function UpsertInstructorModal({
       setValue("firstName", instructorData.firstName);
       setValue("lastName", instructorData.lastName);
       setValue("email", instructorData.email);
-      setValue("employmentType", instructorData.employmentType);
+      setValue(
+        "employmentType",
+        instructorData.employmentType === "resigned"
+          ? "retired"
+          : instructorData.employmentType
+      );
 
       // Handle faculty - it could be a string (ID) or an object with _id
       const facultyId =
@@ -569,7 +573,6 @@ export default function UpsertInstructorModal({
                 <option value="temporary">Temporary</option>
                 <option value="volunteer">Volunteer</option>
                 <option value="retired">Retired</option>
-                <option value="resigned">Resigned</option>
               </select>
               {errors.employmentType && (
                 <p className="text-red-500 text-sm mt-1">

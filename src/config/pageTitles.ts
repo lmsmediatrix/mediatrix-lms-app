@@ -41,6 +41,7 @@ export const pageTitles: TitleMapping = {
   "/:orgCode/admin/category": "Categories",
   "/:orgCode/admin/faculty": "Faculties",
   "/:orgCode/admin/program": "Programs",
+  "/:orgCode/admin/department": "Departments",
   "/:orgCode/admin/voucher": "Vouchers",
   "/:orgCode/admin/profile": "Admin Profile",
   "/:orgCode/admin/settings": "Settings",
