@@ -73,3 +73,54 @@ body {
   width: 100%;
   height: 100vh;
 }
+
+.lesson-rich-text {
+  color: #374151;
+  line-height: 1.7;
+}
+
+.lesson-rich-text h2,
+.lesson-rich-text h3 {
+  margin: 0.75rem 0;
+  font-weight: 700;
+  color: #111827;
+}
+
+.lesson-rich-text h2 {
+  font-size: 1.25rem;
+}
+
+.lesson-rich-text h3 {
+  font-size: 1.125rem;
+}
+
+.lesson-rich-text p {
+  margin: 0.625rem 0;
+}
+
+.lesson-rich-text ul,
+.lesson-rich-text ol {
+  margin: 0.75rem 0;
+  padding-left: 1.5rem;
+}
+
+.lesson-rich-text ul {
+  list-style: disc;
+}
+
+.lesson-rich-text ol {
+  list-style: decimal;
+}
+
+.lesson-rich-text blockquote {
+  margin: 0.75rem 0;
+  border-left: 3px solid #d1d5db;
+  padding-left: 0.75rem;
+  color: #4b5563;
+  font-style: italic;
+}
+
+.lesson-rich-text a {
+  color: #2563eb;
+  text-decoration: underline;
+}

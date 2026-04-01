@@ -1,8 +1,15 @@
+import { useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { useAuth } from "../../context/AuthContext";
-import { useGetGradingQueueList } from "../../hooks/useMetrics";
 import { FaClipboardCheck } from "react-icons/fa";
 import PageHeader from "../../components/common/PageHeader";
+import { useAuth } from "../../context/AuthContext";
+import { useGetGradingQueueList } from "../../hooks/useMetrics";
+import {
+  GroupedTableColumn,
+  GroupedTableGroup,
+  default as GroupedDataTable,
+} from "../../components/common/GroupedDataTable";
+import { getTerm } from "../../lib/utils";
 
 type Submission = {
   _id: string;
@@ -20,12 +27,16 @@ type Submission = {
   studentName: string;
 };
 
-const formatDueDate = (d: string | undefined) =>
+const formatDueDate = (d?: string) =>
   d
-    ? new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
-    : "—";
+    ? new Date(d).toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      })
+    : "-";
 
-const formatSubmittedAt = (d: string | undefined) =>
+const formatSubmittedAt = (d?: string) =>
   d
     ? new Date(d).toLocaleDateString("en-US", {
         month: "short",
@@ -34,7 +45,7 @@ const formatSubmittedAt = (d: string | undefined) =>
         hour: "numeric",
         minute: "2-digit",
       })
-    : "—";
+    : "-";
 
 const statusConfig: Record<string, { label: string; className: string }> = {
   submitted: {
@@ -52,14 +63,19 @@ const typeLabel: Record<string, string> = {
   exam: "Exam",
   assignment: "Assignment",
   activity: "Activity",
+  monthly_test: "Monthly Test",
+  periodical_test: "Periodical Test",
+  final_exam: "Final Exam",
 };
 
 export default function InstructorGradingPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const filterParam = searchParams.get("filter"); // "late" | null
+  const filterParam = searchParams.get("filter");
   const { currentUser } = useAuth();
   const orgCode = currentUser.user.organization.code;
+  const orgType = currentUser.user.organization.type;
+  const learnerTerm = getTerm("learner", orgType);
 
   const { data, isPending } = useGetGradingQueueList(
     currentUser.user.id,
@@ -67,33 +83,138 @@ export default function InstructorGradingPage() {
   );
 
   const allSubmissions: Submission[] = data?.[0]?.gradingQueueList ?? [];
-  const submissions = filterParam === "late"
-    ? allSubmissions.filter((s) => s.status === "late")
-    : allSubmissions;
+  const submissions =
+    filterParam === "late"
+      ? allSubmissions.filter((s) => s.status === "late")
+      : allSubmissions;
 
-  const grouped = submissions.reduce<Record<string, Submission[]>>((acc, item) => {
-    const key = item.sectionCode;
-    if (!acc[key]) acc[key] = [];
-    acc[key].push(item);
-    return acc;
-  }, {});
+  const groups = useMemo((): GroupedTableGroup<Submission>[] => {
+    const grouped = submissions.reduce<Record<string, Submission[]>>((acc, item) => {
+      const key = item.sectionCode || "unknown";
+      if (!acc[key]) acc[key] = [];
+      acc[key].push(item);
+      return acc;
+    }, {});
+
+    return Object.entries(grouped)
+      .map(([sectionCode, items]) => ({
+        key: sectionCode,
+        title: items[0]?.sectionName || sectionCode,
+        rows: items,
+        badgeText:
+          filterParam === "late" ? `${items.length} late` : `${items.length} pending`,
+      }))
+      .sort((a, b) => a.title.localeCompare(b.title));
+  }, [submissions, filterParam]);
+
+  const columns: GroupedTableColumn<Submission>[] = [
+    {
+      key: "studentName",
+      label: learnerTerm,
+      sortable: true,
+      filterable: true,
+      filterPlaceholder: `Search ${learnerTerm.toLowerCase()}`,
+      sortAccessor: (row) => row.studentName || "",
+      filterAccessor: (row) => row.studentName || "",
+      className: "min-w-[220px]",
+      render: (row) => (
+        <span className="text-sm font-semibold text-gray-800">{row.studentName || "-"}</span>
+      ),
+    },
+    {
+      key: "assessment",
+      label: "Assessment",
+      sortable: true,
+      filterable: true,
+      filterPlaceholder: "Search assessment",
+      sortAccessor: (row) => row.assessmentTitle || "",
+      filterAccessor: (row) =>
+        `${row.assessmentTitle || ""} ${row.assessmentType || ""}`.trim(),
+      className: "min-w-[260px]",
+      render: (row) => {
+        const label = row.assessmentType
+          ? typeLabel[row.assessmentType] || row.assessmentType
+          : "";
+        return (
+          <div className="min-w-0">
+            <p className="text-sm text-gray-800 truncate">{row.assessmentTitle || "-"}</p>
+            {label && (
+              <p className="text-xs text-gray-400 truncate capitalize">{label}</p>
+            )}
+          </div>
+        );
+      },
+    },
+    {
+      key: "dueDate",
+      label: "Due Date",
+      sortable: true,
+      filterable: true,
+      filterPlaceholder: "Search due date",
+      sortAccessor: (row) => (row.dueDate ? new Date(row.dueDate).getTime() : 0),
+      filterAccessor: (row) => formatDueDate(row.dueDate),
+      render: (row) => (
+        <span className="text-sm text-gray-700">{formatDueDate(row.dueDate)}</span>
+      ),
+    },
+    {
+      key: "submittedAt",
+      label: "Submitted",
+      sortable: true,
+      filterable: true,
+      filterPlaceholder: "Search submitted",
+      sortAccessor: (row) =>
+        row.submittedAt ? new Date(row.submittedAt).getTime() : 0,
+      filterAccessor: (row) => formatSubmittedAt(row.submittedAt),
+      render: (row) => (
+        <span className="text-sm text-gray-700">{formatSubmittedAt(row.submittedAt)}</span>
+      ),
+    },
+    {
+      key: "status",
+      label: "Status",
+      sortable: true,
+      filterable: true,
+      filterPlaceholder: "Search status",
+      sortAccessor: (row) => statusConfig[row.status]?.label || row.status || "",
+      filterAccessor: (row) =>
+        (statusConfig[row.status]?.label || row.status || "").toLowerCase(),
+      align: "right",
+      render: (row) => {
+        const cfg = statusConfig[row.status] || statusConfig.submitted;
+        return (
+          <span
+            className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${cfg.className}`}
+          >
+            {cfg.label}
+          </span>
+        );
+      },
+    },
+  ];
 
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-5xl mx-auto px-4 py-8">
         <PageHeader
           onBack={() => navigate(`/${orgCode}/instructor/dashboard`)}
-          icon={<FaClipboardCheck className={filterParam === "late" ? "text-amber-600" : "text-blue-600"} />}
+          icon={
+            <FaClipboardCheck
+              className={filterParam === "late" ? "text-amber-600" : "text-blue-600"}
+            />
+          }
           iconBg={filterParam === "late" ? "bg-amber-100" : "bg-blue-100"}
           title={filterParam === "late" ? "Late Submissions" : "Pending Grading"}
           subtitle={`${submissions.length} submission${submissions.length !== 1 ? "s" : ""} awaiting review`}
         />
 
-        {/* Content */}
         {isPending ? (
           <div className="space-y-4">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm animate-pulse">
+              <div
+                key={i}
+                className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm animate-pulse"
+              >
                 <div className="h-4 bg-gray-100 rounded w-1/4 mb-4" />
                 <div className="space-y-3">
                   {[1, 2].map((j) => (
@@ -110,100 +231,33 @@ export default function InstructorGradingPage() {
               {filterParam === "late" ? "No late submissions" : "No pending submissions"}
             </p>
             <p className="text-sm text-gray-400 mt-1">
-              {filterParam === "late" ? "No submissions were submitted late." : "All assessments have been graded."}
+              {filterParam === "late"
+                ? "No submissions were submitted late."
+                : "All assessments have been graded."}
             </p>
           </div>
         ) : (
-          <div className="space-y-5">
-            {Object.entries(grouped).map(([sectionCode, items]) => (
-              <div
-                key={sectionCode}
-                className="rounded-2xl border border-gray-100 bg-white shadow-sm overflow-hidden"
-              >
-                <div className="px-5 py-3 border-b border-gray-50 bg-gray-50/70 flex items-center justify-between">
-                  <div>
-                    <span className="text-sm font-semibold text-gray-800">
-                      {items[0].sectionName}
-                    </span>
-                    <span className="ml-2 text-xs text-gray-400">{sectionCode}</span>
-                  </div>
-                  <span className="text-xs font-medium text-gray-500 bg-white border border-gray-200 px-2 py-1 rounded-full">
-                    {items.length} pending
-                  </span>
-                </div>
-                <div className="divide-y divide-gray-50">
-                  {items.map((item, idx) => {
-                    const cfg = statusConfig[item.status] ?? statusConfig.submitted;
-                    const typeLabelText = item.assessmentType
-                      ? typeLabel[item.assessmentType] ?? item.assessmentType
-                      : "";
-                    const showTypeBadge =
-                      typeLabelText &&
-                      typeLabelText.toLowerCase() !== item.assessmentTitle?.toLowerCase();
-
-                    const reasons: string[] = [];
-                    if (item.status === "late") reasons.push("Submitted after due date");
-                    if (item.gradeMethod && item.gradeMethod !== "auto") {
-                      reasons.push("Includes questions that require manual grading");
-                    } else {
-                      reasons.push("Score not recorded yet");
-                    }
-                    const reasonText = reasons.join(" · ");
-
-                    return (
-                      <button
-                        key={idx}
-                        onClick={() =>
-                          navigate(
-                            `/${orgCode}/instructor/sections/${item.sectionCode}/assessment/${item.assessmentId}/student/${item.studentId}`,
-                            {
-                              state: {
-                                assessmentNo: item.assessmentNo,
-                                assessmentType: item.assessmentType,
-                              },
-                            },
-                          )
-                        }
-                        className="w-full flex items-center gap-4 px-5 py-4 hover:bg-blue-50/40 transition-colors text-left group"
-                      >
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-semibold text-gray-800 truncate group-hover:text-blue-700 transition-colors">
-                            {item.studentName || "—"}
-                          </p>
-                          <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                            <span className="text-xs text-gray-500 truncate">
-                              {item.assessmentTitle || "—"}
-                            </span>
-                            {showTypeBadge && (
-                              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-gray-100 text-gray-500 capitalize">
-                                {typeLabelText}
-                              </span>
-                            )}
-                          </div>
-                          <div className="flex flex-wrap gap-x-4 gap-y-0.5 mt-2 text-[11px] text-gray-500">
-                            <span>Due: {formatDueDate(item.dueDate)}</span>
-                            <span>Submitted: {formatSubmittedAt(item.submittedAt)}</span>
-                            <span className="block w-full text-[11px] text-gray-500">
-                              Reason pending: {reasonText}
-                            </span>
-                          </div>
-                        </div>
-                        <div className="text-right shrink-0">
-                          <span
-                            className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${cfg.className}`}
-                          >
-                            {cfg.label}
-                          </span>
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            ))}
-          </div>
+          <GroupedDataTable
+            groups={groups}
+            columns={columns}
+            rowKey={(row, index) => row._id || `${row.assessmentId}-${row.studentId}-${index}`}
+            emptyFilteredText="No matching submissions found."
+            tableMinWidthClassName="min-w-[1050px]"
+            onRowClick={(row) =>
+              navigate(
+                `/${orgCode}/instructor/sections/${row.sectionCode}/assessment/${row.assessmentId}/student/${row.studentId}`,
+                {
+                  state: {
+                    assessmentNo: row.assessmentNo,
+                    assessmentType: row.assessmentType,
+                  },
+                },
+              )
+            }
+          />
         )}
       </div>
     </div>
   );
 }
+

@@ -19,6 +19,7 @@ export const useGetAssessmentById = (
         "gradeMethod",
         "title",
         "type",
+        "lesson",
         "description",
         "numberOfItems",
         "startDate",
@@ -103,6 +104,8 @@ export const useCreateAssessment = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["section-assessment"] });
+      queryClient.invalidateQueries({ queryKey: ["student-section-by-code"] });
+      queryClient.invalidateQueries({ queryKey: ["section-module"] });
     },
   });
 };

@@ -50,6 +50,14 @@ export default function DashboardHeader({
   const userLastName = currentUser?.user.lastname;
   const fullName =
     userFirstName && userLastName ? `${userFirstName} ${userLastName}` : "User";
+  const isCorporateOrg = currentUser?.user?.organization?.type === "corporate";
+  const shouldUseGlassOverlay = Boolean(coverPhoto && isCorporateOrg);
+  const organizationPrimaryColor =
+    currentUser?.user?.organization?.branding?.colors?.primary ||
+    "var(--color-primary, #3e5b93)";
+  const organizationSecondaryColor =
+    currentUser?.user?.organization?.branding?.colors?.secondary ||
+    "var(--color-secondary, #228ab9)";
 
   // Define background styles
   const backgroundStyles = coverPhoto
@@ -118,6 +126,23 @@ export default function DashboardHeader({
             transition={{ duration: 2, delay: 0.5, ease: "easeInOut" }}
             className="absolute top-0 left-0 h-[1px] w-1/3 bg-gradient-to-r from-transparent via-white/40 to-transparent"
           />
+        </>
+      )}
+      {shouldUseGlassOverlay && (
+        <>
+          {/* Corporate cover photo glass overlay for better text/card readability */}
+          <div
+            className="absolute inset-0 backdrop-blur-[2px]"
+            style={{
+              background:
+                "linear-gradient(115deg, " +
+                `color-mix(in srgb, ${organizationPrimaryColor} 48%, transparent) 0%, ` +
+                `color-mix(in srgb, ${organizationPrimaryColor} 30%, transparent) 35%, ` +
+                `color-mix(in srgb, ${organizationSecondaryColor} 38%, transparent) 100%)`,
+            }}
+          />
+          <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-transparent to-black/35" />
+          <div className="absolute inset-0 opacity-[0.08] [background-image:linear-gradient(115deg,rgba(255,255,255,0.4)_0%,transparent_35%,transparent_65%,rgba(255,255,255,0.35)_100%)]" />
         </>
       )}
 

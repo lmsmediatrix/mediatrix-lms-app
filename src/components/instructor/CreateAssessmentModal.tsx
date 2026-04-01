@@ -1,9 +1,9 @@
-import { FaPlus, FaRegMinusSquare } from "react-icons/fa";
+import { FaLightbulb, FaPlus, FaRegMinusSquare } from "react-icons/fa";
 import Button from "../common/Button";
 import Dialog from "../common/Dialog";
 import { AiOutlineDelete, AiOutlineEdit } from "react-icons/ai";
 import AddQuestionComponent from "./AddQuestionComponent";
-import { useState, useEffect, ChangeEvent, useRef } from "react";
+import { useState, useEffect, ChangeEvent, useRef, useMemo } from "react";
 import { IQuestion } from "../../types/interfaces";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -21,11 +21,18 @@ import {
   useGetAssessmentById,
   useUpdateAssessment,
 } from "../../hooks/useAssessment";
+import { useSectionModule } from "../../hooks/useSection";
 
 interface CreateAssessmentModalProps {
   isOpen: boolean;
   onClose: () => void;
   sectionName?: string;
+  sectionIdOverride?: string;
+  prefillData?: Partial<AssignmentFormData> & {
+    moduleId?: string;
+    lessonId?: string;
+    questions?: IQuestion[];
+  };
 }
 
 const ASSESSMENT_TYPES = [
@@ -53,6 +60,7 @@ const assignmentFormSchema = z
       .string()
       .min(1, "Title must be at least 1 character")
       .max(100, "Title must be at most 100 characters"),
+    lesson: z.string().min(1, "Lesson is required"),
     assessmentType: z.enum(ASSESSMENT_TYPES),
     startDate: z
       .string()
@@ -99,6 +107,8 @@ export default function CreateAssessmentModal({
   isOpen,
   onClose,
   sectionName,
+  sectionIdOverride,
+  prefillData,
 }: CreateAssessmentModalProps) {
   const [showAddQuestion, setShowAddQuestion] = useState(false);
   const [questionsList, setQuestionsList] = useState<IQuestion[]>([]);
@@ -112,12 +122,27 @@ export default function CreateAssessmentModal({
   const orgCode = location.pathname.split("/")[1];
   const sectionCode = location.pathname.split("/")[4];
   const sectionId = searchParams.get("sectionId");
+  const lessonId = searchParams.get("lessonId");
   const assessmentId = searchParams.get("assessmentId");
   const modal = searchParams.get("modal");
   const { data, isPending } = useGetAssessmentById(assessmentId || "", true);
+  const { data: sectionModulesData } = useSectionModule(sectionCode);
+
+  const availableLessons = useMemo(() => {
+    const modules = sectionModulesData?.modules?.data || [];
+
+    return modules.flatMap((module: any) =>
+      (module.lessons || []).map((lesson: any) => ({
+        _id: lesson._id,
+        title: lesson.title,
+        moduleTitle: module.title,
+      })),
+    );
+  }, [sectionModulesData]);
 
   const createAssessment = useCreateAssessment();
   const updateAssessment = useUpdateAssessment();
+  const resolvedSectionId = sectionIdOverride || sectionId;
 
   const {
     register,
@@ -131,6 +156,7 @@ export default function CreateAssessmentModal({
     resolver: zodResolver(assignmentFormSchema),
     defaultValues: {
       title: "",
+      lesson: "",
       assessmentType: "quiz",
       startDate: new Date().toISOString().split("T")[0],
       endDate: "",
@@ -149,6 +175,12 @@ export default function CreateAssessmentModal({
   const gradeMethod = watch("gradeMethod");
 
   const isEditMode = modal === "edit-assessment";
+  const prefilledLessonId = prefillData?.lessonId || lessonId;
+  const isLessonPreselected =
+    !isEditMode &&
+    !!prefilledLessonId &&
+    availableLessons.some((lesson: { _id: string }) => lesson._id === prefilledLessonId);
+  const isModuleAssessmentDraft = Boolean(prefillData?.moduleId);
   const draftKey = `assessment-draft-${sectionId || sectionCode}`;
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const [hasDraft, setHasDraft] = useState(false);
@@ -158,7 +190,7 @@ export default function CreateAssessmentModal({
 
   // Restore saved draft when modal opens (create mode only)
   useEffect(() => {
-    if (isEditMode || !isOpen || assessmentId) return;
+    if (isEditMode || !isOpen || assessmentId || prefillData) return;
     const saved = localStorage.getItem(draftKey);
     if (!saved) return;
     try {
@@ -169,7 +201,7 @@ export default function CreateAssessmentModal({
     } catch {
       localStorage.removeItem(draftKey);
     }
-  }, [isOpen]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [isOpen, isEditMode, assessmentId, prefillData, draftKey, reset]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Keep ref in sync + save when questionsList changes
   useEffect(() => {
@@ -222,9 +254,60 @@ export default function CreateAssessmentModal({
   }, [questionsList, setValue]);
 
   useEffect(() => {
+    if (!isOpen || isEditMode || !isLessonPreselected || !prefilledLessonId) return;
+    setValue("lesson", prefilledLessonId, {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
+  }, [isOpen, isEditMode, isLessonPreselected, prefilledLessonId, setValue]);
+
+  useEffect(() => {
+    if (!isOpen || isEditMode || !prefillData) return;
+
+    const startDateRaw = prefillData.startDate
+      ? new Date(prefillData.startDate)
+      : new Date();
+    const endDateRaw = prefillData.endDate
+      ? new Date(prefillData.endDate)
+      : new Date();
+
+    const safeStartDate = !isNaN(startDateRaw.getTime())
+      ? startDateRaw.toISOString().split("T")[0]
+      : new Date().toISOString().split("T")[0];
+    const safeEndDate = !isNaN(endDateRaw.getTime())
+      ? endDateRaw.toISOString().split("T")[0]
+      : "";
+
+    reset({
+      title: prefillData.title || "",
+      lesson: prefillData.lesson || prefillData.lessonId || "",
+      assessmentType: normalizeAssessmentType(prefillData.assessmentType),
+      startDate: safeStartDate,
+      endDate: safeEndDate,
+      timeLimit: prefillData.timeLimit || 30,
+      gradeMethod: prefillData.gradeMethod || "auto",
+      attemptsAllowed: prefillData.attemptsAllowed || 1,
+      description: prefillData.description || "",
+      shuffleQuestions: prefillData.shuffleQuestions || false,
+      shuffleChoices: prefillData.shuffleChoices || false,
+      questionsToDisplay:
+        prefillData.questionsToDisplay || prefillData.questions?.length || 1,
+    });
+
+    setQuestionsList(Array.isArray(prefillData.questions) ? prefillData.questions : []);
+    setCsvFile(null);
+  }, [isOpen, isEditMode, prefillData, reset]);
+
+  useEffect(() => {
     if (data && !isPending) {
+      const selectedLessonId =
+        typeof data.lesson === "object" && data.lesson !== null
+          ? data.lesson._id
+          : data.lesson;
+
       reset({
         title: data.title,
+        lesson: selectedLessonId || "",
         assessmentType: normalizeAssessmentType(data.assessmentType || data.type),
         startDate: new Date(data.startDate || data.dueDate)
           .toISOString()
@@ -270,10 +353,17 @@ export default function CreateAssessmentModal({
       return;
     }
 
+    if (!resolvedSectionId) {
+      toast.error("Section ID is missing. Please reopen this section and try again.");
+      return;
+    }
+
     const formData = createAssessmentFormData({
       ...(assessmentId && { _id: assessmentId }),
       organizationId: organizationId!,
-      section: sectionId,
+      section: resolvedSectionId,
+      moduleId: prefillData?.moduleId,
+      lesson: data.lesson,
       title: data.title,
       startDate: new Date(data.startDate),
       endDate: new Date(data.endDate),
@@ -462,6 +552,55 @@ export default function CreateAssessmentModal({
                   )}
                 </div>
               </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700">
+                Lesson
+              </label>
+              <select
+                className={`mt-1 block w-full px-3 py-2 bg-gray-100 rounded-md focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm sm:text-base ${
+                  errors.lesson ? "border-red-500 border" : ""
+                }`}
+                {...register("lesson")}
+                disabled={
+                  isSubmitting ||
+                  availableLessons.length === 0 ||
+                  isLessonPreselected
+                }
+              >
+                <option value="">Select lesson</option>
+                {availableLessons.map((lesson: { _id: string; title: string; moduleTitle?: string }) => (
+                  <option key={lesson._id} value={lesson._id}>
+                    {lesson.moduleTitle ? `${lesson.moduleTitle} - ${lesson.title}` : lesson.title}
+                  </option>
+                ))}
+              </select>
+              {errors.lesson && (
+                <p className="mt-1 text-sm text-red-600">
+                  {errors.lesson.message}
+                </p>
+              )}
+              {availableLessons.length === 0 && (
+                <p className="mt-1 text-sm text-amber-700">
+                  Add at least one lesson in this section before creating an assessment.
+                </p>
+              )}
+              {isModuleAssessmentDraft && (
+                <div className="mt-2 flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 p-3">
+                  <FaLightbulb className="mt-0.5 text-amber-500 shrink-0" />
+                  <p className="text-sm text-amber-800">
+                    Module-level assessment info: this draft was generated from
+                    lesson assessments in the selected module. Review and adjust
+                    questions before publishing.
+                  </p>
+                </div>
+              )}
+              {isLessonPreselected && (
+                <p className="mt-1 text-sm text-gray-500">
+                  This assessment is linked to the current lesson.
+                </p>
+              )}
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -811,6 +950,7 @@ export default function CreateAssessmentModal({
                 isSubmitting ||
                 createAssessment.isPending ||
                 updateAssessment.isPending ||
+                availableLessons.length === 0 ||
                 (!isDirty && !hasDraft && questionsList.length === 0)
               }
               isLoading={

@@ -39,12 +39,12 @@ export default function InstructorSectionPage() {
 
   const tabs = [
     { name: "Modules", value: "modules" },
-    { name: "Announcements", value: "announcements" },
     { name: "Assessments", value: "assessments" },
     { name: "Attendance", value: "attendance" },
     { name: "Grades", value: "grades" },
     { name: "Analytics", value: "analytics" },
     { name: learnerTerm, value: "students" },
+    { name: "Announcements", value: "announcements" },
   ];
 
   const [currentMobileTabIndex, setCurrentMobileTabIndex] = useState(0);
@@ -137,7 +137,13 @@ export default function InstructorSectionPage() {
     if (!isPending) {
       switch (activeTab) {
         case "modules":
-          return <ModuleTab sectionCode={sectionCode} />;
+          return (
+            <ModuleTab
+              sectionCode={sectionCode}
+              sectionId={sectionData?._id}
+              sectionName={sectionData?.name}
+            />
+          );
         case "announcements":
           return <AnnouncementTab sectionCode={sectionCode} />;
         case "assessments":
@@ -151,7 +157,13 @@ export default function InstructorSectionPage() {
         case "students":
           return <StudentsTab sectionCode={sectionCode} />;
         default:
-          return <ModuleTab sectionCode={sectionCode} />;
+          return (
+            <ModuleTab
+              sectionCode={sectionCode}
+              sectionId={sectionData?._id}
+              sectionName={sectionData?.name}
+            />
+          );
       }
     }
   };
@@ -162,19 +174,6 @@ export default function InstructorSectionPage() {
         <SectionPageSkeleton />
       ) : (
         <>
-          <div className="flex justify-between gap-2 mb-4">
-            <h1 className="text-2xl md:text-3xl font-bold">
-              {sectionData.name}
-            </h1>
-            <Button
-              onClick={() => navigate("manage")}
-              variant="primary"
-              className="px-2 md:px-6 py-2 rounded-lg"
-            >
-              Manage <span className="hidden md:block">{sectionTerm}</span>
-            </Button>
-          </div>
-
           <div className="bg-white border rounded-lg shadow-sm mb-6">
             <div className="w-full h-[200px] relative rounded-t-md overflow-hidden">
               {sectionData.course.thumbnail ? (
@@ -186,7 +185,23 @@ export default function InstructorSectionPage() {
               ) : (
                 <div className="w-full h-full flex items-center justify-center bg-gray-100 rounded-t-md"></div>
               )}
-              <div className="absolute inset-0 bg-gradient-to-b from-black/30 to-black/10" />
+              <div
+                aria-hidden="true"
+                className="absolute inset-0 bg-slate-950/15"
+              />
+              <div
+                aria-hidden="true"
+                className="absolute inset-0 bg-gradient-to-r from-slate-950/80 via-slate-950/45 to-transparent"
+              />
+              <div
+                aria-hidden="true"
+                className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-950/35 to-transparent"
+              />
+              <div className="absolute inset-x-0 bottom-0 z-10 p-4 md:p-6">
+                <h1 className="max-w-4xl text-2xl font-bold leading-tight text-white drop-shadow-lg md:text-3xl">
+                  {sectionData.name}
+                </h1>
+              </div>
             </div>
 
             <div className="p-4 md:p-6">
@@ -256,26 +271,35 @@ export default function InstructorSectionPage() {
               </div>
             </div>
 
-            <div className="flex justify-between items-center border-t border-gray-200 px-4 ">
-              {/* Desktop View: Show all tabs */}
-              <div className="hidden lg:flex text-sm font-medium gap-2 mx-auto">
-                {tabs.map(({ name, value }) => (
-                  <button
-                    key={value}
-                    onClick={() => handleTabClick(value)}
-                    className={`py-4 px-8 relative ${
-                      value === activeTab
-                        ? "text-primary border-b-4 border-primary"
-                        : "border-b-4 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 transition-all"
-                    }`}
-                  >
-                    {name}
-                  </button>
-                ))}
+            <div className="border-t border-gray-200 px-4">
+              {/* Desktop View: Show all tabs + manage button */}
+              <div className="hidden lg:flex justify-between items-center">
+                <div className="flex text-sm font-medium gap-2">
+                  {tabs.map(({ name, value }) => (
+                    <button
+                      key={value}
+                      onClick={() => handleTabClick(value)}
+                      className={`py-4 px-6 relative ${
+                        value === activeTab
+                          ? "text-primary border-b-4 border-primary"
+                          : "border-b-4 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 transition-all"
+                      }`}
+                    >
+                      {name}
+                    </button>
+                  ))}
+                </div>
+                <Button
+                  onClick={() => navigate("manage")}
+                  variant="primary"
+                  className="px-4 py-2 rounded-lg"
+                >
+                  Manage {sectionTerm}
+                </Button>
               </div>
 
-              {/* Mobile View: Show one tab with Previous/Next buttons */}
-              <div className="flex lg:hidden items-center justify-between w-full text-sm font-medium">
+              {/* Mobile View: Show one tab with Previous/Next buttons + manage button */}
+              <div className="flex lg:hidden items-center justify-between w-full text-sm font-medium gap-2 py-3">
                 <button
                   onClick={handlePreviousTab}
                   className="p-2 text-gray-500 hover:text-gray-700 rounded-full border-2 border-gray-500 active:bg-gray-500"
@@ -287,7 +311,7 @@ export default function InstructorSectionPage() {
                   onClick={() =>
                     handleTabClick(tabs[currentMobileTabIndex].value)
                   }
-                  className={`py-4 px-8 relative ${
+                  className={`py-2 px-4 relative flex-1 ${
                     tabs[currentMobileTabIndex].value === activeTab
                       ? "text-[#3E5B93] border-b-4 border-[#3E5B93]"
                       : "border-b-4 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 transition-all"
@@ -302,6 +326,15 @@ export default function InstructorSectionPage() {
                 >
                   <FaChevronRight />
                 </button>
+              </div>
+              <div className="lg:hidden pb-3">
+                <Button
+                  onClick={() => navigate("manage")}
+                  variant="primary"
+                  className="w-full py-2 rounded-lg"
+                >
+                  Manage {sectionTerm}
+                </Button>
               </div>
             </div>
           </div>

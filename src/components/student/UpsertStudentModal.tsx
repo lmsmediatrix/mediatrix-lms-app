@@ -607,13 +607,12 @@ export default function UpsertStudentModal({
                   Department (Optional)
                 </label>
                 <SearchableSelect
-                  options={[
-                    { value: "", label: "No Department" },
-                    ...(departments?.map((department: IDepartment) => ({
+                  options={
+                    departments?.map((department: IDepartment) => ({
                       value: department._id,
                       label: department.name,
-                    })) || []),
-                  ]}
+                    })) || []
+                  }
                   value={watch("personDepartment")}
                   onChange={(value) =>
                     setValue("personDepartment", value, { shouldDirty: true })

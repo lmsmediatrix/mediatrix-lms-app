@@ -9,7 +9,10 @@ import { ILesson, IModule } from "../../types/interfaces";
 import CreateModuleModal from "../../components/instructor/CreateModuleModal";
 import { toast } from "react-toastify";
 import Dialog from "../../components/common/Dialog";
-import { useDeleteModule } from "../../hooks/useModule";
+import {
+  useDeleteModule,
+  usePopulateModuleAssessments,
+} from "../../hooks/useModule";
 import { useDeleteLesson } from "../../hooks/useLesson";
 import { useSectionModule } from "../../hooks/useSection";
 import ModuleTabSkeleton from "../../components/skeleton/ModuleTabSkeleton";
@@ -29,8 +32,9 @@ export default function CreateModuleTab({
   const lessonId = searchParams.get("lessonId");
 
   const navigate = useNavigate();
-  const location = useLocation()
+  const location = useLocation();
   const deleteModule = useDeleteModule();
+  const populateModuleAssessments = usePopulateModuleAssessments();
   const deleteLesson = useDeleteLesson();
   const { data, isPending } = useSectionModule(sectionCode);
   const modules = data?.modules.data;
@@ -71,6 +75,14 @@ export default function CreateModuleTab({
         error: "Failed to delete lesson",
       }
     );
+  };
+
+  const onPopulateModuleAssessments = (moduleId: string) => {
+    toast.promise(populateModuleAssessments.mutateAsync(moduleId), {
+      pending: "Syncing module assessments...",
+      success: "Module assessments synced successfully",
+      error: "Failed to sync module assessments",
+    });
   };
 
   const openEditModule = (moduleId: string) => {
@@ -165,13 +177,22 @@ export default function CreateModuleTab({
                 </div>
               }
               actionButton={
-                <button
-                  onClick={() => openCreateLesson(module._id)}
-                  className="flex items-center gap-1 md:gap-2 px-2 md:px-4 text-sm font-medium text-primary transition-all hover:font-bold"
-                >
-                  <IoAdd className="text-lg" />
-                  <span className="hidden md:inline">Add</span> Lesson
-                </button>
+                <div className="flex items-stretch">
+                  <button
+                    onClick={() => onPopulateModuleAssessments(module._id)}
+                    disabled={populateModuleAssessments.isPending}
+                    className="px-2 md:px-3 text-xs md:text-sm font-medium text-primary border-l border-gray-200 hover:bg-blue-50 disabled:opacity-60 disabled:cursor-not-allowed"
+                  >
+                    Sync Assessments
+                  </button>
+                  <button
+                    onClick={() => openCreateLesson(module._id)}
+                    className="flex items-center gap-1 md:gap-2 px-2 md:px-4 text-sm font-medium text-primary transition-all hover:font-bold border-l border-gray-200"
+                  >
+                    <IoAdd className="text-lg" />
+                    <span className="hidden md:inline">Add</span> Lesson
+                  </button>
+                </div>
               }
             >
               <div className="divide-y divide-gray-200">

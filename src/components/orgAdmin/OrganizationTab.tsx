@@ -8,6 +8,7 @@ import {
 import { toast } from "react-toastify";
 import { useImportOrgSetup } from "../../hooks/useOrganization";
 import Button from "../common/Button";
+import { useAuth } from "../../context/AuthContext";
 
 interface ErrorData {
   field: string;
@@ -29,10 +30,13 @@ interface ImportResponse {
     category?: ImportError[];
     faculty?: ImportError[];
     program?: ImportError[];
+    department?: ImportError[];
   };
 }
 
 export default function OrganizationTab() {
+  const { currentUser } = useAuth();
+  const orgType = currentUser?.user?.organization?.type || "school";
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [importErrors, setImportErrors] = useState<ImportError[]>([]);
   const [showResults, setShowResults] = useState(false);
@@ -112,11 +116,7 @@ export default function OrganizationTab() {
       importOrgSetup(formData, {
         onSuccess: (response: ImportResponse) => {
           // Combine all error arrays into a single list for display
-          const allErrors = [
-            ...(response.errors.category || []),
-            ...(response.errors.faculty || []),
-            ...(response.errors.program || []),
-          ];
+          const allErrors = Object.values(response.errors || {}).flat();
           setImportErrors(allErrors);
           setShowResults(true);
 
@@ -155,13 +155,32 @@ export default function OrganizationTab() {
   };
 
   const handleDownloadTemplate = () => {
+    const csvTemplate =
+      orgType === "corporate"
+        ? [
+            "field,name,code,description,isActive,archive_status,archive_date",
+            "program,Sample Program,PRG01,Optional description,true,false,",
+            "department,Sample Department,DPT01,Optional description,true,false,",
+          ].join("\n")
+        : [
+            "field,name,code,description,isActive,archive_status,archive_date",
+            "category,Sample Category,,,true,false,",
+            "faculty,Sample Faculty,FAC01,Optional description,true,false,",
+            "program,Sample Program,PRG01,Optional description,true,false,",
+          ].join("\n");
+
+    const blob = new Blob([csvTemplate], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
-    link.href =
-      "https://res.cloudinary.com/dyal0wstg/raw/upload/v1751519112/ORG_SETUP_TEMPLATE_oinwi6.csv";
-    link.download = "ORG_SETUP_TEMPLATE.csv";
+    link.href = url;
+    link.download =
+      orgType === "corporate"
+        ? "ORG_SETUP_TEMPLATE_CORPORATE.csv"
+        : "ORG_SETUP_TEMPLATE_SCHOOL.csv";
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   return (

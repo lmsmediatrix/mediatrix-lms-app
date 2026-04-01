@@ -1,4 +1,4 @@
-export type TRole = "superadmin" | "admin" | "student" | "instructor";
+export type TRole = "superadmin" | "admin" | "student" | "instructor" | "employee";
 export type dateFilter = "today" | "week" | "month" | "year";
 type TUserStatus = "active" | "inactive" | "pending";
 export type TAttendanceStatus =
@@ -280,6 +280,15 @@ export interface IModule {
   _id: string;
   title: string;
   lessons: ILesson[];
+  assessments?: Array<{
+    _id: string;
+    title: string;
+    type: string;
+    assessmentNo?: number;
+    endDate?: string;
+    numberOfItems?: number;
+    totalPoints?: number;
+  }>;
 }
 
 export interface IAnnouncement {

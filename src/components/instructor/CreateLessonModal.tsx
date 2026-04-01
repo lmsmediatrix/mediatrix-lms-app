@@ -9,8 +9,44 @@ import { createLessonFormData } from "../../lib/formDataUtils";
 import { useLocation, useSearchParams } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { IoClose } from "react-icons/io5";
-import { FaFile, FaRegFileAlt, FaYoutube } from "react-icons/fa";
-import { FaFilePowerpoint } from "react-icons/fa";
+import { EditorContent, useEditor } from "@tiptap/react";
+import StarterKit from "@tiptap/starter-kit";
+import Placeholder from "@tiptap/extension-placeholder";
+import Underline from "@tiptap/extension-underline";
+import Link from "@tiptap/extension-link";
+import TextAlign from "@tiptap/extension-text-align";
+import Image from "@tiptap/extension-image";
+import Subscript from "@tiptap/extension-subscript";
+import Superscript from "@tiptap/extension-superscript";
+import Highlight from "@tiptap/extension-highlight";
+import { TextStyle } from "@tiptap/extension-text-style";
+import Color from "@tiptap/extension-color";
+import {
+  FaAlignCenter,
+  FaAlignJustify,
+  FaAlignLeft,
+  FaAlignRight,
+  FaBold,
+  FaCode,
+  FaFile,
+  FaFilePowerpoint,
+  FaHighlighter,
+  FaImage,
+  FaItalic,
+  FaLink,
+  FaListOl,
+  FaListUl,
+  FaQuoteRight,
+  FaRedo,
+  FaRegFileAlt,
+  FaStrikethrough,
+  FaSubscript,
+  FaSuperscript,
+  FaUnderline,
+  FaUnlink,
+  FaUndo,
+  FaYoutube,
+} from "react-icons/fa";
 import { getMaxDate } from "../../lib/maxDateUtils";
 import {
   useCreateLesson,
@@ -31,6 +67,7 @@ const lessonSchema = z.object({
     .string()
     .min(10, "Description must be at least 10 characters")
     .max(500, "Description cannot exceed 500 characters"),
+  information: z.string().optional(),
   mainContent: z.any().optional(),
   additionalFiles: z.any().optional(),
 });
@@ -43,14 +80,35 @@ interface CreateLessonModalProps {
   sectionName?: string;
 }
 
+const isHttpUrl = (value: string) => /^https?:\/\/\S+$/i.test(value.trim());
+const isYouTubeUrl = (value: string) => /(youtube\.com|youtu\.be)/i.test(value);
+const isFileLikeUrl = (value: string) => {
+  const normalizedValue = value.toLowerCase().split("?")[0];
+  return [".mp4", ".pdf", ".ppt", ".pptx", ".doc", ".docx", ".xls", ".xlsx", ".txt"].some(
+    (extension) => normalizedValue.endsWith(extension)
+  );
+};
+const isEditorEmpty = (html: string) =>
+  html.replace(/<[^>]*>/g, "").replace(/&nbsp;/gi, " ").trim().length === 0;
+
+const toolbarButtonBaseClass =
+  "rounded-md border px-2 py-1 text-xs transition-colors disabled:cursor-not-allowed disabled:opacity-50";
+
+const getToolbarButtonClass = (isActive = false) =>
+  `${toolbarButtonBaseClass} ${
+    isActive
+      ? "border-primary bg-primary/10 text-primary"
+      : "border-gray-200 text-gray-700 hover:bg-gray-100"
+  }`;
+
 export default function CreateLessonModal({
   isOpen,
   onClose,
   sectionName,
 }: CreateLessonModalProps) {
   const [searchParams] = useSearchParams();
-  const {currentUser} = useAuth();
-  const location = useLocation()
+  const { currentUser } = useAuth();
+  const location = useLocation();
   const moduleId = searchParams.get("moduleId");
   const lessonId = searchParams.get("lessonId");
   const { data: lessonData, isPending } = useGetLessonById(lessonId || "");
@@ -61,6 +119,8 @@ export default function CreateLessonModal({
   >(null);
   const [existingFiles, setExistingFiles] = useState<string[]>([]);
   const [isFileUpload, setIsFileUpload] = useState(true);
+  const [richTextContent, setRichTextContent] = useState("<p></p>");
+  const [textColor, setTextColor] = useState("#111827");
   const sectionCode = location.pathname.split("/")[4];
 
   const {
@@ -77,6 +137,7 @@ export default function CreateLessonModal({
       startDate: new Date().toISOString().split("T")[0],
       endDate: "",
       description: "",
+      information: "",
       mainContent: "",
     },
   });
@@ -84,8 +145,66 @@ export default function CreateLessonModal({
   const startDate = watch("startDate");
   const mainContent = watch("mainContent");
 
+  const editor = useEditor({
+    extensions: [
+      StarterKit.configure({
+        heading: {
+          levels: [1, 2, 3],
+        },
+      }),
+      TextStyle,
+      Color,
+      Underline,
+      Subscript,
+      Superscript,
+      Highlight.configure({
+        multicolor: true,
+      }),
+      Link.configure({
+        openOnClick: false,
+        autolink: true,
+        defaultProtocol: "https",
+      }),
+      TextAlign.configure({
+        types: ["heading", "paragraph"],
+      }),
+      Image.configure({
+        allowBase64: true,
+      }),
+      Placeholder.configure({
+        placeholder: "Write lesson reading content here...",
+      }),
+    ],
+    content: richTextContent,
+    editorProps: {
+      attributes: {
+        class:
+          "min-h-[220px] max-h-[320px] overflow-y-auto rounded-b-md border border-t-0 border-gray-200 bg-white p-3 text-sm text-gray-700 focus:outline-none [&_p]:my-2 [&_h1]:my-2 [&_h1]:text-xl [&_h1]:font-semibold [&_h2]:my-2 [&_h2]:text-lg [&_h2]:font-semibold [&_h3]:my-2 [&_h3]:text-base [&_h3]:font-semibold [&_ul]:my-2 [&_ul]:ml-6 [&_ul]:list-disc [&_ol]:my-2 [&_ol]:ml-6 [&_ol]:list-decimal [&_blockquote]:my-2 [&_blockquote]:border-l-4 [&_blockquote]:border-gray-300 [&_blockquote]:pl-3 [&_blockquote]:italic [&_a]:text-blue-600 [&_a]:underline [&_img]:my-3 [&_img]:max-w-full [&_img]:rounded-md [&_mark]:rounded [&_mark]:px-0.5",
+      },
+    },
+    onUpdate: ({ editor: tiptapEditor }) => {
+      const html = tiptapEditor.getHTML();
+      setRichTextContent(html);
+      setValue("information", html, {
+        shouldDirty: true,
+        shouldValidate: true,
+      });
+    },
+  });
+
   const createLesson = useCreateLesson();
   const updateLesson = useUpdateLesson();
+
+  useEffect(() => {
+    if (!editor) return;
+
+    const currentContent = editor.getHTML();
+    if (currentContent !== richTextContent) {
+      editor.commands.setContent(richTextContent || "<p></p>", {
+        emitUpdate: false,
+      });
+    }
+  }, [editor, richTextContent]);
 
   useEffect(() => {
     if (lessonData?.data) {
@@ -95,16 +214,49 @@ export default function CreateLessonModal({
       const endDate = new Date(lessonData.data.endDate)
         .toISOString()
         .split("T")[0];
+      const incomingMainContent = lessonData.data.mainContent || "";
+      const incomingInformation = lessonData.data.information || "";
 
       setValue("title", lessonData.data.title);
       setValue("startDate", startDate);
       setValue("endDate", endDate);
       setValue("description", lessonData.data.description);
-      setValue("mainContent", lessonData.data.mainContent || "");
+      setValue("information", incomingInformation);
 
-      setExistingMainContentUrl(lessonData.data.mainContent || null);
+      if (incomingInformation) {
+        setRichTextContent(incomingInformation);
+      } else {
+        setRichTextContent("<p></p>");
+      }
+      setTextColor("#111827");
+
+      if (!incomingMainContent) {
+        setIsFileUpload(true);
+        setExistingMainContentUrl(null);
+      } else if (isHttpUrl(incomingMainContent) && isFileLikeUrl(incomingMainContent)) {
+        setIsFileUpload(true);
+        setExistingMainContentUrl(incomingMainContent);
+        setValue("mainContent", "");
+      } else if (isHttpUrl(incomingMainContent) && isYouTubeUrl(incomingMainContent)) {
+        setIsFileUpload(false);
+        setExistingMainContentUrl(null);
+        setValue("mainContent", incomingMainContent);
+      } else if (isHttpUrl(incomingMainContent)) {
+        setIsFileUpload(true);
+        setExistingMainContentUrl(incomingMainContent);
+        setValue("mainContent", "");
+      } else {
+        // Backward compatibility for old lessons that stored text in mainContent
+        setIsFileUpload(true);
+        setExistingMainContentUrl(null);
+        setValue("mainContent", "");
+        if (!incomingInformation) {
+          setValue("information", incomingMainContent);
+          setRichTextContent(incomingMainContent);
+        }
+      }
+
       setExistingFiles(lessonData.data.files || []);
-      setIsFileUpload(!lessonData.data.mainContent);
     }
   }, [lessonData, setValue]);
 
@@ -119,6 +271,7 @@ export default function CreateLessonModal({
     if (e.target.files && e.target.files[0]) {
       setMainContentFile(e.target.files[0]);
       setExistingMainContentUrl(null);
+      setIsFileUpload(true);
       setValue("mainContent", e.target.files[0]);
     }
   };
@@ -134,7 +287,10 @@ export default function CreateLessonModal({
   const removeMainContent = () => {
     setMainContentFile(null);
     setExistingMainContentUrl(null);
-    setValue("mainContent", "");
+    setValue("mainContent", "", {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
   };
 
   const openFile = (file: File | string) => {
@@ -148,12 +304,76 @@ export default function CreateLessonModal({
       : file.type.includes("video");
   };
 
+  const switchToYouTubeLink = () => {
+    const nextValue = isYouTubeUrl(mainContent || "") ? mainContent : "";
+    setValue("mainContent", nextValue || "", {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
+  };
+
+  const applyHeading = (value: string) => {
+    if (!editor) return;
+    const headingLevel = Number(value);
+    if (headingLevel === 0) {
+      editor.chain().focus().setParagraph().run();
+      return;
+    }
+    if ([1, 2, 3].includes(headingLevel)) {
+      editor
+        .chain()
+        .focus()
+        .toggleHeading({ level: headingLevel as 1 | 2 | 3 })
+        .run();
+    }
+  };
+
+  const setLink = () => {
+    if (!editor) return;
+    const previousUrl = editor.getAttributes("link").href || "";
+    const url = window.prompt("Enter URL", previousUrl);
+    if (url === null) return;
+
+    const trimmedUrl = url.trim();
+    if (!trimmedUrl) {
+      editor.chain().focus().extendMarkRange("link").unsetLink().run();
+      return;
+    }
+
+    const normalizedUrl =
+      trimmedUrl.startsWith("http://") || trimmedUrl.startsWith("https://")
+        ? trimmedUrl
+        : `https://${trimmedUrl}`;
+
+    editor
+      .chain()
+      .focus()
+      .extendMarkRange("link")
+      .setLink({ href: normalizedUrl })
+      .run();
+  };
+
+  const addImage = () => {
+    if (!editor) return;
+    const url = window.prompt("Enter image URL");
+    if (!url) return;
+    const trimmedUrl = url.trim();
+    if (!trimmedUrl) return;
+    editor.chain().focus().setImage({ src: trimmedUrl }).run();
+  };
+
   const onSubmit = async (data: LessonFormData) => {
+    const resolvedMainContent = isFileUpload
+      ? mainContentFile
+      : data.mainContent;
+    const resolvedInformation = isEditorEmpty(richTextContent) ? "" : richTextContent;
+
     const formData = createLessonFormData({
       ...data,
       moduleId,
       lessonId,
-      mainContent: isFileUpload ? mainContentFile : data.mainContent,
+      mainContent: resolvedMainContent,
+      information: resolvedInformation,
       additionalFiles: uploadedFiles,
       orgCode: currentUser.user.organization.code,
       sectionCode: sectionCode,
@@ -170,6 +390,11 @@ export default function CreateLessonModal({
           setExistingMainContentUrl(null);
           setExistingFiles([]);
           setIsFileUpload(true);
+          setRichTextContent("<p></p>");
+          setTextColor("#111827");
+          editor?.commands.setContent("<p></p>", {
+            emitUpdate: false,
+          });
           onClose();
         },
       }),
@@ -190,6 +415,14 @@ export default function CreateLessonModal({
   if (lessonId && isPending) {
     return <LessonModalSkeleton isOpen={isOpen} onClose={onClose} />;
   }
+
+  const selectedHeadingValue = editor?.isActive("heading", { level: 1 })
+    ? "1"
+    : editor?.isActive("heading", { level: 2 })
+    ? "2"
+    : editor?.isActive("heading", { level: 3 })
+    ? "3"
+    : "0";
 
   return (
     <Dialog
@@ -230,7 +463,8 @@ export default function CreateLessonModal({
                 onClick={() => {
                   setIsFileUpload(false);
                   setMainContentFile(null);
-                  setValue("mainContent", "");
+                  setExistingMainContentUrl(null);
+                  switchToYouTubeLink();
                 }}
                 className={`flex-1 flex items-center justify-center px-4 py-1 text-sm font-medium transition-colors duration-200 ${
                   !isFileUpload
@@ -606,6 +840,273 @@ export default function CreateLessonModal({
                   {errors.description.message}
                 </p>
               )}
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Reading Content (Optional)
+              </label>
+              <div className="rounded-md border border-gray-200 bg-white">
+                <div className="flex flex-wrap items-center gap-2 border-b border-gray-200 bg-gray-50 p-2">
+                  <div className="flex items-center gap-1 border-r border-gray-200 pr-2">
+                    <button
+                      type="button"
+                      onClick={() => editor?.chain().focus().undo().run()}
+                      className={getToolbarButtonClass()}
+                      disabled={isSubmitting || !editor?.can().undo()}
+                      title="Undo"
+                    >
+                      <FaUndo />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => editor?.chain().focus().redo().run()}
+                      className={getToolbarButtonClass()}
+                      disabled={isSubmitting || !editor?.can().redo()}
+                      title="Redo"
+                    >
+                      <FaRedo />
+                    </button>
+                  </div>
+
+                  <div className="flex items-center gap-1 border-r border-gray-200 pr-2">
+                    <select
+                      value={selectedHeadingValue}
+                      onChange={(e) => applyHeading(e.target.value)}
+                      className="rounded-md border border-gray-200 px-2 py-1 text-xs text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary/40"
+                      disabled={isSubmitting}
+                      title="Heading"
+                    >
+                      <option value="0">Paragraph</option>
+                      <option value="1">Heading 1</option>
+                      <option value="2">Heading 2</option>
+                      <option value="3">Heading 3</option>
+                    </select>
+                  </div>
+
+                  <div className="flex items-center gap-1 border-r border-gray-200 pr-2">
+                    <button
+                      type="button"
+                      onClick={() => editor?.chain().focus().toggleBold().run()}
+                      className={getToolbarButtonClass(editor?.isActive("bold"))}
+                      disabled={isSubmitting}
+                      title="Bold"
+                    >
+                      <FaBold />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => editor?.chain().focus().toggleItalic().run()}
+                      className={getToolbarButtonClass(editor?.isActive("italic"))}
+                      disabled={isSubmitting}
+                      title="Italic"
+                    >
+                      <FaItalic />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => editor?.chain().focus().toggleUnderline().run()}
+                      className={getToolbarButtonClass(editor?.isActive("underline"))}
+                      disabled={isSubmitting}
+                      title="Underline"
+                    >
+                      <FaUnderline />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => editor?.chain().focus().toggleStrike().run()}
+                      className={getToolbarButtonClass(editor?.isActive("strike"))}
+                      disabled={isSubmitting}
+                      title="Strikethrough"
+                    >
+                      <FaStrikethrough />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => editor?.chain().focus().toggleCode().run()}
+                      className={getToolbarButtonClass(editor?.isActive("code"))}
+                      disabled={isSubmitting}
+                      title="Inline code"
+                    >
+                      <FaCode />
+                    </button>
+                  </div>
+
+                  <div className="flex items-center gap-1 border-r border-gray-200 pr-2">
+                    <button
+                      type="button"
+                      onClick={() => editor?.chain().focus().toggleSubscript().run()}
+                      className={getToolbarButtonClass(editor?.isActive("subscript"))}
+                      disabled={isSubmitting}
+                      title="Subscript"
+                    >
+                      <FaSubscript />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => editor?.chain().focus().toggleSuperscript().run()}
+                      className={getToolbarButtonClass(editor?.isActive("superscript"))}
+                      disabled={isSubmitting}
+                      title="Superscript"
+                    >
+                      <FaSuperscript />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => editor?.chain().focus().toggleHighlight().run()}
+                      className={getToolbarButtonClass(editor?.isActive("highlight"))}
+                      disabled={isSubmitting}
+                      title="Highlight"
+                    >
+                      <FaHighlighter />
+                    </button>
+                    <label
+                      className={`${toolbarButtonBaseClass} flex cursor-pointer items-center gap-1 border-gray-200 text-gray-700 hover:bg-gray-100`}
+                      title="Text color"
+                    >
+                      A
+                      <input
+                        type="color"
+                        value={textColor}
+                        onChange={(e) => {
+                          setTextColor(e.target.value);
+                          editor?.chain().focus().setColor(e.target.value).run();
+                        }}
+                        className="h-4 w-4 cursor-pointer border-0 bg-transparent p-0"
+                        disabled={isSubmitting}
+                      />
+                    </label>
+                  </div>
+
+                  <div className="flex items-center gap-1 border-r border-gray-200 pr-2">
+                    <button
+                      type="button"
+                      onClick={() => editor?.chain().focus().toggleBulletList().run()}
+                      className={getToolbarButtonClass(editor?.isActive("bulletList"))}
+                      disabled={isSubmitting}
+                      title="Bullet list"
+                    >
+                      <FaListUl />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => editor?.chain().focus().toggleOrderedList().run()}
+                      className={getToolbarButtonClass(editor?.isActive("orderedList"))}
+                      disabled={isSubmitting}
+                      title="Numbered list"
+                    >
+                      <FaListOl />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => editor?.chain().focus().toggleBlockquote().run()}
+                      className={getToolbarButtonClass(editor?.isActive("blockquote"))}
+                      disabled={isSubmitting}
+                      title="Blockquote"
+                    >
+                      <FaQuoteRight />
+                    </button>
+                  </div>
+
+                  <div className="flex items-center gap-1 border-r border-gray-200 pr-2">
+                    <button
+                      type="button"
+                      onClick={() => editor?.chain().focus().setTextAlign("left").run()}
+                      className={getToolbarButtonClass(editor?.isActive({ textAlign: "left" }))}
+                      disabled={isSubmitting}
+                      title="Align left"
+                    >
+                      <FaAlignLeft />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => editor?.chain().focus().setTextAlign("center").run()}
+                      className={getToolbarButtonClass(editor?.isActive({ textAlign: "center" }))}
+                      disabled={isSubmitting}
+                      title="Align center"
+                    >
+                      <FaAlignCenter />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => editor?.chain().focus().setTextAlign("right").run()}
+                      className={getToolbarButtonClass(editor?.isActive({ textAlign: "right" }))}
+                      disabled={isSubmitting}
+                      title="Align right"
+                    >
+                      <FaAlignRight />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => editor?.chain().focus().setTextAlign("justify").run()}
+                      className={getToolbarButtonClass(editor?.isActive({ textAlign: "justify" }))}
+                      disabled={isSubmitting}
+                      title="Justify"
+                    >
+                      <FaAlignJustify />
+                    </button>
+                  </div>
+
+                  <div className="flex items-center gap-1 border-r border-gray-200 pr-2">
+                    <button
+                      type="button"
+                      onClick={setLink}
+                      className={getToolbarButtonClass(editor?.isActive("link"))}
+                      disabled={isSubmitting}
+                      title="Insert link"
+                    >
+                      <FaLink />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => editor?.chain().focus().unsetLink().run()}
+                      className={getToolbarButtonClass()}
+                      disabled={isSubmitting || !editor?.isActive("link")}
+                      title="Remove link"
+                    >
+                      <FaUnlink />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={addImage}
+                      className={getToolbarButtonClass()}
+                      disabled={isSubmitting}
+                      title="Add image"
+                    >
+                      <FaImage />
+                    </button>
+                  </div>
+
+                  <div className="ml-auto flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => editor?.chain().focus().unsetAllMarks().clearNodes().run()}
+                      className={getToolbarButtonClass()}
+                      disabled={isSubmitting}
+                      title="Clear formatting"
+                    >
+                      Clear Format
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setRichTextContent("<p></p>");
+                        setValue("information", "", {
+                          shouldDirty: true,
+                          shouldValidate: true,
+                        });
+                        editor?.commands.setContent("<p></p>", {
+                          emitUpdate: false,
+                        });
+                      }}
+                      className="rounded-md border border-red-200 px-2 py-1 text-xs text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+                      disabled={isSubmitting}
+                    >
+                      Clear Content
+                    </button>
+                  </div>
+                </div>
+                <EditorContent editor={editor} />
+              </div>
             </div>
           </div>
         </div>

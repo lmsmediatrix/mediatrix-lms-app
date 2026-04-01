@@ -38,10 +38,10 @@ export default function ManageSection() {
 
   const tabs = [
     { name: "Modules", value: "modules" },
-    { name: "Announcements", value: "announcements" },
     { name: "Assessments", value: "assessments" },
     { name: "Grading System", value: "grades" },
     { name: "Manage Students", value: "students" },
+    { name: "Announcements", value: "announcements" },
   ];
 
   // Sync currentMobileTabIndex with activeTab from URL on mount

@@ -104,16 +104,19 @@ export const BASE_NAVIGATION: {
           LABEL: "Department",
           PATH: "/:code/admin/department",
         },
+        {
+          LABEL: "Training Needs",
+          PATH: "/:code/admin/tna",
+        },
+        {
+          LABEL: "TNA Deployment",
+          PATH: "/:code/admin/tna/execution",
+        },
       ],
     },
     {
       LABEL: "Compliance",
       PATH: "/:code/admin/compliance",
-      ICON: ChartNoAxesCombinedIcon,
-    },
-    {
-      LABEL: "Performance System",
-      PATH: "/:code/admin/performance-system",
       ICON: ChartNoAxesCombinedIcon,
     },
   ],
@@ -129,13 +132,8 @@ export const BASE_NAVIGATION: {
       ICON: LayoutGridIcon,
     },
     {
-      LABEL: "Completion",
+      LABEL: "Progress",
       PATH: "/:code/instructor/completion",
-      ICON: ChartNoAxesCombinedIcon,
-    },
-    {
-      LABEL: "Performance",
-      PATH: "/:code/instructor/performance",
       ICON: ChartNoAxesCombinedIcon,
     },
     {
@@ -156,11 +154,6 @@ export const BASE_NAVIGATION: {
       ICON: LayoutGridIcon,
     },
     {
-      LABEL: "Performance System",
-      PATH: "/:code/student/performance-system",
-      ICON: ChartNoAxesCombinedIcon,
-    },
-    {
       LABEL: "Schedule",
       PATH: "/:code/student/calendar",
       ICON: BellIcon,
@@ -177,7 +170,7 @@ export const roleLabels = {
   },
   group: {
     school: { singular: "Section", plural: "Sections" },
-    corporate: { singular: "Department", plural: "Departments" },
+    corporate: { singular: "Batch", plural: "Batches" },
   },
   instructor: {
     school: { singular: "Instructor", plural: "Instructors" },

@@ -114,7 +114,7 @@ export function SearchableSelect({
   }, [handleScroll, isOpen]);
 
   return (
-    <div ref={wrapperRef} className={`relative ${className}`}>
+    <div ref={wrapperRef} className={`relative ${isOpen ? "z-[80]" : "z-0"} ${className}`}>
       <div
         className={`flex items-center justify-between border rounded-lg px-3 py-2 cursor-pointer bg-white ${
           error ? "border-red-500" : "border-gray-300"
@@ -134,7 +134,7 @@ export function SearchableSelect({
       </div>
 
       {isOpen && (
-        <div className="absolute z-10 w-full mt-1 bg-white border rounded-lg shadow-lg">
+        <div className="absolute z-[90] w-full mt-1 bg-white border rounded-lg shadow-lg">
           <div className="border-b">
             {/* Search Bar with integrated pagination info */}
             <div className="p-2">

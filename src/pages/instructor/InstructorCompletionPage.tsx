@@ -4,6 +4,7 @@ import {
   useGetPerformanceDashboard,
   useGetStudentPerformanceDetails,
 } from "../../hooks/useMetrics";
+import { useInstructorSections } from "../../hooks/useSection";
 import { useAuth } from "../../context/AuthContext";
 import { getTerm } from "../../lib/utils";
 import PageHeader from "../../components/common/PageHeader";
@@ -68,14 +69,43 @@ interface StudentPerformanceDetails {
   courseBreakdown: CourseBreakdownEntry[];
 }
 
+type GroupSortKey = "employee" | "program" | "assessments" | "status";
+type GroupSortDirection = "asc" | "desc";
+
+interface GroupFilters {
+  employee: string;
+  program: string;
+  assessments: string;
+  status: string;
+}
+
+interface GroupPreparedRow {
+  student: StudentEntry;
+  completedLessons: number;
+  totalLessons: number;
+  lessonPercent: number;
+  completedAssessments: number;
+  totalAssessments: number;
+  assessmentPercent: number;
+  overallPercent: number;
+  statusLabel: "Completed" | "In Progress" | "Not Started";
+}
+
 export default function InstructorCompletionPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { currentUser } = useAuth();
   const orgCode = currentUser.user.organization.code;
   const orgType = currentUser.user.organization.type;
+  const instructorId =
+    (currentUser.user as { id?: string; _id?: string }).id ||
+    (currentUser.user as { id?: string; _id?: string })._id ||
+    "";
   const sectionTerm = getTerm("group", orgType);
   const sectionsTerm = getTerm("group", orgType, true);
+  const learnerTerm = getTerm("learner", orgType);
+  const learnersTerm = getTerm("learner", orgType, true);
+  const isCorporate = orgType === "corporate";
   const labelMap: Record<CompletionType, string> = {
     ...baseLabelMap,
     sections: sectionsTerm,
@@ -87,8 +117,23 @@ export default function InstructorCompletionPage() {
   const sectionCode = searchParams.get("sectionCode") || undefined;
 
   const { data, isLoading } = useGetPerformanceDashboard(sectionCode);
+  const { data: instructorSectionsData } = useInstructorSections({
+    instructorId,
+    limit: 500,
+    skip: 0,
+  });
   const students: StudentEntry[] = data?.students || [];
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
+  const [programSearch, setProgramSearch] = useState("");
+  const [groupPageByCode, setGroupPageByCode] = useState<Record<string, number>>(
+    {}
+  );
+  const [groupSortByCode, setGroupSortByCode] = useState<
+    Record<string, { key: GroupSortKey; direction: GroupSortDirection }>
+  >({});
+  const [groupFiltersByCode, setGroupFiltersByCode] = useState<
+    Record<string, GroupFilters>
+  >({});
 
   const {
     data: rawStudentDetails,
@@ -128,6 +173,30 @@ export default function InstructorCompletionPage() {
     const total = detailLessonTotals.total + detailAssessmentTotals.total;
     return total > 0 ? Math.round((completed / total) * 100) : 0;
   }, [detailAssessmentTotals, detailLessonTotals]);
+
+  const sectionNameByCode = useMemo(() => {
+    const map = new Map<string, string>();
+    const raw = instructorSectionsData as any;
+    const sectionDocs = Array.isArray(raw?.sections)
+      ? raw.sections
+      : Array.isArray(raw?.data?.sections)
+        ? raw.data.sections
+        : Array.isArray(raw?.documents)
+          ? raw.documents
+          : Array.isArray(raw?.data?.documents)
+            ? raw.data.documents
+            : [];
+
+    for (const section of sectionDocs) {
+      const code = section?.code;
+      const name = section?.name || section?.title;
+      if (typeof code === "string" && typeof name === "string" && name.trim()) {
+        map.set(code, name.trim());
+      }
+    }
+
+    return map;
+  }, [instructorSectionsData]);
 
   const openStudentDetails = (studentId: string) => {
     setSelectedStudentId(studentId);
@@ -187,15 +256,85 @@ export default function InstructorCompletionPage() {
     }
   }
 
+  const looksLikeSectionCode = (value: string) =>
+    /^[A-Z]{1,6}\d{2,}$/i.test(value.trim());
+
+  const groupPageSize = 5;
+  const defaultGroupFilters: GroupFilters = {
+    employee: "",
+    program: "",
+    assessments: "",
+    status: "",
+  };
+
+  const getGroupSortState = (groupCode: string) =>
+    groupSortByCode[groupCode] || { key: "employee" as GroupSortKey, direction: "asc" as GroupSortDirection };
+
+  const getGroupFiltersState = (groupCode: string) =>
+    groupFiltersByCode[groupCode] || defaultGroupFilters;
+
+  const toggleGroupSort = (groupCode: string, key: GroupSortKey) => {
+    setGroupSortByCode((prev) => {
+      const current = prev[groupCode] || {
+        key: "employee" as GroupSortKey,
+        direction: "asc" as GroupSortDirection,
+      };
+
+      if (current.key === key) {
+        return {
+          ...prev,
+          [groupCode]: {
+            key,
+            direction: current.direction === "asc" ? "desc" : "asc",
+          },
+        };
+      }
+
+      return {
+        ...prev,
+        [groupCode]: { key, direction: "asc" },
+      };
+    });
+
+    setGroupPageByCode((prev) => ({
+      ...prev,
+      [groupCode]: 1,
+    }));
+  };
+
+  const updateGroupFilter = (
+    groupCode: string,
+    filterKey: keyof GroupFilters,
+    value: string
+  ) => {
+    setGroupFiltersByCode((prev) => ({
+      ...prev,
+      [groupCode]: {
+        ...(prev[groupCode] || defaultGroupFilters),
+        [filterKey]: value,
+      },
+    }));
+    setGroupPageByCode((prev) => ({
+      ...prev,
+      [groupCode]: 1,
+    }));
+  };
+
   // Group students by section, sorted within each group by progress desc
   const sectionGroups = useMemo((): SectionGroup[] => {
     const map = new Map<string, SectionGroup>();
     for (const student of students) {
       const key = student.section || "Unknown";
+      const studentName =
+        typeof student.sectionName === "string" ? student.sectionName.trim() : "";
+      const mappedName = sectionNameByCode.get(key)?.trim() || "";
+      const preferredName =
+        studentName && studentName !== key ? studentName : mappedName;
+
       if (!map.has(key)) {
         map.set(key, {
           sectionCode: key,
-          sectionName: student.sectionName || key,
+          sectionName: preferredName,
           students: [],
           completedCount: 0,
         });
@@ -208,12 +347,59 @@ export default function InstructorCompletionPage() {
       group.students.sort((a, b) => getCompletionStats(b).percent - getCompletionStats(a).percent);
       group.completedCount = group.students.filter(isCompleted).length;
     }
-    // Sort sections by name
-    groups.sort((a, b) => a.sectionName.localeCompare(b.sectionName));
+
+    // Sort sections by preferred display name (fallback to section code)
+    groups.sort((a, b) =>
+      (a.sectionName || a.sectionCode).localeCompare(b.sectionName || b.sectionCode)
+    );
+
+    // Never show raw codes like CH078 as the visible group label
+    groups.forEach((group, index) => {
+      if (!group.sectionName || looksLikeSectionCode(group.sectionName)) {
+        group.sectionName = `${sectionTerm} ${index + 1}`;
+      }
+    });
+
     return groups;
-  }, [students, completionType]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [students, completionType, sectionNameByCode, sectionTerm]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const totalCompleted = useMemo(() => students.filter(isCompleted).length, [students, completionType]); // eslint-disable-line react-hooks/exhaustive-deps
+  const selectedSectionLabel = useMemo(() => {
+    if (!sectionCode) return `All ${sectionsTerm.toLowerCase()}`;
+    const mappedName = sectionNameByCode.get(sectionCode);
+    return mappedName
+      ? `${sectionTerm}: ${mappedName}`
+      : `Selected ${sectionTerm.toLowerCase()}`;
+  }, [sectionCode, sectionNameByCode, sectionTerm, sectionsTerm]);
+  const progressTitle = isCorporate
+    ? "Program Progress"
+    : `${labelMap[completionType]} Progress`;
+  const learnersCompletedLabel =
+    students.length === 1
+      ? learnerTerm.toLowerCase()
+      : learnersTerm.toLowerCase();
+  const progressSearchLabel = isCorporate
+    ? "program"
+    : sectionTerm.toLowerCase();
+  const filteredSectionGroups = useMemo(() => {
+    const normalized = programSearch.trim().toLowerCase();
+    if (!normalized) return sectionGroups;
+
+    return sectionGroups.filter((group) =>
+      group.sectionName.toLowerCase().includes(normalized)
+    );
+  }, [sectionGroups, programSearch]);
+  const headerSearchAction = (
+    <div className="w-[280px] md:w-[340px]">
+      <input
+        type="text"
+        value={programSearch}
+        onChange={(e) => setProgramSearch(e.target.value)}
+        placeholder={`Search ${progressSearchLabel}`}
+        className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/20"
+      />
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -226,8 +412,9 @@ export default function InstructorCompletionPage() {
           iconStyle={{
             backgroundColor: "color-mix(in srgb, var(--color-primary, #3b82f6) 12%, white 88%)",
           }}
-          title={`${labelMap[completionType]} Progress`}
-          subtitle={`${totalCompleted} of ${students.length} student${students.length !== 1 ? "s" : ""} completed - ${sectionCode ? `${sectionTerm}: ${sectionCode}` : `All ${sectionsTerm.toLowerCase()}`}`}
+          title={progressTitle}
+          subtitle={`${totalCompleted} of ${students.length} ${learnersCompletedLabel} completed - ${selectedSectionLabel}`}
+          actions={headerSearchAction}
         />
 
         {isLoading ? (
@@ -251,12 +438,182 @@ export default function InstructorCompletionPage() {
         ) : students.length === 0 ? (
           <div className="rounded-2xl border border-gray-100 bg-white p-16 shadow-sm text-center">
             <ChartBarIcon size={36} className="mx-auto text-gray-200 mb-4" />
-            <p className="text-gray-500 font-medium">No students enrolled</p>
-            <p className="text-sm text-gray-400 mt-1">No students found in your {sectionsTerm.toLowerCase()}.</p>
+            <p className="text-gray-500 font-medium">
+              No {learnersTerm.toLowerCase()} enrolled
+            </p>
+            <p className="text-sm text-gray-400 mt-1">
+              No {learnersTerm.toLowerCase()} found in your{" "}
+              {sectionsTerm.toLowerCase()}.
+            </p>
           </div>
         ) : (
           <div className="space-y-4">
-            {sectionGroups.map((group) => (
+            {filteredSectionGroups.length === 0 ? (
+              <div className="rounded-2xl border border-gray-100 bg-white p-10 shadow-sm text-center text-sm text-gray-500">
+                No {progressSearchLabel} matches "{programSearch.trim()}".
+              </div>
+            ) : (
+              filteredSectionGroups.map((group) => {
+              const groupCode = group.sectionCode;
+              const sortState = getGroupSortState(groupCode);
+              const filters = getGroupFiltersState(groupCode);
+
+              const getStatusLabel = (
+                overallPercent: number
+              ): GroupPreparedRow["statusLabel"] => {
+                if (overallPercent >= 100) return "Completed";
+                if (overallPercent > 0) return "In Progress";
+                return "Not Started";
+              };
+
+              const getStatusStyle = (
+                statusLabel: GroupPreparedRow["statusLabel"]
+              ) => {
+                if (statusLabel === "Completed") {
+                  return {
+                    backgroundColor:
+                      "color-mix(in srgb, var(--color-success, #10b981) 10%, white 90%)",
+                    color:
+                      "color-mix(in srgb, var(--color-success, #10b981) 80%, black 20%)",
+                    borderColor:
+                      "color-mix(in srgb, var(--color-success, #10b981) 25%, white 75%)",
+                  };
+                }
+                if (statusLabel === "In Progress") {
+                  return {
+                    backgroundColor:
+                      "color-mix(in srgb, var(--color-primary, #3b82f6) 10%, white 90%)",
+                    color: "var(--color-primary, #2563eb)",
+                    borderColor:
+                      "color-mix(in srgb, var(--color-primary, #3b82f6) 20%, white 80%)",
+                  };
+                }
+                return {
+                  backgroundColor: "#f9fafb",
+                  color: "#6b7280",
+                  borderColor: "#e5e7eb",
+                };
+              };
+
+              const preparedRows: GroupPreparedRow[] = group.students.map(
+                (student) => {
+                  const completedLessons = student.progress?.completedLessons ?? 0;
+                  const totalLessons = student.progress?.totalLessons ?? 0;
+                  const lessonPercent =
+                    totalLessons > 0
+                      ? Math.round((completedLessons / totalLessons) * 100)
+                      : 0;
+
+                  const completedAssessments =
+                    student.progress?.completedAssessments ?? 0;
+                  const totalAssessments =
+                    student.progress?.totalAssessments ?? 0;
+                  const assessmentPercent =
+                    totalAssessments > 0
+                      ? Math.round(
+                          (completedAssessments / totalAssessments) * 100
+                        )
+                      : 0;
+
+                  const overallCompleted =
+                    completedLessons + completedAssessments;
+                  const overallTotal = totalLessons + totalAssessments;
+                  const overallPercent =
+                    overallTotal > 0
+                      ? Math.round((overallCompleted / overallTotal) * 100)
+                      : 0;
+
+                  return {
+                    student,
+                    completedLessons,
+                    totalLessons,
+                    lessonPercent,
+                    completedAssessments,
+                    totalAssessments,
+                    assessmentPercent,
+                    overallPercent,
+                    statusLabel: getStatusLabel(overallPercent),
+                  };
+                }
+              );
+
+              const normalizedFilters = {
+                employee: filters.employee.trim().toLowerCase(),
+                program: filters.program.trim().toLowerCase(),
+                assessments: filters.assessments.trim().toLowerCase(),
+                status: filters.status.trim().toLowerCase(),
+              };
+
+              const filteredRows = preparedRows.filter((row) => {
+                const employeeValue =
+                  `${row.student.name} ${row.student.email}`.toLowerCase();
+                const programValue =
+                  `${row.completedLessons}/${row.totalLessons} ${row.lessonPercent}%`.toLowerCase();
+                const assessmentsValue =
+                  `${row.completedAssessments}/${row.totalAssessments} ${row.assessmentPercent}%`.toLowerCase();
+                const statusValue = row.statusLabel.toLowerCase();
+
+                return (
+                  employeeValue.includes(normalizedFilters.employee) &&
+                  programValue.includes(normalizedFilters.program) &&
+                  assessmentsValue.includes(normalizedFilters.assessments) &&
+                  statusValue.includes(normalizedFilters.status)
+                );
+              });
+
+              const sortedRows = [...filteredRows].sort((a, b) => {
+                let comparison = 0;
+
+                if (sortState.key === "employee") {
+                  comparison = (a.student.name || "").localeCompare(
+                    b.student.name || "",
+                    undefined,
+                    { sensitivity: "base" }
+                  );
+                } else if (sortState.key === "program") {
+                  comparison =
+                    a.lessonPercent - b.lessonPercent ||
+                    a.completedLessons - b.completedLessons ||
+                    a.totalLessons - b.totalLessons;
+                } else if (sortState.key === "assessments") {
+                  comparison =
+                    a.assessmentPercent - b.assessmentPercent ||
+                    a.completedAssessments - b.completedAssessments ||
+                    a.totalAssessments - b.totalAssessments;
+                } else {
+                  const statusRank: Record<
+                    GroupPreparedRow["statusLabel"],
+                    number
+                  > = {
+                    "Not Started": 0,
+                    "In Progress": 1,
+                    Completed: 2,
+                  };
+                  comparison =
+                    statusRank[a.statusLabel] - statusRank[b.statusLabel];
+                }
+
+                return sortState.direction === "asc" ? comparison : -comparison;
+              });
+
+              const requestedPage = groupPageByCode[groupCode] || 1;
+              const totalPages = Math.max(
+                1,
+                Math.ceil(sortedRows.length / groupPageSize)
+              );
+              const currentPage = Math.min(requestedPage, totalPages);
+              const pageStartIndex = (currentPage - 1) * groupPageSize;
+              const pagedRows = sortedRows.slice(
+                pageStartIndex,
+                pageStartIndex + groupPageSize
+              );
+
+              const sortIndicator = (key: GroupSortKey) => {
+                if (sortState.key !== key) return "↕";
+                return sortState.direction === "asc" ? "↑" : "↓";
+              };
+
+              return (
               <div
                 key={group.sectionCode}
                 className="rounded-2xl border shadow-sm overflow-hidden"
@@ -274,20 +631,9 @@ export default function InstructorCompletionPage() {
                   }}
                 >
                   <div className="flex items-center gap-2">
-                    <span className="text-sm font-semibold text-gray-700 uppercase tracking-wide">
+                    <span className="text-sm font-semibold text-gray-700">
                       {group.sectionName}
                     </span>
-                    {group.sectionName !== group.sectionCode && (
-                      <span
-                        className="text-xs font-medium px-2 py-0.5 rounded-full"
-                        style={{
-                          backgroundColor: "color-mix(in srgb, var(--color-primary, #3b82f6) 10%, white 90%)",
-                          color: "color-mix(in srgb, var(--color-primary, #3b82f6) 70%, black 30%)",
-                        }}
-                      >
-                        {group.sectionCode}
-                      </span>
-                    )}
                   </div>
                   <span
                     className="text-xs font-medium px-2.5 py-0.5 rounded-full border"
@@ -303,209 +649,307 @@ export default function InstructorCompletionPage() {
 
                 {/* Students table */}
                 <div className="bg-white overflow-x-auto">
-                  <table className="w-full min-w-[980px]">
-                    <thead>
-                      <tr
-                        className="border-b"
-                        style={{
-                          backgroundColor: "color-mix(in srgb, var(--color-primary, #3b82f6) 5%, white 95%)",
-                          borderColor: "color-mix(in srgb, var(--color-primary, #3b82f6) 12%, white 88%)",
-                        }}
-                      >
-                        <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                          Student
-                        </th>
-                        <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                          Lessons Progress
-                        </th>
-                        <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                          Assessments Progress
-                        </th>
-                        <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                          Status
-                        </th>
-                        <th className="px-5 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                          Actions
-                        </th>
-                      </tr>
-                    </thead>
+                    <table className="w-full min-w-[980px]">
+                      <thead>
+                        <tr
+                          className="border-b"
+                          style={{
+                            backgroundColor: "color-mix(in srgb, var(--color-primary, #3b82f6) 5%, white 95%)",
+                            borderColor: "color-mix(in srgb, var(--color-primary, #3b82f6) 12%, white 88%)",
+                          }}
+                        >
+                          <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                            <button
+                              type="button"
+                              onClick={() => toggleGroupSort(groupCode, "employee")}
+                              className="inline-flex items-center gap-1 hover:text-gray-700"
+                            >
+                              {learnerTerm}
+                              <span className="text-[10px]">
+                                {sortIndicator("employee")}
+                              </span>
+                            </button>
+                          </th>
+                          <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                            <button
+                              type="button"
+                              onClick={() => toggleGroupSort(groupCode, "program")}
+                              className="inline-flex items-center gap-1 hover:text-gray-700"
+                            >
+                              Lessons Progress
+                              <span className="text-[10px]">
+                                {sortIndicator("program")}
+                              </span>
+                            </button>
+                          </th>
+                          <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                            <button
+                              type="button"
+                              onClick={() => toggleGroupSort(groupCode, "assessments")}
+                              className="inline-flex items-center gap-1 hover:text-gray-700"
+                            >
+                              Assessments Progress
+                              <span className="text-[10px]">
+                                {sortIndicator("assessments")}
+                              </span>
+                            </button>
+                          </th>
+                          <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                            <button
+                              type="button"
+                              onClick={() => toggleGroupSort(groupCode, "status")}
+                              className="inline-flex items-center gap-1 hover:text-gray-700"
+                            >
+                              Status
+                              <span className="text-[10px]">
+                                {sortIndicator("status")}
+                              </span>
+                            </button>
+                          </th>
+                          <th className="px-5 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                            Actions
+                          </th>
+                        </tr>
+                        <tr
+                          className="border-b"
+                          style={{
+                            borderColor:
+                              "color-mix(in srgb, var(--color-primary, #3b82f6) 8%, white 92%)",
+                            backgroundColor: "white",
+                          }}
+                        >
+                          <th className="px-5 py-2">
+                            <input
+                              type="text"
+                              value={filters.employee}
+                              onChange={(e) =>
+                                updateGroupFilter(groupCode, "employee", e.target.value)
+                              }
+                              placeholder={`Search ${learnerTerm.toLowerCase()}`}
+                              className="w-full rounded-lg border border-gray-200 px-3 py-1.5 text-xs text-gray-700 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/20"
+                            />
+                          </th>
+                          <th className="px-5 py-2">
+                            <input
+                              type="text"
+                              value={filters.program}
+                              onChange={(e) =>
+                                updateGroupFilter(groupCode, "program", e.target.value)
+                              }
+                              placeholder="Search lessons progress"
+                              className="w-full rounded-lg border border-gray-200 px-3 py-1.5 text-xs text-gray-700 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/20"
+                            />
+                          </th>
+                          <th className="px-5 py-2">
+                            <input
+                              type="text"
+                              value={filters.assessments}
+                              onChange={(e) =>
+                                updateGroupFilter(groupCode, "assessments", e.target.value)
+                              }
+                              placeholder="Search assessments progress"
+                              className="w-full rounded-lg border border-gray-200 px-3 py-1.5 text-xs text-gray-700 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/20"
+                            />
+                          </th>
+                          <th className="px-5 py-2">
+                            <input
+                              type="text"
+                              value={filters.status}
+                              onChange={(e) =>
+                                updateGroupFilter(groupCode, "status", e.target.value)
+                              }
+                              placeholder="Search status"
+                              className="w-full rounded-lg border border-gray-200 px-3 py-1.5 text-xs text-gray-700 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/20"
+                            />
+                          </th>
+                          <th className="px-5 py-2 text-right">
+                            <span className="text-[11px] text-gray-400">
+                              {filteredRows.length} result
+                              {filteredRows.length !== 1 ? "s" : ""}
+                            </span>
+                          </th>
+                        </tr>
+                      </thead>
                     <tbody
                       className="divide-y"
                       style={{
                         borderColor: "color-mix(in srgb, var(--color-primary, #3b82f6) 8%, white 92%)",
                       }}
                     >
-                      {group.students.map((student) => {
-                        const initials = student.name?.charAt(0)?.toUpperCase() || "?";
-
-                        const completedLessons = student.progress?.completedLessons ?? 0;
-                        const totalLessons = student.progress?.totalLessons ?? 0;
-                        const lessonPercent =
-                          totalLessons > 0
-                            ? Math.round((completedLessons / totalLessons) * 100)
-                            : 0;
-
-                        const completedAssessments =
-                          student.progress?.completedAssessments ?? 0;
-                        const totalAssessments = student.progress?.totalAssessments ?? 0;
-                        const assessmentPercent =
-                          totalAssessments > 0
-                            ? Math.round(
-                                (completedAssessments / totalAssessments) * 100
-                              )
-                            : 0;
-                        const overallCompleted =
-                          completedLessons + completedAssessments;
-                        const overallTotal = totalLessons + totalAssessments;
-                        const overallPercent =
-                          overallTotal > 0
-                            ? Math.round((overallCompleted / overallTotal) * 100)
-                            : 0;
-
-                        const statusBadge =
-                          overallPercent >= 100
-                            ? {
-                                label: "Completed",
-                                style: {
-                                  backgroundColor:
-                                    "color-mix(in srgb, var(--color-success, #10b981) 10%, white 90%)",
-                                  color:
-                                    "color-mix(in srgb, var(--color-success, #10b981) 80%, black 20%)",
-                                  borderColor:
-                                    "color-mix(in srgb, var(--color-success, #10b981) 25%, white 75%)",
-                                },
-                              }
-                            : overallPercent > 0
-                            ? {
-                                label: "In Progress",
-                                style: {
-                                  backgroundColor:
-                                    "color-mix(in srgb, var(--color-primary, #3b82f6) 10%, white 90%)",
-                                  color: "var(--color-primary, #2563eb)",
-                                  borderColor:
-                                    "color-mix(in srgb, var(--color-primary, #3b82f6) 20%, white 80%)",
-                                },
-                              }
-                            : {
-                                label: "Not Started",
-                                style: {
-                                  backgroundColor: "#f9fafb",
-                                  color: "#6b7280",
-                                  borderColor: "#e5e7eb",
-                                },
-                              };
-
-                        return (
-                          <tr
-                            key={student._id}
-                            className="cursor-pointer transition-colors hover:brightness-[0.98]"
-                            style={{ backgroundColor: "white" }}
-                            onClick={() => openStudentDetails(student._id)}
-                            onMouseEnter={(e) =>
-                              ((e.currentTarget as HTMLTableRowElement).style.backgroundColor =
-                                "color-mix(in srgb, var(--color-primary, #3b82f6) 4%, white 96%)")
-                            }
-                            onMouseLeave={(e) =>
-                              ((e.currentTarget as HTMLTableRowElement).style.backgroundColor =
-                                "white")
-                            }
+                      {pagedRows.length === 0 ? (
+                        <tr>
+                          <td
+                            colSpan={5}
+                            className="px-5 py-8 text-center text-sm text-gray-500"
                           >
-                            <td className="px-5 py-4">
-                              <div className="flex items-center gap-3 min-w-0">
-                                <div
-                                  className="h-9 w-9 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
-                                  style={{
-                                    backgroundColor:
-                                      "color-mix(in srgb, var(--color-primary, #3b82f6) 12%, white 88%)",
-                                    color: "var(--color-primary, #2563eb)",
-                                  }}
+                            No matching {learnersTerm.toLowerCase()} in this{" "}
+                            {sectionTerm.toLowerCase()}.
+                          </td>
+                        </tr>
+                      ) : (
+                        pagedRows.map((row) => {
+                          const { student } = row;
+                          const initials =
+                            student.name?.charAt(0)?.toUpperCase() || "?";
+
+                          return (
+                            <tr
+                              key={student._id}
+                              className="cursor-pointer transition-colors hover:brightness-[0.98]"
+                              style={{ backgroundColor: "white" }}
+                              onClick={() => openStudentDetails(student._id)}
+                              onMouseEnter={(e) =>
+                                ((e.currentTarget as HTMLTableRowElement).style.backgroundColor =
+                                  "color-mix(in srgb, var(--color-primary, #3b82f6) 4%, white 96%)")
+                              }
+                              onMouseLeave={(e) =>
+                                ((e.currentTarget as HTMLTableRowElement).style.backgroundColor =
+                                  "white")
+                              }
+                            >
+                              <td className="px-5 py-4">
+                                <div className="flex items-center gap-3 min-w-0">
+                                  <div
+                                    className="h-9 w-9 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
+                                    style={{
+                                      backgroundColor:
+                                        "color-mix(in srgb, var(--color-primary, #3b82f6) 12%, white 88%)",
+                                      color: "var(--color-primary, #2563eb)",
+                                    }}
+                                  >
+                                    {initials}
+                                  </div>
+                                  <div className="min-w-0">
+                                    <p className="text-sm font-semibold text-gray-800 truncate">
+                                      {student.name}
+                                    </p>
+                                    <p className="text-xs text-gray-400 truncate">
+                                      {student.email}
+                                    </p>
+                                  </div>
+                                </div>
+                              </td>
+
+                              <td className="px-5 py-4 min-w-[240px]">
+                                <div className="flex items-center gap-3">
+                                  <div className="flex-1 bg-gray-100 rounded-full h-1.5 overflow-hidden">
+                                    <div
+                                      className="h-full rounded-full transition-all"
+                                      style={{
+                                        width: `${row.lessonPercent}%`,
+                                        backgroundColor:
+                                          row.lessonPercent >= 100
+                                            ? "var(--color-success, #10b981)"
+                                            : row.lessonPercent > 0
+                                            ? "var(--color-primary, #3b82f6)"
+                                            : "#d1d5db",
+                                      }}
+                                    />
+                                  </div>
+                                  <span className="text-sm font-medium text-gray-700 tabular-nums min-w-[56px] text-right">
+                                    {row.completedLessons}/{row.totalLessons}
+                                  </span>
+                                </div>
+                              </td>
+
+                              <td className="px-5 py-4 min-w-[260px]">
+                                <div className="flex items-center gap-3">
+                                  <div className="flex-1 bg-gray-100 rounded-full h-1.5 overflow-hidden">
+                                    <div
+                                      className="h-full rounded-full transition-all"
+                                      style={{
+                                        width: `${row.assessmentPercent}%`,
+                                        backgroundColor:
+                                          row.assessmentPercent >= 100
+                                            ? "var(--color-success, #10b981)"
+                                            : row.assessmentPercent > 0
+                                            ? "var(--color-primary, #3b82f6)"
+                                            : "#d1d5db",
+                                      }}
+                                    />
+                                  </div>
+                                  <span className="text-sm font-medium text-gray-700 tabular-nums min-w-[56px] text-right">
+                                    {row.completedAssessments}/{row.totalAssessments}
+                                  </span>
+                                </div>
+                              </td>
+
+                              <td className="px-5 py-4">
+                                <span
+                                  className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border"
+                                  style={getStatusStyle(row.statusLabel)}
                                 >
-                                  {initials}
-                                </div>
-                                <div className="min-w-0">
-                                  <p className="text-sm font-semibold text-gray-800 truncate">
-                                    {student.name}
-                                  </p>
-                                  <p className="text-xs text-gray-400 truncate">
-                                    {student.email}
-                                  </p>
-                                </div>
-                              </div>
-                            </td>
-
-                            <td className="px-5 py-4 min-w-[240px]">
-                              <div className="flex items-center gap-3">
-                                <div className="flex-1 bg-gray-100 rounded-full h-1.5 overflow-hidden">
-                                  <div
-                                    className="h-full rounded-full transition-all"
-                                    style={{
-                                      width: `${lessonPercent}%`,
-                                      backgroundColor:
-                                        lessonPercent >= 100
-                                          ? "var(--color-success, #10b981)"
-                                          : lessonPercent > 0
-                                          ? "var(--color-primary, #3b82f6)"
-                                          : "#d1d5db",
-                                    }}
-                                  />
-                                </div>
-                                <span className="text-sm font-medium text-gray-700 tabular-nums min-w-[56px] text-right">
-                                  {completedLessons}/{totalLessons}
+                                  {row.statusLabel}
                                 </span>
-                              </div>
-                            </td>
+                              </td>
 
-                            <td className="px-5 py-4 min-w-[260px]">
-                              <div className="flex items-center gap-3">
-                                <div className="flex-1 bg-gray-100 rounded-full h-1.5 overflow-hidden">
-                                  <div
-                                    className="h-full rounded-full transition-all"
-                                    style={{
-                                      width: `${assessmentPercent}%`,
-                                      backgroundColor:
-                                        assessmentPercent >= 100
-                                          ? "var(--color-success, #10b981)"
-                                          : assessmentPercent > 0
-                                          ? "var(--color-primary, #3b82f6)"
-                                          : "#d1d5db",
-                                    }}
-                                  />
-                                </div>
-                                <span className="text-sm font-medium text-gray-700 tabular-nums min-w-[56px] text-right">
-                                  {completedAssessments}/{totalAssessments}
-                                </span>
-                              </div>
-                            </td>
-
-                            <td className="px-5 py-4">
-                              <span
-                                className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border"
-                                style={statusBadge.style}
-                              >
-                                {statusBadge.label}
-                              </span>
-                            </td>
-
-                            <td className="px-5 py-4 text-right">
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  openStudentDetails(student._id);
-                                }}
-                                className="text-xs font-medium hover:underline transition-colors"
-                                style={{ color: "var(--color-primary, #2563eb)" }}
-                              >
-                                View Details
-                              </button>
-                            </td>
-                          </tr>
-                        );
-                      })}
+                              <td className="px-5 py-4 text-right">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    openStudentDetails(student._id);
+                                  }}
+                                  className="text-xs font-medium hover:underline transition-colors"
+                                  style={{ color: "var(--color-primary, #2563eb)" }}
+                                >
+                                  View Details
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
                     </tbody>
                   </table>
                 </div>
+
+                <div className="bg-white border-t border-gray-100 px-5 py-3 flex items-center justify-between">
+                  <p className="text-xs text-gray-500">
+                    Showing{" "}
+                    {sortedRows.length === 0
+                      ? 0
+                      : `${pageStartIndex + 1}-${Math.min(
+                          pageStartIndex + groupPageSize,
+                          sortedRows.length
+                        )}`}{" "}
+                    of {sortedRows.length}
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setGroupPageByCode((prev) => ({
+                          ...prev,
+                          [groupCode]: Math.max(1, currentPage - 1),
+                        }))
+                      }
+                      disabled={currentPage <= 1}
+                      className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Previous
+                    </button>
+                    <span className="text-xs text-gray-600 min-w-[70px] text-center">
+                      Page {currentPage} / {totalPages}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setGroupPageByCode((prev) => ({
+                          ...prev,
+                          [groupCode]: Math.min(totalPages, currentPage + 1),
+                        }))
+                      }
+                      disabled={currentPage >= totalPages}
+                      className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Next
+                    </button>
+                  </div>
+                </div>
               </div>
-            ))}
+            );
+            })
+            )}
           </div>
         )}
       </div>
@@ -524,10 +968,11 @@ export default function InstructorCompletionPage() {
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <p className="text-xs uppercase tracking-wide text-gray-500 font-semibold">
-                    Student Completion Details
+                    {learnerTerm} Completion Details
                   </p>
                   <h2 className="text-xl font-bold text-gray-900 mt-1">
-                    {studentDetails?.name || "Loading student..."}
+                    {studentDetails?.name ||
+                      `Loading ${learnerTerm.toLowerCase()}...`}
                   </h2>
                   <p className="text-sm text-gray-500 mt-1">
                     {studentDetails?.email || "Fetching details..."}
@@ -554,7 +999,7 @@ export default function InstructorCompletionPage() {
               ) : isStudentDetailsError || !studentDetails ? (
                 <div className="rounded-xl border border-red-200 bg-red-50 p-4">
                   <p className="text-sm font-medium text-red-700">
-                    Unable to load student details right now.
+                    Unable to load {learnerTerm.toLowerCase()} details right now.
                   </p>
                   <p className="text-xs text-red-600 mt-1">
                     Please try again, or open the full details page.
@@ -740,7 +1185,8 @@ export default function InstructorCompletionPage() {
                           ) : (
                             <tr>
                               <td colSpan={5} className="px-4 py-10 text-center text-sm text-gray-500">
-                                No section breakdown found for this student.
+                                No section breakdown found for this{" "}
+                                {learnerTerm.toLowerCase()}.
                               </td>
                             </tr>
                           )}
