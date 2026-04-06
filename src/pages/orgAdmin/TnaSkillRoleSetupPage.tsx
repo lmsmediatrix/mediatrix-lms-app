@@ -1,11 +1,15 @@
 import { useMemo, useState } from "react";
+import { FaEdit, FaLightbulb, FaTrash } from "react-icons/fa";
 import { Navigate, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import { SearchableSelect } from "../../components/SearchableSelect";
 import Button from "../../components/common/Button";
+import Dialog from "../../components/common/Dialog";
 import { useAuth } from "../../context/AuthContext";
 import {
   useCreateTnaSkill,
+  useDeleteTnaSkill,
+  useDeleteTnaRoleRequirement,
   useGetTnaRoleRequirements,
   useGetTnaSkills,
   useUpsertRoleRequirement,
@@ -13,6 +17,9 @@ import {
 
 type LevelRow = { skillId: string; level: number };
 type StepKey = "skill-library" | "role-requirements";
+type DeleteTarget =
+  | { type: "skill"; id: string; label: string }
+  | { type: "role"; id: string; label: string };
 
 const SETUP_TABS: Array<{
   key: StepKey;
@@ -26,7 +33,7 @@ const SETUP_TABS: Array<{
   },
   {
     key: "role-requirements",
-    title: "Role and Skills Configuration",
+    title: "Role",
     description: "Set required skill levels and passing thresholds per role.",
   },
 ];
@@ -57,7 +64,9 @@ export default function TnaSkillRoleSetupPage() {
   const skillsQuery = useGetTnaSkills({ limit: 200, skip: 0 });
   const roleRequirementsQuery = useGetTnaRoleRequirements({ limit: 200, skip: 0 });
   const createSkillMutation = useCreateTnaSkill();
+  const deleteSkillMutation = useDeleteTnaSkill();
   const upsertRoleRequirementMutation = useUpsertRoleRequirement();
+  const deleteRoleRequirementMutation = useDeleteTnaRoleRequirement();
 
   const skills = useMemo(() => {
     const response = skillsQuery.data as { data?: any[] } | undefined;
@@ -78,11 +87,45 @@ export default function TnaSkillRoleSetupPage() {
     [skills]
   );
 
+  const skillNameById = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const skill of skills) {
+      const id = String(skill?._id || "").trim();
+      const name = String(skill?.name || "").trim();
+      if (id && name) map.set(id, name);
+    }
+    return map;
+  }, [skills]);
+
+  const getRequiredSkillPreview = (skillItem: any) => {
+    const directSkillName = String(skillItem?.skillName || "").trim();
+    const nestedSkillName = String(skillItem?.skill?.name || "").trim();
+    const nestedSkillIdName = String(skillItem?.skillId?.name || "").trim();
+
+    const rawSkillId = skillItem?.skillId;
+    const skillId =
+      typeof rawSkillId === "string"
+        ? rawSkillId.trim()
+        : String(rawSkillId?._id || "").trim();
+
+    const fallbackNameFromLibrary = skillId ? String(skillNameById.get(skillId) || "").trim() : "";
+    const name =
+      directSkillName || nestedSkillName || nestedSkillIdName || fallbackNameFromLibrary || "Unnamed skill";
+
+    const parsedLevel = Number(skillItem?.requiredLevel);
+    const level = Number.isFinite(parsedLevel) ? parsedLevel : 0;
+
+    return { name, level };
+  };
+
   const [activeStep, setActiveStep] = useState<StepKey>("skill-library");
   const [skillName, setSkillName] = useState("");
   const [jobRole, setJobRole] = useState("");
   const [threshold, setThreshold] = useState(70);
   const [requiredSkills, setRequiredSkills] = useState<LevelRow[]>([{ skillId: "", level: 1 }]);
+  const [editingRoleRequirementId, setEditingRoleRequirementId] = useState<string | null>(null);
+  const [deletingSkillId, setDeletingSkillId] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
 
   if (orgType !== "corporate") {
     return <Navigate to={`/${orgCode}/admin/dashboard`} replace />;
@@ -96,6 +139,19 @@ export default function TnaSkillRoleSetupPage() {
   const fieldHintClassName = "mt-1 text-xs text-slate-500";
   const sectionSurfaceClassName = "rounded-xl border border-slate-200 bg-white p-3.5";
   const activeTabMeta = SETUP_TABS.find((tab) => tab.key === activeStep);
+  const canSaveSkill = Boolean(skillName.trim());
+  const hasRoleName = Boolean(jobRole.trim());
+  const hasRequiredSkill = requiredSkills.some((item) => Boolean(String(item.skillId || "").trim()));
+  const isThresholdValid = Number.isFinite(threshold) && threshold >= 0 && threshold <= 100;
+  const canSaveRoleRequirements = hasRoleName && hasRequiredSkill && isThresholdValid;
+  const isEditingRoleRequirement = Boolean(editingRoleRequirementId);
+
+  const resetRoleRequirementForm = () => {
+    setEditingRoleRequirementId(null);
+    setJobRole("");
+    setThreshold(70);
+    setRequiredSkills([{ skillId: "", level: 1 }]);
+  };
 
   const saveSkill = async () => {
     if (!skillName.trim()) return toast.error("Skill name is required");
@@ -125,12 +181,123 @@ export default function TnaSkillRoleSetupPage() {
           preAssessmentThreshold: Number(threshold) || 70,
           requiredSkills: payloadSkills,
         }),
-        { pending: "Saving role requirements...", success: "Saved", error: "Failed to save" }
+        {
+          pending: isEditingRoleRequirement ? "Updating role requirements..." : "Saving role requirements...",
+          success: isEditingRoleRequirement ? "Role requirements updated" : "Role requirements saved",
+          error: "Failed to save",
+        }
       );
-      navigate(`/${orgCode}/admin/tna`);
+      resetRoleRequirementForm();
     } catch (error) {
       toast.error(getErrorMessage(error));
     }
+  };
+
+  const deleteSkill = async (skill: any) => {
+    const skillId = String(skill?._id || "").trim();
+    if (!skillId) return;
+
+    setDeletingSkillId(skillId);
+    try {
+      await toast.promise(
+        deleteSkillMutation.mutateAsync({ skillId }),
+        {
+          pending: "Deleting skill...",
+          success: "Skill deleted",
+          error: "Failed to delete skill",
+        }
+      );
+
+      setRequiredSkills((previous) => {
+        const filtered = previous.filter((item) => item.skillId !== skillId);
+        return filtered.length > 0 ? filtered : [{ skillId: "", level: 1 }];
+      });
+    } catch (error) {
+      toast.error(getErrorMessage(error));
+    } finally {
+      setDeletingSkillId(null);
+    }
+  };
+
+  const startEditRoleRequirement = (roleRequirement: any) => {
+    const roleRequiredSkills = Array.isArray(roleRequirement?.requiredSkills)
+      ? roleRequirement.requiredSkills
+      : [];
+
+    const normalizedRequiredSkills: LevelRow[] = roleRequiredSkills
+      .map((skillItem: any) => {
+        const rawSkillId = skillItem?.skill ?? skillItem?.skillId;
+        const resolvedSkillId =
+          typeof rawSkillId === "string"
+            ? rawSkillId.trim()
+            : String(rawSkillId?._id || "").trim();
+
+        if (!resolvedSkillId) return null;
+        const parsedLevel = Number(skillItem?.requiredLevel);
+        return {
+          skillId: resolvedSkillId,
+          level: Number.isFinite(parsedLevel) ? parsedLevel : 1,
+        };
+      })
+      .filter(Boolean) as LevelRow[];
+
+    setActiveStep("role-requirements");
+    setEditingRoleRequirementId(String(roleRequirement?._id || ""));
+    setJobRole(String(roleRequirement?.jobRole || ""));
+    setThreshold(Number(roleRequirement?.preAssessmentThreshold) || 70);
+    setRequiredSkills(
+      normalizedRequiredSkills.length > 0
+        ? normalizedRequiredSkills
+        : [{ skillId: "", level: 1 }]
+    );
+  };
+
+  const deleteRoleRequirement = async (roleRequirement: any) => {
+    const roleRequirementId = String(roleRequirement?._id || "").trim();
+    if (!roleRequirementId) return;
+
+    try {
+      await toast.promise(
+        deleteRoleRequirementMutation.mutateAsync({ roleRequirementId }),
+        {
+          pending: "Deleting role standard...",
+          success: "Role standard deleted",
+          error: "Failed to delete role standard",
+        }
+      );
+
+      if (editingRoleRequirementId === roleRequirementId) {
+        resetRoleRequirementForm();
+      }
+    } catch (error) {
+      toast.error(getErrorMessage(error));
+    }
+  };
+
+  const confirmDeleteTarget = async () => {
+    if (!deleteTarget) return;
+
+    if (deleteTarget.type === "skill") {
+      const skill = skills.find((item) => String(item?._id || "").trim() === deleteTarget.id);
+      if (skill) {
+        await deleteSkill(skill);
+      }
+      setDeleteTarget(null);
+      return;
+    }
+
+    const roleRequirement = roleRequirements.find(
+      (item) => String(item?._id || "").trim() === deleteTarget.id
+    );
+    if (roleRequirement) {
+      await deleteRoleRequirement(roleRequirement);
+    }
+    setDeleteTarget(null);
+  };
+
+  const closeDeleteDialog = () => {
+    if (deleteSkillMutation.isPending || deleteRoleRequirementMutation.isPending) return;
+    setDeleteTarget(null);
   };
 
   return (
@@ -227,6 +394,7 @@ export default function TnaSkillRoleSetupPage() {
                   variant="primary"
                   onClick={saveSkill}
                   isLoading={createSkillMutation.isPending}
+                  disabled={!canSaveSkill}
                   className="h-10 whitespace-nowrap justify-center"
                 >
                   Add Skill
@@ -244,14 +412,39 @@ export default function TnaSkillRoleSetupPage() {
                 <p className="text-sm text-slate-500">No skills yet. Add your first skill above.</p>
               ) : (
                 <div className="flex flex-wrap gap-2">
-                  {skills.map((skill) => (
-                    <span
-                      key={skill._id}
-                      className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-700"
-                    >
-                      {skill.name}
-                    </span>
-                  ))}
+                  {skills.map((skill) => {
+                    const skillId = String(skill?._id || "");
+                    const isDeletingCurrent =
+                      deleteSkillMutation.isPending && deletingSkillId === skillId;
+
+                    return (
+                      <div
+                        key={skill._id}
+                        className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-slate-700"
+                      >
+                        <span className="px-1">{skill.name}</span>
+                        <button
+                          type="button"
+                          aria-label={`Delete skill ${skill.name}`}
+                          className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-red-200 bg-red-50 text-red-500 transition-colors hover:bg-red-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-300 disabled:cursor-not-allowed disabled:opacity-50"
+                          onClick={() => {
+                            setDeleteTarget({
+                              type: "skill",
+                              id: skillId,
+                              label: String(skill?.name || "this skill"),
+                            });
+                          }}
+                          disabled={deleteSkillMutation.isPending}
+                        >
+                          {isDeletingCurrent ? (
+                            <span className="h-2 w-2 animate-pulse rounded-full bg-red-500" />
+                          ) : (
+                            <FaTrash className="h-2.5 w-2.5" />
+                          )}
+                        </button>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -277,10 +470,15 @@ export default function TnaSkillRoleSetupPage() {
                   <input
                     value={jobRole}
                     onChange={(event) => setJobRole(event.target.value)}
+                    disabled={isEditingRoleRequirement}
                     className={`${inputClassName} mt-1`}
                     placeholder="Job role (e.g., Nurse, HR Officer)"
                   />
-                  <p className={fieldHintClassName}>Use a role name that matches your organization chart.</p>
+                  <p className={fieldHintClassName}>
+                    {isEditingRoleRequirement
+                      ? "Role name is locked while editing. Cancel edit to create a new role name."
+                      : "Use a role name that matches your organization chart."}
+                  </p>
                 </div>
                 <div>
                   <label className={fieldLabelClassName}>Passing Threshold (%)</label>
@@ -356,12 +554,18 @@ export default function TnaSkillRoleSetupPage() {
               >
                 Add Skill Requirement
               </Button>
+              {isEditingRoleRequirement && (
+                <Button variant="outline" onClick={resetRoleRequirementForm}>
+                  Cancel Edit
+                </Button>
+              )}
               <Button
                 variant="primary"
                 onClick={saveRoleRequirements}
                 isLoading={upsertRoleRequirementMutation.isPending}
+                disabled={!canSaveRoleRequirements}
               >
-                Save Role Requirements
+                {isEditingRoleRequirement ? "Update Role Requirements" : "Save Role Requirements"}
               </Button>
             </div>
 
@@ -375,28 +579,145 @@ export default function TnaSkillRoleSetupPage() {
                 <p className="text-sm text-slate-500">No role standards yet. Save your first role profile above.</p>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                  {roleRequirements.map((roleRequirement: any) => (
-                    <div
-                      key={String(roleRequirement._id || roleRequirement.jobRole)}
-                      className="rounded-lg border border-slate-200 bg-white px-3 py-2"
-                    >
-                      <p className="text-sm font-semibold text-slate-900">
-                        {String(roleRequirement.jobRole || "Unnamed role")}
-                      </p>
-                      <p className="text-xs text-slate-500 mt-1">
-                        Threshold: {Number(roleRequirement.preAssessmentThreshold) || 70}% | Skills:{" "}
-                        {Array.isArray(roleRequirement.requiredSkills)
-                          ? roleRequirement.requiredSkills.length
-                          : 0}
-                      </p>
-                    </div>
-                  ))}
+                  {roleRequirements.map((roleRequirement: any) => {
+                    const roleRequiredSkills = Array.isArray(roleRequirement.requiredSkills)
+                      ? roleRequirement.requiredSkills
+                      : [];
+
+                    return (
+                      <div
+                        key={String(roleRequirement._id || roleRequirement.jobRole)}
+                        tabIndex={0}
+                        className="relative rounded-lg border border-slate-200 bg-white px-3 py-2 pr-28 outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                      >
+                        <div className="absolute right-2 top-2 flex items-center gap-1">
+                          <button
+                            type="button"
+                            aria-label="Edit role standard"
+                            className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-blue-200 bg-blue-50 text-blue-500 transition-colors hover:bg-blue-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300"
+                            onClick={() => startEditRoleRequirement(roleRequirement)}
+                          >
+                            <FaEdit className="h-3 w-3" />
+                          </button>
+
+                          <button
+                            type="button"
+                            aria-label="Delete role standard"
+                            className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-red-200 bg-red-50 text-red-500 transition-colors hover:bg-red-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-300"
+                            onClick={() => {
+                              setDeleteTarget({
+                                type: "role",
+                                id: String(roleRequirement?._id || ""),
+                                label: String(roleRequirement?.jobRole || "this role standard"),
+                              });
+                            }}
+                            disabled={deleteRoleRequirementMutation.isPending}
+                          >
+                            <FaTrash className="h-3 w-3" />
+                          </button>
+
+                          <button
+                            type="button"
+                            aria-label="View required skills"
+                            className="peer group inline-flex h-6 w-6 items-center justify-center rounded-full border border-amber-200 bg-amber-50 text-amber-500 shadow-[0_0_0_rgba(245,158,11,0)] transition-all duration-300 hover:bg-amber-100 hover:shadow-[0_0_12px_rgba(245,158,11,0.35)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300"
+                          >
+                            <FaLightbulb className="h-3.5 w-3.5 motion-safe:animate-pulse transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-6" />
+                          </button>
+
+                          <div className="pointer-events-none absolute bottom-full right-0 z-40 mb-2 hidden w-72 max-w-[calc(100vw-2rem)] rounded-lg border border-slate-200 bg-white p-3 shadow-xl peer-hover:block peer-focus-visible:block">
+                            <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                              Required Skills
+                            </p>
+                            {roleRequiredSkills.length === 0 ? (
+                              <p className="mt-2 text-xs text-slate-500">No required skills configured.</p>
+                            ) : (
+                              <div className="mt-2 space-y-1.5">
+                                {roleRequiredSkills.map((skillItem: any, index: number) => {
+                                  const preview = getRequiredSkillPreview(skillItem);
+                                  return (
+                                    <div
+                                      key={`${preview.name}-${index}`}
+                                      className="flex items-center justify-between gap-2 text-xs"
+                                    >
+                                      <p className="truncate text-slate-700">{preview.name}</p>
+                                      <span className="inline-flex shrink-0 rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-700">
+                                        Level {preview.level}
+                                      </span>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        <p className="text-sm font-semibold text-slate-900">
+                          {String(roleRequirement.jobRole || "Unnamed role")}
+                        </p>
+                        <p className="text-xs text-slate-500 mt-1">
+                          Threshold: {Number(roleRequirement.preAssessmentThreshold) || 70}% | Skills:{" "}
+                          {roleRequiredSkills.length}
+                        </p>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>
           </section>
         )}
       </div>
+
+      <Dialog
+        isOpen={Boolean(deleteTarget)}
+        onClose={closeDeleteDialog}
+        title={deleteTarget?.type === "skill" ? "Delete Skill" : "Delete Role Standard"}
+        backdrop="blur"
+        size="md"
+      >
+        <div className="space-y-4">
+          <p className="text-gray-700">
+            {deleteTarget?.type === "skill" ? (
+              <>
+                Are you sure you want to delete skill{" "}
+                <span className="font-semibold">"{deleteTarget.label}"</span>? This will remove it
+                from the skill library.
+              </>
+            ) : (
+              <>
+                Are you sure you want to delete role standard{" "}
+                <span className="font-semibold">"{deleteTarget?.label}"</span>? This action can be
+                undone only by recreating it.
+              </>
+            )}
+          </p>
+
+          <div className="flex gap-2 justify-end mt-6">
+            <Button
+              type="button"
+              variant="cancel"
+              onClick={closeDeleteDialog}
+              disabled={deleteSkillMutation.isPending || deleteRoleRequirementMutation.isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={() => {
+                void confirmDeleteTarget();
+              }}
+              className="bg-red-600 text-white hover:bg-red-700"
+              disabled={deleteSkillMutation.isPending || deleteRoleRequirementMutation.isPending}
+            >
+              {deleteSkillMutation.isPending || deleteRoleRequirementMutation.isPending
+                ? "Deleting..."
+                : deleteTarget?.type === "skill"
+                ? "Delete Skill"
+                : "Delete Role Standard"}
+            </Button>
+          </div>
+        </div>
+      </Dialog>
     </div>
   );
 }

@@ -85,6 +85,11 @@ export const BASE_NAVIGATION: {
       ICON: LayoutGridIcon,
     },
     {
+      LABEL: "Progress",
+      PATH: "/:code/admin/completion",
+      ICON: ChartNoAxesCombinedIcon,
+    },
+    {
       LABEL: "Configuration",
       ICON: SettingsIcon,
       SUBMENU: [

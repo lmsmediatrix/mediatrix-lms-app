@@ -1,6 +1,10 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { FaArrowLeft } from "react-icons/fa";
+import { toast } from "react-toastify";
+import ActionMenuButton from "../../components/orgAdmin/ActionMenuButton";
+import Button from "../../components/common/Button";
+import Dialog from "../../components/common/Dialog";
 import { useAuth } from "../../context/AuthContext";
 import {
   GroupedTableColumn,
@@ -8,7 +12,7 @@ import {
   default as GroupedDataTable,
 } from "../../components/common/GroupedDataTable";
 import { useSearchStudents } from "../../hooks/useStudent";
-import { useGetTnaRecommendations } from "../../hooks/useTna";
+import { useDeleteTnaRecommendation, useGetTnaRecommendations } from "../../hooks/useTna";
 import { getTerm } from "../../lib/utils";
 
 type EmployeeOption = {
@@ -39,12 +43,19 @@ type RecommendationTraining = {
   mandatory?: boolean;
 };
 
+type RecommendationEmployeeSkill = {
+  skill?: { _id?: string } | string;
+  skillName?: string;
+  currentLevel?: number;
+};
+
 type TnaRecommendation = {
   _id: string;
   employee?: { _id: string; firstName?: string; lastName?: string; email?: string } | string;
   jobRole?: string;
   createdAt?: string;
   status?: string;
+  employeeSkills?: RecommendationEmployeeSkill[];
   skillGaps?: RecommendationSkillGap[];
   recommendedTrainings?: RecommendationTraining[];
   preAssessment?: { score?: number; threshold?: number; requiresTraining?: boolean };
@@ -62,10 +73,46 @@ type EmployeeSummaryRow = {
 };
 
 type RecommendationStatus = "pending" | "assigned" | "completed";
+type RecommendationStatusFilter = RecommendationStatus | "no-status";
+type DeleteTarget = {
+  recommendationId: string;
+  employeeName: string;
+} | null;
 
 const normalizeStatus = (status?: string): RecommendationStatus => {
   if (status === "assigned" || status === "completed") return status;
   return "pending";
+};
+
+const STATUS_FILTER_OPTIONS: Array<{ value: RecommendationStatusFilter; label: string }> = [
+  { value: "pending", label: "Pending" },
+  { value: "assigned", label: "Assigned" },
+  { value: "completed", label: "Completed" },
+  { value: "no-status", label: "No Status" },
+];
+
+const getRecommendationStatusFilterValue = (
+  recommendation?: TnaRecommendation,
+): RecommendationStatusFilter => {
+  if (!recommendation) return "no-status";
+  return normalizeStatus(recommendation.status);
+};
+
+const formatLatestTnaDateTime = (dateValue?: string) => {
+  if (!dateValue) return { date: "--", time: "" };
+  const parsedDate = new Date(dateValue);
+  if (Number.isNaN(parsedDate.getTime())) return { date: "--", time: "" };
+  return {
+    date: parsedDate.toLocaleDateString(undefined, {
+      month: "long",
+      day: "numeric",
+      year: "numeric",
+    }),
+    time: parsedDate.toLocaleTimeString(undefined, {
+      hour: "numeric",
+      minute: "2-digit",
+    }),
+  };
 };
 
 const getEmployeeIdFromRecommendation = (
@@ -96,6 +143,23 @@ const getCourseLabel = (course?: RecommendationCourse | string): string | null =
   return label || null;
 };
 
+const getErrorMessage = (error: unknown): string => {
+  if (error && typeof error === "object") {
+    const err = error as {
+      response?: { data?: { message?: string; error?: { message?: string } | string } };
+      message?: string;
+    };
+    const nestedError = err.response?.data?.error;
+    if (typeof nestedError === "string") return nestedError;
+    if (nestedError && typeof nestedError === "object" && typeof nestedError.message === "string") {
+      return nestedError.message;
+    }
+    if (typeof err.response?.data?.message === "string") return err.response.data.message;
+    if (typeof err.message === "string") return err.message;
+  }
+  return "Something went wrong";
+};
+
 export default function TnaEmployeeRecommendationsPage() {
   const { currentUser } = useAuth();
   const navigate = useNavigate();
@@ -116,6 +180,7 @@ export default function TnaEmployeeRecommendationsPage() {
     limit: 500,
     skip: 0,
   });
+  const deleteRecommendationMutation = useDeleteTnaRecommendation();
 
   const employees = useMemo(() => {
     const response = studentsQuery.data as { students?: EmployeeOption[] } | undefined;
@@ -153,6 +218,7 @@ export default function TnaEmployeeRecommendationsPage() {
     employee: EmployeeOption;
     recommendation: TnaRecommendation | null;
   } | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<DeleteTarget>(null);
 
   const openDetails = (
     employee: EmployeeOption,
@@ -162,6 +228,81 @@ export default function TnaEmployeeRecommendationsPage() {
       employee,
       recommendation: recommendation || null,
     });
+  };
+
+  const handleUpdateRecommendation = (row: EmployeeSummaryRow) => {
+    const params = new URLSearchParams({
+      employeeId: row.employee._id,
+      step: "employee-skills",
+    });
+    const latestRole = String(row.latest?.jobRole || "").trim();
+    if (latestRole) {
+      params.set("jobRole", latestRole);
+    }
+
+    const latestEmployeeSkills = Array.isArray(row.latest?.employeeSkills)
+      ? row.latest.employeeSkills
+      : [];
+    if (latestEmployeeSkills.length > 0) {
+      const payload = latestEmployeeSkills.map((item) => {
+        const rawSkill = item?.skill;
+        const skillId =
+          typeof rawSkill === "string"
+            ? rawSkill
+            : String(rawSkill?._id || "").trim();
+        return {
+          skillId,
+          skillName: String(item?.skillName || "").trim(),
+          level: Number(item?.currentLevel ?? 0),
+        };
+      });
+      params.set("employeeSkills", JSON.stringify(payload));
+    }
+
+    navigate(`/${orgCode}/admin/tna?${params.toString()}`);
+  };
+
+  const requestDeleteRecommendation = (row: EmployeeSummaryRow) => {
+    if (!row.latest?._id) return;
+    setDeleteTarget({
+      recommendationId: row.latest._id,
+      employeeName: getEmployeeDisplayName(row.employee),
+    });
+  };
+
+  const closeDeleteDialog = () => {
+    if (deleteRecommendationMutation.isPending) return;
+    setDeleteTarget(null);
+  };
+
+  const confirmDeleteRecommendation = async () => {
+    if (!deleteTarget) return;
+
+    try {
+      await toast.promise(
+        deleteRecommendationMutation.mutateAsync({
+          recommendationId: deleteTarget.recommendationId,
+        }),
+        {
+          pending: "Deleting recommendation...",
+          success: "Recommendation deleted",
+          error: "Failed to delete recommendation",
+        },
+      );
+
+      if (
+        viewDetails?.recommendation?._id &&
+        viewDetails.recommendation._id === deleteTarget.recommendationId
+      ) {
+        setViewDetails((previous) =>
+          previous ? { ...previous, recommendation: null } : null,
+        );
+      }
+    } catch (error) {
+      toast.error(getErrorMessage(error));
+    } finally {
+      setDeleteTarget(null);
+    }
   };
 
   const selectedRecommendation = viewDetails?.recommendation || null;
@@ -226,22 +367,12 @@ export default function TnaEmployeeRecommendationsPage() {
           `${getEmployeeDisplayName(row.employee)} ${row.employee.email || ""}`.trim(),
         className: "min-w-[220px]",
         render: (row) => (
-          <span className="text-sm font-semibold text-slate-900">
-            {getEmployeeDisplayName(row.employee)}
-          </span>
-        ),
-      },
-      {
-        key: "email",
-        label: "Email",
-        sortable: true,
-        filterable: true,
-        filterPlaceholder: "Search email",
-        sortAccessor: (row) => row.employee.email || "",
-        filterAccessor: (row) => row.employee.email || "",
-        className: "min-w-[220px] hidden md:table-cell",
-        render: (row) => (
-          <span className="text-sm text-slate-600">{row.employee.email || "--"}</span>
+          <div className="space-y-0.5">
+            <p className="text-sm font-semibold text-slate-900">
+              {getEmployeeDisplayName(row.employee)}
+            </p>
+            <p className="text-xs text-slate-500">{row.employee.email || "--"}</p>
+          </div>
         ),
       },
       {
@@ -265,20 +396,28 @@ export default function TnaEmployeeRecommendationsPage() {
         filterAccessor: (row) =>
           row.latest?.createdAt ? new Date(row.latest.createdAt).toLocaleString() : "",
         className: "min-w-[200px] hidden md:table-cell",
-        render: (row) => (
-          <span className="text-sm text-slate-600 whitespace-nowrap">
-            {row.latest?.createdAt ? new Date(row.latest.createdAt).toLocaleString() : "--"}
-          </span>
-        ),
+        render: (row) => {
+          const formatted = formatLatestTnaDateTime(row.latest?.createdAt);
+          return (
+            <div className="space-y-0.5">
+              <p className="text-sm text-slate-700 whitespace-nowrap">{formatted.date}</p>
+              {formatted.time ? (
+                <p className="text-xs text-slate-500 whitespace-nowrap">{formatted.time}</p>
+              ) : null}
+            </div>
+          );
+        },
       },
       {
         key: "status",
         label: "Status",
         sortable: true,
         filterable: true,
-        filterPlaceholder: "Search status",
-        sortAccessor: (row) => normalizeStatus(row.latest?.status),
-        filterAccessor: (row) => normalizeStatus(row.latest?.status),
+        filterVariant: "select",
+        filterSelectAllLabel: "All Status",
+        filterOptions: STATUS_FILTER_OPTIONS,
+        sortAccessor: (row) => getRecommendationStatusFilterValue(row.latest),
+        filterAccessor: (row) => getRecommendationStatusFilterValue(row.latest),
         className: "min-w-[130px]",
         render: (row) =>
           row.latest ? (
@@ -363,25 +502,32 @@ export default function TnaEmployeeRecommendationsPage() {
         align: "right",
         className: "min-w-[120px]",
         render: (row) => (
-          <button
-            type="button"
-            data-row-click-stop="true"
-            onClick={(event) => {
-              event.stopPropagation();
-              openDetails(row.employee, row.latest);
-            }}
-            className={`inline-flex items-center justify-center rounded-md border px-3 py-1.5 text-xs font-medium ${
-              row.latest
-                ? "border-primary text-primary hover:bg-primary/5"
-                : "border-slate-300 text-slate-500 hover:bg-slate-50"
-            }`}
-          >
-            {row.latest ? "View" : "No TNA"}
-          </button>
+          <ActionMenuButton
+            buttonClassName="!px-2 !py-1.5"
+            items={[
+              {
+                key: "view",
+                label: "View",
+                onClick: () => openDetails(row.employee, row.latest),
+              },
+              {
+                key: "update",
+                label: "Update",
+                onClick: () => handleUpdateRecommendation(row),
+              },
+              {
+                key: "delete",
+                label: "Delete",
+                onClick: () => requestDeleteRecommendation(row),
+                disabled: !row.latest,
+                danger: true,
+              },
+            ]}
+          />
         ),
       },
     ],
-    [employeeTerm],
+    [employeeTerm, orgCode],
   );
 
   return (
@@ -452,13 +598,50 @@ export default function TnaEmployeeRecommendationsPage() {
             columns={tableColumns}
             rowKey={(row) => row.employee._id}
             emptyFilteredText={`No matching ${employeesTerm.toLowerCase()} found.`}
-            tableMinWidthClassName="min-w-[1250px]"
+            tableMinWidthClassName="min-w-[1150px]"
             cardless
             showGroupHeader={false}
             onRowClick={(row) => openDetails(row.employee, row.latest)}
           />
         )}
       </section>
+
+      <Dialog
+        isOpen={Boolean(deleteTarget)}
+        onClose={closeDeleteDialog}
+        title="Delete Recommendation"
+        backdrop="blur"
+        size="md"
+      >
+        <div className="space-y-4">
+          <p className="text-gray-700">
+            Are you sure you want to delete the latest TNA recommendation for{" "}
+            <span className="font-semibold">"{deleteTarget?.employeeName}"</span>? This action
+            cannot be undone.
+          </p>
+
+          <div className="flex gap-2 justify-end mt-6">
+            <Button
+              type="button"
+              variant="cancel"
+              onClick={closeDeleteDialog}
+              disabled={deleteRecommendationMutation.isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={() => {
+                void confirmDeleteRecommendation();
+              }}
+              className="bg-red-600 text-white hover:bg-red-700"
+              disabled={deleteRecommendationMutation.isPending}
+            >
+              {deleteRecommendationMutation.isPending ? "Deleting..." : "Delete Recommendation"}
+            </Button>
+          </div>
+        </div>
+      </Dialog>
 
       {viewDetails && (
         <div className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-900/45 p-4">

@@ -29,6 +29,17 @@ export const useCreateTnaSkill = () => {
   });
 };
 
+export const useDeleteTnaSkill = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: { skillId: string }) => TnaService.removeSkill(payload.skillId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["tna-skills"] });
+      queryClient.invalidateQueries({ queryKey: ["tna-role-requirements"] });
+    },
+  });
+};
+
 export const useUpsertRoleRequirement = () => {
   const queryClient = useQueryClient();
   return useMutation({
@@ -37,6 +48,17 @@ export const useUpsertRoleRequirement = () => {
       requiredSkills: Array<{ skillId?: string; skillName?: string; requiredLevel: number }>;
       preAssessmentThreshold?: number;
     }) => TnaService.upsertRoleRequirement(payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["tna-role-requirements"] });
+    },
+  });
+};
+
+export const useDeleteTnaRoleRequirement = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: { roleRequirementId: string }) =>
+      TnaService.removeRoleRequirement(payload.roleRequirementId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["tna-role-requirements"] });
     },

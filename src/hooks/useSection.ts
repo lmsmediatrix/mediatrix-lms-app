@@ -433,6 +433,42 @@ export const useExportSectionToCsv = () => {
   });
 };
 
+export const useAdminCompletionOverview = (organizationId?: string) => {
+  return useQuery({
+    queryKey: ["admin-completion-overview", organizationId],
+    queryFn: async () => {
+      sectionService.resetQuery();
+      return sectionService
+        .select(["_id", "code", "name", "status", "instructor", "students", "modules"])
+        .populate([
+          {
+            path: "instructor",
+            select: "_id firstName lastName",
+          },
+          {
+            path: "students",
+            select: "_id firstName lastName email",
+          },
+          {
+            path: "modules",
+            select: "_id title lessons",
+            populate: {
+              path: "lessons",
+              select: "_id title progress",
+            },
+          },
+        ])
+        .where(organizationId ? { organizationId } : {})
+        .limit(200)
+        .skip(0)
+        .withArchive("none")
+        .withDocument(true)
+        .searchSections();
+    },
+    enabled: !!organizationId,
+  });
+};
+
 export const useRemoveStudentInSection = () => {
   const queryClient = useQueryClient();
   return useMutation({

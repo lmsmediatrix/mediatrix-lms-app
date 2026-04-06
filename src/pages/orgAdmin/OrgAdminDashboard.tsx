@@ -11,19 +11,17 @@ import { useAuth } from "../../context/AuthContext";
 import { getTerm } from "../../lib/utils";
 import SectionStatus from "../../components/orgAdmin/SectionStatus";
 import SectionChart from "../../components/orgAdmin/SectionChart";
-import SummaryListCard from "../../components/orgAdmin/SummaryListCard";
 import DashboardStatCard from "../../components/orgAdmin/DashboardStatCard";
 import {
   useGetAdminDashboard,
-  useGetPerformanceDashboard,
   useGetSectionChartData,
 } from "../../hooks/useMetrics";
+import { useAdminCompletionOverview } from "../../hooks/useSection";
 import OrgAdminDashboardSkeleton from "../../components/skeleton/OrgAdminDashboardSkeleton";
 import { useGetAllCourses } from "../../hooks/useCourse";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { ICourse } from "../../types/interfaces";
 import SectionAnalyticsSkeleton from "../../components/skeleton/SectionAnalyticsSkeleton";
-import CompletionTracker from "../../components/common/CompletionTracker";
 
 const iconMap = {
   FaBook: BookOpenIcon,
@@ -31,6 +29,8 @@ const iconMap = {
   FaUserGraduate: UsersIcon,
   FaThLarge: LayoutGridIcon,
 };
+
+type DashboardStatRoute = "course" | "instructor" | "student" | "section";
 
 type DashboardApiResponse = {
   organizationMetrics: {
@@ -68,12 +68,98 @@ type SectionChartApiResponse = {
   sectionPerStatusCount: { total: number; status: string }[];
 }[];
 
+type LessonProgressEntry = {
+  userId?: string;
+  status?: string;
+};
+
+type CompletionLesson = {
+  _id: string;
+  title?: string;
+  progress?: LessonProgressEntry[];
+};
+
+type CompletionModule = {
+  _id: string;
+  title?: string;
+  lessons?: CompletionLesson[];
+};
+
+type CompletionSection = {
+  _id: string;
+  code?: string;
+  name?: string;
+  instructor?: { _id?: string; firstName?: string; lastName?: string } | null;
+  students?: Array<{ _id?: string }>;
+  modules?: CompletionModule[];
+};
+
+type ModernChartCardProps = {
+  label: string;
+  percent: number;
+  detail: string;
+  color: string;
+};
+
+function ModernChartCard({
+  label,
+  percent,
+  detail,
+  color,
+}: ModernChartCardProps) {
+  const clampedPercent = Math.max(0, Math.min(100, percent));
+  const radius = 34;
+  const circumference = 2 * Math.PI * radius;
+  const dashOffset = circumference - (clampedPercent / 100) * circumference;
+
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white/85 p-4 shadow-sm backdrop-blur">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500">
+        {label}
+      </p>
+      <div className="mt-3 flex items-center gap-3">
+        <div className="relative h-[88px] w-[88px] shrink-0">
+          <svg viewBox="0 0 88 88" className="h-full w-full -rotate-90">
+            <circle
+              cx="44"
+              cy="44"
+              r={radius}
+              fill="none"
+              stroke="#e2e8f0"
+              strokeWidth="8"
+            />
+            <circle
+              cx="44"
+              cy="44"
+              r={radius}
+              fill="none"
+              stroke={color}
+              strokeWidth="8"
+              strokeLinecap="round"
+              strokeDasharray={circumference}
+              strokeDashoffset={dashOffset}
+              style={{ transition: "stroke-dashoffset 450ms ease" }}
+            />
+          </svg>
+          <div className="absolute inset-0 flex items-center justify-center">
+            <span className="text-base font-bold text-slate-900">
+              {clampedPercent}%
+            </span>
+          </div>
+        </div>
+        <p className="text-xs font-medium text-slate-600 leading-relaxed">
+          {detail}
+        </p>
+      </div>
+    </div>
+  );
+}
+
 export default function OrgAdminDashboard() {
   const { currentUser } = useAuth();
   const orgType = currentUser.user.organization.type;
   const sectionTerm = getTerm("group", orgType);
   const sectionsTerm = getTerm("group", orgType, true);
-  const learnerTerm = getTerm("learner", orgType);
   const learnersTerm = getTerm("learner", orgType, true);
   const navigate = useNavigate();
   const location = useLocation();
@@ -84,46 +170,229 @@ export default function OrgAdminDashboard() {
   const { data: dashboardData1, isPending: isDashboardPending } =
     useGetAdminDashboard(); // Removed selectedCourseId since it shouldn't depend on course filter
 
-  const { data: performanceDashboard } = useGetPerformanceDashboard();
-
   const { data: courseData, isPending: isCourseDataPending } =
     useGetAllCourses();
 
   const { data: sectionChartData, isPending: isSectionChartPending } =
     useGetSectionChartData(selectedCourseId, currentUser.user.organization._id);
+  const { data: completionOverviewData, isPending: isCompletionOverviewPending } =
+    useAdminCompletionOverview(currentUser.user.organization._id);
 
-  const performanceStudents = performanceDashboard?.students || [];
-  const totalPerformanceStudents = performanceStudents.length;
-  const completedSectionsStudents = performanceStudents.filter(
-    (student: any) => {
-      const progress = student.progress;
-      if (!progress) return false;
-      const totalItems =
-        (progress.totalLessons || 0) + (progress.totalAssessments || 0);
-      return totalItems > 0 && progress.percent === 100;
-    },
-  ).length;
+  const completionHierarchy = useMemo(() => {
+    const sections = (
+      (completionOverviewData as { sections?: CompletionSection[] } | undefined)
+        ?.sections || []
+    ) as CompletionSection[];
+
+    const buildPercent = (value: number, total: number) =>
+      total > 0 ? Math.round((value / total) * 100) : 0;
+
+    const instructorsMap = new Map<
+      string,
+      {
+        id: string;
+        name: string;
+        batches: Array<{
+          id: string;
+          code: string;
+          name: string;
+          learnerCount: number;
+          moduleCount: number;
+          lessonCount: number;
+          completedSlots: number;
+          totalSlots: number;
+          percent: number;
+          modules: Array<{
+            id: string;
+            title: string;
+            lessonCount: number;
+            completedSlots: number;
+            totalSlots: number;
+            percent: number;
+            lessons: Array<{
+              id: string;
+              title: string;
+              completedCount: number;
+              learnerCount: number;
+              percent: number;
+            }>;
+          }>;
+        }>;
+      }
+    >();
+
+    sections.forEach((section) => {
+      const instructorId = section.instructor?._id || "unassigned";
+      const instructorName = section.instructor
+        ? `${section.instructor.firstName || ""} ${section.instructor.lastName || ""}`.trim() ||
+          "Unknown Instructor"
+        : "Unassigned Instructor";
+
+      const learners = Array.isArray(section.students) ? section.students : [];
+      const learnerIds = new Set(
+        learners.map((student) => String(student?._id || "")).filter(Boolean),
+      );
+      const learnerCount = learnerIds.size;
+      const modules = Array.isArray(section.modules) ? section.modules : [];
+
+      const normalizedModules = modules.map((module) => {
+        const lessons = Array.isArray(module.lessons) ? module.lessons : [];
+        const normalizedLessons = lessons.map((lesson) => {
+          const completedCount = (lesson.progress || []).filter(
+            (entry) =>
+              entry?.status === "completed" &&
+              learnerIds.has(String(entry?.userId || "")),
+          ).length;
+          const percent = buildPercent(completedCount, learnerCount);
+
+          return {
+            id: lesson._id,
+            title: String(lesson.title || "Untitled Lesson"),
+            completedCount,
+            learnerCount,
+            percent,
+          };
+        });
+
+        const lessonCount = normalizedLessons.length;
+        const completedSlots = normalizedLessons.reduce(
+          (sum, lesson) => sum + lesson.completedCount,
+          0,
+        );
+        const totalSlots = lessonCount * learnerCount;
+        const percent = buildPercent(completedSlots, totalSlots);
+
+        return {
+          id: module._id,
+          title: String(module.title || "Untitled Module"),
+          lessonCount,
+          completedSlots,
+          totalSlots,
+          percent,
+          lessons: normalizedLessons,
+        };
+      });
+
+      const moduleCount = normalizedModules.length;
+      const lessonCount = normalizedModules.reduce(
+        (sum, module) => sum + module.lessonCount,
+        0,
+      );
+      const completedSlots = normalizedModules.reduce(
+        (sum, module) => sum + module.completedSlots,
+        0,
+      );
+      const totalSlots = normalizedModules.reduce(
+        (sum, module) => sum + module.totalSlots,
+        0,
+      );
+      const percent = buildPercent(completedSlots, totalSlots);
+
+      if (!instructorsMap.has(instructorId)) {
+        instructorsMap.set(instructorId, {
+          id: instructorId,
+          name: instructorName,
+          batches: [],
+        });
+      }
+
+      instructorsMap.get(instructorId)?.batches.push({
+        id: section._id,
+        code: String(section.code || ""),
+        name: String(section.name || "Unnamed Batch"),
+        learnerCount,
+        moduleCount,
+        lessonCount,
+        completedSlots,
+        totalSlots,
+        percent,
+        modules: normalizedModules,
+      });
+    });
+
+    const instructors = Array.from(instructorsMap.values()).map((instructor) => {
+      const totals = instructor.batches.reduce(
+        (acc, batch) => {
+          acc.completed += batch.completedSlots;
+          acc.total += batch.totalSlots;
+          return acc;
+        },
+        { completed: 0, total: 0 },
+      );
+
+      return {
+        ...instructor,
+        percent: buildPercent(totals.completed, totals.total),
+      };
+    });
+
+    const totals = instructors.reduce(
+      (acc, instructor) => {
+        acc.instructors += 1;
+        instructor.batches.forEach((batch) => {
+          acc.batches += 1;
+          acc.modules += batch.moduleCount;
+          acc.lessons += batch.lessonCount;
+        });
+        return acc;
+      },
+      { instructors: 0, batches: 0, modules: 0, lessons: 0 },
+    );
+
+    const completionSlots = instructors.reduce(
+      (acc, instructor) => {
+        instructor.batches.forEach((batch) => {
+          acc.totalBatches += 1;
+          if (batch.percent === 100) acc.completedBatches += 1;
+
+          batch.modules.forEach((module) => {
+            acc.completedModuleSlots += module.completedSlots;
+            acc.totalModuleSlots += module.totalSlots;
+
+            module.lessons.forEach((lesson) => {
+              acc.completedLessonSlots += lesson.completedCount;
+              acc.totalLessonSlots += lesson.learnerCount;
+            });
+          });
+        });
+        return acc;
+      },
+      {
+        completedBatches: 0,
+        totalBatches: 0,
+        completedModuleSlots: 0,
+        totalModuleSlots: 0,
+        completedLessonSlots: 0,
+        totalLessonSlots: 0,
+      },
+    );
+
+    return {
+      instructors,
+      totals,
+      completion: {
+        ...completionSlots,
+        completedBatchPercent: buildPercent(
+          completionSlots.completedBatches,
+          completionSlots.totalBatches,
+        ),
+        modulePercent: buildPercent(
+          completionSlots.completedModuleSlots,
+          completionSlots.totalModuleSlots,
+        ),
+        lessonPercent: buildPercent(
+          completionSlots.completedLessonSlots,
+          completionSlots.totalLessonSlots,
+        ),
+      },
+    };
+  }, [completionOverviewData]);
 
   // Transform API data to match expected structure
   const transformDashboardData = (
     apiData: DashboardApiResponse,
     sectionData: SectionChartApiResponse,
   ) => {
-    // Consolidate duplicate faculties
-    const facultyMap = new Map<string, number>();
-    apiData.userMetrics.instructorCountPerFaculty.forEach((item) => {
-      facultyMap.set(
-        item.faculty,
-        (facultyMap.get(item.faculty) || 0) + item.total,
-      );
-    });
-    const consolidatedFaculties = Array.from(facultyMap.entries()).map(
-      ([faculty, total]) => ({
-        faculty,
-        total,
-      }),
-    );
-
     // Use sectionChartData for section-related metrics
     const sectionMetrics = sectionData[0] || {
       totalSectionCount: [{ total: 0 }],
@@ -137,21 +406,25 @@ export default function OrgAdminDashboard() {
           label: "Courses",
           value: apiData.courseMetrics.totalCourseCount[0]?.total || 0,
           icon: "FaBook",
+          route: "course" as DashboardStatRoute,
         },
         {
           label: "Instructors",
           value: apiData.userMetrics.totalInstructorCount[0]?.total || 0,
           icon: "FaUserTie",
+          route: "instructor" as DashboardStatRoute,
         },
         {
           label: learnersTerm,
           value: apiData.userMetrics.totalStudentCount[0]?.total || 0,
           icon: "FaUserGraduate",
+          route: "student" as DashboardStatRoute,
         },
         {
           label: sectionsTerm,
           value: sectionMetrics.totalSectionCount[0]?.total || 0,
           icon: "FaThLarge",
+          route: "section" as DashboardStatRoute,
         },
       ],
       sectionChart: {
@@ -192,29 +465,6 @@ export default function OrgAdminDashboard() {
           status: "completed" as const,
         },
       ],
-      summaryCards: {
-        courseCategories: apiData.courseMetrics.courseCountPerCategory.map(
-          (item: { category: string; total: number }) => ({
-            label: item.category,
-            value: item.total,
-            valueLabel: "courses",
-          }),
-        ),
-        facultyInstructors: consolidatedFaculties.map(
-          (item: { faculty: string; total: number }) => ({
-            label: item.faculty,
-            value: item.total,
-            valueLabel: "instructors",
-          }),
-        ),
-        programStudents: apiData.userMetrics.studentCountPerProgram.map(
-          (item: { program: string; total: number }) => ({
-            label: item.program,
-            value: item.total,
-            valueLabel: learnersTerm.toLowerCase(),
-          }),
-        ),
-      },
       instructorsToAssign: apiData.organizationMetrics.instructorsToAssign || 0,
       coursesToAssign: {
         total: apiData.organizationMetrics.coursesToAssign.total || 0,
@@ -228,11 +478,6 @@ export default function OrgAdminDashboard() {
         stats: [],
         sectionChart: { labels: [], values: [], totalStudents: 0 },
         sectionStatus: [],
-        summaryCards: {
-          courseCategories: [],
-          facultyInstructors: [],
-          programStudents: [],
-        },
         instructorsToAssign: 0,
         coursesToAssign: { total: 0 },
       }
@@ -285,7 +530,12 @@ export default function OrgAdminDashboard() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
           {dashboardData.stats.map(
             (
-              stat: { label: string; value: number; icon: string },
+              stat: {
+                label: string;
+                value: number;
+                icon: string;
+                route: DashboardStatRoute;
+              },
               idx: number,
             ) => (
               <DashboardStatCard
@@ -294,22 +544,258 @@ export default function OrgAdminDashboard() {
                 value={stat.value}
                 icon={iconMap[stat.icon as keyof typeof iconMap]}
                 index={idx}
-                onClick={() => navigate(stat.label)}
+                onClick={() =>
+                  navigate(
+                    `/${orgCode}/admin/${stat.route}`,
+                  )
+                }
               />
             ),
           )}
         </div>
-        <div className="mb-4">
-          <CompletionTracker
-            title="Completion Tracker"
-            items={[
-              {
-                label: `${learnersTerm} Completed ${sectionsTerm}`,
-                value: completedSectionsStudents,
-                total: totalPerformanceStudents,
-              },
-            ]}
-          />
+        <div className="bg-white border rounded-2xl p-5 mb-4 shadow-sm">
+          <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-3 mb-4">
+            <div className="flex flex-col gap-1">
+              <h3 className="text-lg font-semibold text-slate-900">
+                Completion Progress
+              </h3>
+              <p className="text-sm text-slate-600">
+                Track progress by instructor, with completion across batches,
+                modules, and lessons.
+              </p>
+            </div>
+            <button
+              type="button"
+              className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+              onClick={() => navigate(location.pathname.replace("dashboard", "completion"))}
+            >
+              Open Full Tracker
+            </button>
+          </div>
+
+          <div className="rounded-2xl border border-slate-200 bg-gradient-to-br from-slate-50 via-white to-sky-50/40 p-4 mb-4">
+            <div className="grid grid-cols-1 lg:grid-cols-5 gap-3">
+              <ModernChartCard
+                label={`Completed ${sectionsTerm}`}
+                percent={completionHierarchy.completion.completedBatchPercent}
+                detail={`${completionHierarchy.completion.completedBatches}/${completionHierarchy.completion.totalBatches} completed`}
+                color="#2563eb"
+              />
+              <ModernChartCard
+                label="Module Completion"
+                percent={completionHierarchy.completion.modulePercent}
+                detail={`${completionHierarchy.completion.completedModuleSlots}/${completionHierarchy.completion.totalModuleSlots} module slots`}
+                color="#8b5cf6"
+              />
+              <ModernChartCard
+                label="Lesson Completion"
+                percent={completionHierarchy.completion.lessonPercent}
+                detail={`${completionHierarchy.completion.completedLessonSlots}/${completionHierarchy.completion.totalLessonSlots} lesson slots`}
+                color="#10b981"
+              />
+
+              <div className="rounded-2xl border border-slate-200 bg-white/90 p-4 lg:col-span-2">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500 mb-3">
+                  Completion Mix
+                </p>
+                <div className="h-32 flex items-end gap-3">
+                  {[
+                    {
+                      label: "Batches",
+                      percent: completionHierarchy.completion.completedBatchPercent,
+                      color: "from-blue-500 to-indigo-500",
+                    },
+                    {
+                      label: "Modules",
+                      percent: completionHierarchy.completion.modulePercent,
+                      color: "from-violet-500 to-fuchsia-500",
+                    },
+                    {
+                      label: "Lessons",
+                      percent: completionHierarchy.completion.lessonPercent,
+                      color: "from-emerald-500 to-teal-500",
+                    },
+                  ].map((item) => (
+                    <div key={item.label} className="flex-1 flex flex-col items-center gap-2">
+                      <div className="w-full h-24 rounded-lg bg-slate-100 overflow-hidden flex items-end">
+                        <div
+                          className={`w-full rounded-lg bg-gradient-to-t ${item.color} transition-all duration-500`}
+                          style={{ height: `${Math.max(6, item.percent)}%` }}
+                        />
+                      </div>
+                      <div className="text-center">
+                        <p className="text-[11px] font-semibold text-slate-600">
+                          {item.label}
+                        </p>
+                        <p className="text-xs text-slate-500">{item.percent}%</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+              <p className="text-[11px] uppercase tracking-wide text-slate-500 font-semibold">
+                Instructors
+              </p>
+              <p className="mt-1 text-2xl font-bold text-slate-900">
+                {completionHierarchy.totals.instructors}
+              </p>
+            </div>
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+              <p className="text-[11px] uppercase tracking-wide text-slate-500 font-semibold">
+                Batches
+              </p>
+              <p className="mt-1 text-2xl font-bold text-slate-900">
+                {completionHierarchy.totals.batches}
+              </p>
+            </div>
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+              <p className="text-[11px] uppercase tracking-wide text-slate-500 font-semibold">
+                Modules
+              </p>
+              <p className="mt-1 text-2xl font-bold text-slate-900">
+                {completionHierarchy.totals.modules}
+              </p>
+            </div>
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+              <p className="text-[11px] uppercase tracking-wide text-slate-500 font-semibold">
+                Lessons
+              </p>
+              <p className="mt-1 text-2xl font-bold text-slate-900">
+                {completionHierarchy.totals.lessons}
+              </p>
+            </div>
+          </div>
+
+          {isCompletionOverviewPending ? (
+            <div className="rounded-xl border border-dashed border-slate-200 px-4 py-8 text-sm text-slate-500">
+              Loading completion overview...
+            </div>
+          ) : completionHierarchy.instructors.length === 0 ? (
+            <div className="rounded-xl border border-dashed border-slate-200 px-4 py-8 text-sm text-slate-500">
+              No completion data available yet.
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {completionHierarchy.instructors.map((instructor) => (
+                <details
+                  key={instructor.id}
+                  className="group rounded-xl border border-slate-200 bg-slate-50/60"
+                >
+                  <summary className="cursor-pointer list-none px-4 py-3">
+                    <div className="flex items-center justify-between gap-4">
+                      <div>
+                        <p className="text-sm font-semibold text-slate-900">
+                          {instructor.name}
+                        </p>
+                        <p className="text-xs text-slate-500 mt-0.5">
+                          {instructor.batches.length} batch
+                          {instructor.batches.length !== 1 ? "es" : ""}
+                        </p>
+                      </div>
+                      <div className="min-w-[180px]">
+                        <div className="h-2 rounded-full bg-slate-200 overflow-hidden">
+                          <div
+                            className="h-full rounded-full bg-primary transition-all duration-500"
+                            style={{ width: `${instructor.percent}%` }}
+                          />
+                        </div>
+                        <p className="mt-1 text-right text-xs font-medium text-slate-600">
+                          {instructor.percent}% completed
+                        </p>
+                      </div>
+                    </div>
+                  </summary>
+
+                  <div className="border-t border-slate-200 px-4 py-3 space-y-3 bg-white/70">
+                    {instructor.batches.map((batch) => (
+                      <details
+                        key={batch.id}
+                        className="rounded-lg border border-slate-200 bg-white"
+                      >
+                        <summary className="cursor-pointer list-none px-3 py-2.5">
+                          <div className="flex items-center justify-between gap-3">
+                            <div>
+                              <p className="text-sm font-medium text-slate-900">
+                                {batch.code ? `${batch.code} - ` : ""}
+                                {batch.name}
+                              </p>
+                              <p className="text-xs text-slate-500 mt-0.5">
+                                {batch.learnerCount} learners • {batch.moduleCount} modules •{" "}
+                                {batch.lessonCount} lessons
+                              </p>
+                            </div>
+                            <div className="min-w-[160px]">
+                              <div className="h-2 rounded-full bg-slate-200 overflow-hidden">
+                                <div
+                                  className="h-full rounded-full bg-blue-500 transition-all duration-500"
+                                  style={{ width: `${batch.percent}%` }}
+                                />
+                              </div>
+                              <p className="mt-1 text-right text-xs font-medium text-slate-600">
+                                {batch.percent}% completed
+                              </p>
+                            </div>
+                          </div>
+                        </summary>
+
+                        <div className="border-t border-slate-200 px-3 py-2.5 space-y-2 bg-slate-50/40">
+                          {batch.modules.length === 0 ? (
+                            <p className="text-xs text-slate-500">
+                              No modules in this batch yet.
+                            </p>
+                          ) : (
+                            batch.modules.map((module) => (
+                              <div
+                                key={module.id}
+                                className="rounded-md border border-slate-200 bg-white p-2.5"
+                              >
+                                <div className="flex items-center justify-between gap-3">
+                                  <p className="text-sm font-medium text-slate-800">
+                                    {module.title}
+                                  </p>
+                                  <span className="text-xs text-slate-600 font-medium">
+                                    {module.percent}%
+                                  </span>
+                                </div>
+                                <div className="mt-1.5 h-1.5 rounded-full bg-slate-200 overflow-hidden">
+                                  <div
+                                    className="h-full rounded-full bg-emerald-500 transition-all duration-500"
+                                    style={{ width: `${module.percent}%` }}
+                                  />
+                                </div>
+
+                                <div className="mt-2 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-1.5">
+                                  {module.lessons.map((lesson) => (
+                                    <div
+                                      key={lesson.id}
+                                      className="rounded border border-slate-200 bg-slate-50 px-2 py-1.5"
+                                    >
+                                      <p className="text-xs font-medium text-slate-700 truncate">
+                                        {lesson.title}
+                                      </p>
+                                      <p className="text-[11px] text-slate-500">
+                                        {lesson.percent}% ({lesson.completedCount}/
+                                        {lesson.learnerCount || 0})
+                                      </p>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            ))
+                          )}
+                        </div>
+                      </details>
+                    ))}
+                  </div>
+                </details>
+              ))}
+            </div>
+          )}
         </div>
         {/* Section Chart and Status */}
         {isSectionChartPending ? (
@@ -368,33 +854,6 @@ export default function OrgAdminDashboard() {
             </div>
           </div>
         )}
-        {/* Summary Cards */}
-        <div className="w-full mt-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          <SummaryListCard
-            title="Course Categories"
-            items={dashboardData.summaryCards.courseCategories}
-            buttonText="View All Categories"
-            onButtonClick={() =>
-              navigate(location.pathname.replace("dashboard", "category"))
-            }
-          />
-          <SummaryListCard
-            title="Instructor Faculties"
-            items={dashboardData.summaryCards.facultyInstructors}
-            buttonText="View All Faculties"
-            onButtonClick={() =>
-              navigate(location.pathname.replace("dashboard", "faculty"))
-            }
-          />
-          <SummaryListCard
-            title={`${learnerTerm} Programs`}
-            items={dashboardData.summaryCards.programStudents}
-            buttonText="View All Programs"
-            onButtonClick={() =>
-              navigate(location.pathname.replace("dashboard", "program"))
-            }
-          />
-        </div>
       </div>
     </div>
   );

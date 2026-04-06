@@ -4,6 +4,7 @@ import AuthLayout from "../layouts/AuthLayout";
 import Login from "../pages/auth/Login";
 import SuperadminDashboard from "../pages/superadmin/SuperadminDashboard";
 import OrgAdminDashboard from "../pages/orgAdmin/OrgAdminDashboard";
+import OrgAdminCompletionPage from "../pages/orgAdmin/OrgAdminCompletionPage";
 import Register from "../pages/Register";
 import NotFound from "../pages/NotFound";
 import Organizations from "../pages/superadmin/Organizations";
@@ -108,6 +109,10 @@ export const appRoutes = [
       {
         path: "/:orgCode/admin/dashboard",
         element: <OrgAdminDashboard />,
+      },
+      {
+        path: "/:orgCode/admin/completion",
+        element: <OrgAdminCompletionPage />,
       },
       {
         path: "/:orgCode/admin/instructor",

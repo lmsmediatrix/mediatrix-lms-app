@@ -20,6 +20,16 @@ class TnaService extends APIService {
     return response.data;
   };
 
+  removeSkill = async (skillId: string) => {
+    const response = await apiClient.delete(
+      `${BASE_URL}${TNA.SKILL_REMOVE.replace(":id", skillId)}`,
+      {
+        withCredentials: true,
+      }
+    );
+    return response.data;
+  };
+
   getRoleRequirements = async (params?: {
     keyword?: string;
     limit?: number;
@@ -43,6 +53,16 @@ class TnaService extends APIService {
     const response = await apiClient.put(`${BASE_URL}${TNA.ROLE_REQUIREMENT_UPSERT}`, body, {
       withCredentials: true,
     });
+    return response.data;
+  };
+
+  removeRoleRequirement = async (roleRequirementId: string) => {
+    const response = await apiClient.delete(
+      `${BASE_URL}${TNA.ROLE_REQUIREMENT_REMOVE.replace(":id", roleRequirementId)}`,
+      {
+        withCredentials: true,
+      }
+    );
     return response.data;
   };
 

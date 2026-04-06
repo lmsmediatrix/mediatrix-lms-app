@@ -1,14 +1,17 @@
 import { useEffect, useMemo, useState } from "react";
-import { Navigate, useNavigate } from "react-router-dom";
+import { Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import Button from "../../components/common/Button";
+import GroupedDataTable, {
+  GroupedTableColumn,
+  GroupedTableGroup,
+} from "../../components/common/GroupedDataTable";
 import { SearchableSelect } from "../../components/SearchableSelect";
 import { useAuth } from "../../context/AuthContext";
 import { useCourses } from "../../hooks/useCourse";
 import { useSearchStudents } from "../../hooks/useStudent";
 import {
   useAnalyzeTna,
-  useDeleteTnaRecommendation,
   useGetTnaRecommendations,
   useGetTnaRoleRequirements,
   useGetTnaSkills,
@@ -21,6 +24,16 @@ type LevelRow = { skillId: string; level: number };
 type ComplianceRow = { title: string; courseId: string; mandatory: boolean };
 type RecommendationStatus = "pending" | "assigned" | "completed";
 type StepKey = "employee-skills" | "analyze" | "recommendations";
+type PrefillEmployeeSkill = { skillId?: string; skillName?: string; level?: number };
+type RecommendationRow = {
+  _id: string;
+  employee?: { firstName?: string; lastName?: string; email?: string };
+  jobRole?: string;
+  createdAt?: string;
+  status?: string;
+  skillGaps?: Array<unknown>;
+  recommendedTrainings?: Array<unknown>;
+};
 
 const FLOW_STEPS: Array<{
   key: StepKey;
@@ -84,6 +97,27 @@ const parseList = (value: string): string[] =>
     .map((item) => item.trim())
     .filter(Boolean);
 
+const parsePrefillEmployeeSkills = (value: string): PrefillEmployeeSkill[] => {
+  if (!value.trim()) return [];
+  try {
+    const parsed = JSON.parse(value);
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .map((item) => {
+        if (!item || typeof item !== "object") return null;
+        const raw = item as { skillId?: string; skillName?: string; level?: number };
+        return {
+          skillId: typeof raw.skillId === "string" ? raw.skillId : "",
+          skillName: typeof raw.skillName === "string" ? raw.skillName : "",
+          level: typeof raw.level === "number" ? raw.level : undefined,
+        };
+      })
+      .filter(Boolean) as PrefillEmployeeSkill[];
+  } catch (_error) {
+    return [];
+  }
+};
+
 const getErrorMessage = (error: unknown): string => {
   if (error && typeof error === "object") {
     const err = error as {
@@ -101,7 +135,7 @@ const getErrorMessage = (error: unknown): string => {
   return "Something went wrong";
 };
 
-const normalizeStatus = (status: string): RecommendationStatus => {
+const normalizeStatus = (status?: string): RecommendationStatus => {
   if (status === "assigned" || status === "completed") return status;
   return "pending";
 };
@@ -109,6 +143,7 @@ const normalizeStatus = (status: string): RecommendationStatus => {
 export default function TnaPage() {
   const { currentUser } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const orgCode = currentUser?.user?.organization?.code || "";
   const orgType = currentUser?.user?.organization?.type;
   const organizationId = currentUser?.user?.organization?._id;
@@ -128,7 +163,6 @@ export default function TnaPage() {
 
   const upsertEmployeeSkillMutation = useUpsertEmployeeSkill();
   const analyzeTnaMutation = useAnalyzeTna();
-  const deleteRecommendationMutation = useDeleteTnaRecommendation();
   const updateRecommendationStatusMutation = useUpdateTnaRecommendationStatus();
 
   const skills = useMemo(() => {
@@ -165,6 +199,11 @@ export default function TnaPage() {
     return Array.isArray(response?.data) ? response.data : [];
   }, [recommendationsQuery.data]);
 
+  const prefillEmployeeId = (searchParams.get("employeeId") || "").trim();
+  const prefillStepParam = (searchParams.get("step") || "").trim();
+  const prefillJobRole = (searchParams.get("jobRole") || "").trim();
+  const prefillEmployeeSkillsParam = (searchParams.get("employeeSkills") || "").trim();
+
   const [activeStep, setActiveStep] = useState<StepKey>("employee-skills");
   const [employeeId, setEmployeeId] = useState("");
   const [employeeSkills, setEmployeeSkills] = useState<LevelRow[]>([{ skillId: "", level: 1 }]);
@@ -179,7 +218,7 @@ export default function TnaPage() {
     { title: "", courseId: "", mandatory: true },
   ]);
   const [statusDrafts, setStatusDrafts] = useState<Record<string, RecommendationStatus>>({});
-  const [deletingRecommendationId, setDeletingRecommendationId] = useState<string | null>(null);
+  const [didApplyPrefillSkills, setDidApplyPrefillSkills] = useState(false);
 
   const selectedAnalyzeRoleRequirement = useMemo(() => {
     const normalizedRole = analyzeJobRole.trim().toLowerCase();
@@ -214,10 +253,78 @@ export default function TnaPage() {
   }, [employees, employeeId, analyzeEmployeeId]);
 
   useEffect(() => {
+    if (!prefillEmployeeId || employees.length === 0) return;
+    const hasMatchingEmployee = employees.some(
+      (employee) => String(employee?._id || "") === prefillEmployeeId
+    );
+    if (!hasMatchingEmployee) return;
+    setEmployeeId(prefillEmployeeId);
+    setAnalyzeEmployeeId(prefillEmployeeId);
+  }, [prefillEmployeeId, employees]);
+
+  useEffect(() => {
     if (!analyzeJobRole && roleOptions.length > 0) {
       setAnalyzeJobRole(roleOptions[0]);
     }
   }, [analyzeJobRole, roleOptions]);
+
+  useEffect(() => {
+    if (!prefillStepParam) return;
+    const validSteps = new Set<StepKey>(["employee-skills", "analyze", "recommendations"]);
+    if (validSteps.has(prefillStepParam as StepKey)) {
+      setActiveStep(prefillStepParam as StepKey);
+    }
+  }, [prefillStepParam]);
+
+  useEffect(() => {
+    if (!prefillJobRole) return;
+    setAnalyzeJobRole(prefillJobRole);
+  }, [prefillJobRole]);
+
+  useEffect(() => {
+    if (didApplyPrefillSkills) return;
+
+    const parsedPrefillSkills = parsePrefillEmployeeSkills(prefillEmployeeSkillsParam);
+    if (parsedPrefillSkills.length === 0) {
+      setDidApplyPrefillSkills(true);
+      return;
+    }
+
+    if (skills.length === 0) return;
+
+    const normalized = parsedPrefillSkills
+      .map((prefillSkill) => {
+        const requestedSkillId = String(prefillSkill.skillId || "").trim();
+        const requestedSkillName = String(prefillSkill.skillName || "").trim().toLowerCase();
+
+        let resolvedSkillId = requestedSkillId;
+        if (!resolvedSkillId && requestedSkillName) {
+          const matchedSkill = skills.find(
+            (skill) => String(skill?.name || "").trim().toLowerCase() === requestedSkillName
+          );
+          resolvedSkillId = String(matchedSkill?._id || "").trim();
+        }
+
+        if (!resolvedSkillId) return null;
+
+        const parsedLevel = Number(prefillSkill.level ?? 0);
+        const normalizedLevel = Number.isFinite(parsedLevel)
+          ? Math.max(0, Math.min(5, parsedLevel))
+          : 0;
+
+        return {
+          skillId: resolvedSkillId,
+          level: normalizedLevel,
+        } as LevelRow;
+      })
+      .filter(Boolean) as LevelRow[];
+
+    if (normalized.length > 0) {
+      setEmployeeSkills(normalized);
+    }
+
+    setDidApplyPrefillSkills(true);
+  }, [didApplyPrefillSkills, prefillEmployeeSkillsParam, skills]);
 
   useEffect(() => {
     const nextDrafts: Record<string, RecommendationStatus> = {};
@@ -322,6 +429,154 @@ export default function TnaPage() {
     []
   );
 
+  const recommendationStatusFilterOptions = useMemo(
+    () => recommendationStatusOptions.map((option) => ({ value: option.value, label: option.label })),
+    [recommendationStatusOptions]
+  );
+
+  const recommendationTableGroups = useMemo(
+    (): GroupedTableGroup<RecommendationRow>[] => [
+      {
+        key: "recommendations",
+        title: "Recommendations",
+        rows: recommendations as RecommendationRow[],
+      },
+    ],
+    [recommendations]
+  );
+
+  const recommendationTableColumns = useMemo(
+    (): GroupedTableColumn<RecommendationRow>[] => [
+      {
+        key: "employee",
+        label: "Employee",
+        sortable: true,
+        filterable: true,
+        filterPlaceholder: "Search employee",
+        sortAccessor: (row) => {
+          const firstName = String(row.employee?.firstName || "").trim();
+          const lastName = String(row.employee?.lastName || "").trim();
+          const fullName = `${firstName} ${lastName}`.trim() || row.employee?.email || "Unknown employee";
+          return fullName;
+        },
+        filterAccessor: (row) => {
+          const firstName = String(row.employee?.firstName || "").trim();
+          const lastName = String(row.employee?.lastName || "").trim();
+          const fullName = `${firstName} ${lastName}`.trim();
+          return `${fullName} ${row.employee?.email || ""}`.trim();
+        },
+        className: "min-w-[220px]",
+        render: (row) => {
+          const firstName = String(row.employee?.firstName || "").trim();
+          const lastName = String(row.employee?.lastName || "").trim();
+          const fullName = `${firstName} ${lastName}`.trim() || row.employee?.email || "Unknown employee";
+          return (
+            <div className="space-y-0.5">
+              <p className="text-sm font-semibold text-slate-900">{fullName}</p>
+              <p className="text-xs text-slate-500">{row.employee?.email || "--"}</p>
+            </div>
+          );
+        },
+      },
+      {
+        key: "role",
+        label: "Role",
+        sortable: true,
+        filterable: true,
+        filterPlaceholder: "Search role",
+        sortAccessor: (row) => row.jobRole || "",
+        filterAccessor: (row) => row.jobRole || "",
+        className: "min-w-[170px]",
+        render: (row) => <span className="text-sm text-slate-700">{row.jobRole || "--"}</span>,
+      },
+      {
+        key: "created",
+        label: "Created",
+        sortable: true,
+        filterable: true,
+        filterPlaceholder: "Search date",
+        sortAccessor: (row) => (row.createdAt ? new Date(row.createdAt).getTime() : 0),
+        filterAccessor: (row) =>
+          row.createdAt ? new Date(row.createdAt).toLocaleString() : "",
+        className: "min-w-[180px]",
+        render: (row) => (
+          <span className="text-sm text-slate-700 whitespace-nowrap">
+            {new Date(row.createdAt || Date.now()).toLocaleString()}
+          </span>
+        ),
+      },
+      {
+        key: "skillGaps",
+        label: "Skill Gaps",
+        sortable: true,
+        filterable: true,
+        filterPlaceholder: "Search count",
+        sortAccessor: (row) => (Array.isArray(row.skillGaps) ? row.skillGaps.length : 0),
+        filterAccessor: (row) => String(Array.isArray(row.skillGaps) ? row.skillGaps.length : 0),
+        align: "right",
+        className: "min-w-[120px]",
+        render: (row) => (
+          <span className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-700">
+            {Array.isArray(row.skillGaps) ? row.skillGaps.length : 0}
+          </span>
+        ),
+      },
+      {
+        key: "recommended",
+        label: "Recommended",
+        sortable: true,
+        filterable: true,
+        filterPlaceholder: "Search count",
+        sortAccessor: (row) =>
+          Array.isArray(row.recommendedTrainings) ? row.recommendedTrainings.length : 0,
+        filterAccessor: (row) =>
+          String(Array.isArray(row.recommendedTrainings) ? row.recommendedTrainings.length : 0),
+        align: "right",
+        className: "min-w-[130px]",
+        render: (row) => (
+          <span className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-700">
+            {Array.isArray(row.recommendedTrainings) ? row.recommendedTrainings.length : 0}
+          </span>
+        ),
+      },
+      {
+        key: "status",
+        label: "Status",
+        sortable: true,
+        filterable: true,
+        filterVariant: "select",
+        filterSelectAllLabel: "All Status",
+        filterOptions: recommendationStatusFilterOptions,
+        sortAccessor: (row) => normalizeStatus(row.status),
+        filterAccessor: (row) => normalizeStatus(row.status),
+        className: "min-w-[220px]",
+        render: (row) => {
+          const currentStatus = normalizeStatus(row.status);
+          const currentDraft = statusDrafts[row._id] || currentStatus;
+          return (
+            <div className="w-[190px]" data-row-click-stop="true">
+              <SearchableSelect
+                options={recommendationStatusOptions}
+                value={currentDraft}
+                onChange={(value) => {
+                  const nextStatus = value as RecommendationStatus;
+                  setStatusDrafts((previous) => ({
+                    ...previous,
+                    [row._id]: nextStatus,
+                  }));
+                  void updateStatus(row._id, nextStatus, currentStatus);
+                }}
+                placeholder="Select status"
+                className="w-full"
+              />
+            </div>
+          );
+        },
+      },
+    ],
+    [recommendationStatusFilterOptions, recommendationStatusOptions, statusDrafts]
+  );
+
   const getStepStatusMeta = (stepKey: StepKey) => {
     if (completionByStep[stepKey]) {
       return {
@@ -423,34 +678,6 @@ export default function TnaPage() {
       );
     } catch (error) {
       toast.error(getErrorMessage(error));
-    }
-  };
-
-  const deleteRecommendation = async (recommendationId: string) => {
-    const shouldDelete = window.confirm(
-      "Delete this recommendation? This action cannot be undone."
-    );
-    if (!shouldDelete) return;
-
-    setDeletingRecommendationId(recommendationId);
-    try {
-      await toast.promise(
-        deleteRecommendationMutation.mutateAsync({ recommendationId }),
-        {
-          pending: "Deleting recommendation...",
-          success: "Recommendation deleted",
-          error: "Failed to delete recommendation",
-        }
-      );
-      setStatusDrafts((previous) => {
-        const next = { ...previous };
-        delete next[recommendationId];
-        return next;
-      });
-    } catch (error) {
-      toast.error(getErrorMessage(error));
-    } finally {
-      setDeletingRecommendationId(null);
     }
   };
 
@@ -596,6 +823,7 @@ export default function TnaPage() {
       </section>
 
       <div className="space-y-6">
+          {activeStep === "employee-skills" && (
           <section
             id="employee-skills"
             className={`${panelClassName} space-y-4 ${
@@ -742,7 +970,9 @@ export default function TnaPage() {
               </Button>
             </div>
           </section>
+          )}
 
+          {activeStep === "analyze" && (
           <section
             id="analyze"
             className={`${panelClassName} space-y-4 ${activeStep === "analyze" ? "ring-2 ring-primary/20" : ""}`}
@@ -987,7 +1217,9 @@ export default function TnaPage() {
               </Button>
             </div>
           </section>
+          )}
 
+          {activeStep === "recommendations" && (
           <section
             id="recommendations"
             className={`${panelClassName} space-y-4 ${
@@ -1034,100 +1266,18 @@ export default function TnaPage() {
                 No recommendations yet. Complete steps 1 and 2, then run analysis.
               </div>
             ) : (
-              <div className="rounded-xl border border-slate-200 bg-white">
-                  <table className="w-full table-auto text-sm">
-                    <thead className="bg-slate-50">
-                      <tr className="text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
-                        <th className="px-4 py-3">Employee</th>
-                        <th className="px-4 py-3">Role</th>
-                        <th className="px-4 py-3">Created</th>
-                        <th className="px-4 py-3">Skill Gaps</th>
-                        <th className="px-4 py-3">Recommended</th>
-                        <th className="px-4 py-3">Status</th>
-                        <th className="px-4 py-3">Action</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {recommendations.map((recommendation) => {
-                        const currentStatus = normalizeStatus(recommendation.status);
-                        const currentDraft = statusDrafts[recommendation._id] || currentStatus;
-                        const isDeletingCurrent =
-                          deleteRecommendationMutation.isPending &&
-                          deletingRecommendationId === recommendation._id;
-                        const firstName = String(recommendation.employee?.firstName || "").trim();
-                        const lastName = String(recommendation.employee?.lastName || "").trim();
-                        const fullName =
-                          `${firstName} ${lastName}`.trim() ||
-                          recommendation.employee?.email ||
-                          "Unknown employee";
-
-                        return (
-                          <tr
-                            key={recommendation._id}
-                            className="border-t border-slate-100 align-top relative focus-within:z-20"
-                          >
-                            <td className="px-4 py-3">
-                              <p className="text-sm font-semibold text-slate-900">{fullName}</p>
-                              <p className="text-xs text-slate-500 mt-1">
-                                {recommendation.employee?.email || "--"}
-                              </p>
-                            </td>
-                            <td className="px-4 py-3 text-slate-700">{recommendation.jobRole || "--"}</td>
-                            <td className="px-4 py-3 text-slate-700">
-                              {new Date(recommendation.createdAt || Date.now()).toLocaleString()}
-                            </td>
-                            <td className="px-4 py-3">
-                              <span className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-700">
-                                {Array.isArray(recommendation.skillGaps)
-                                  ? recommendation.skillGaps.length
-                                  : 0}
-                              </span>
-                            </td>
-                            <td className="px-4 py-3">
-                              <span className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-700">
-                                {Array.isArray(recommendation.recommendedTrainings)
-                                  ? recommendation.recommendedTrainings.length
-                                  : 0}
-                              </span>
-                            </td>
-                            <td className="px-4 py-3">
-                              <div className="w-[190px]">
-                                <SearchableSelect
-                                  options={recommendationStatusOptions}
-                                  value={currentDraft}
-                                  onChange={(value) => {
-                                    const nextStatus = value as RecommendationStatus;
-                                    setStatusDrafts((previous) => ({
-                                      ...previous,
-                                      [recommendation._id]: nextStatus,
-                                    }));
-                                    void updateStatus(recommendation._id, nextStatus, currentStatus);
-                                  }}
-                                  placeholder="Select status"
-                                  className="w-full"
-                                />
-                              </div>
-                            </td>
-                            <td className="px-4 py-3">
-                              <button
-                                type="button"
-                                className="h-10 min-w-[110px] rounded-lg border border-red-200 px-3 text-sm text-red-600 transition-colors hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
-                                onClick={() => {
-                                  void deleteRecommendation(recommendation._id);
-                                }}
-                                disabled={deleteRecommendationMutation.isPending}
-                              >
-                                {isDeletingCurrent ? "Deleting..." : "Delete"}
-                              </button>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-              </div>
+              <GroupedDataTable
+                groups={recommendationTableGroups}
+                columns={recommendationTableColumns}
+                rowKey={(row) => row._id}
+                emptyFilteredText="No matching recommendations found."
+                tableMinWidthClassName="min-w-[980px]"
+                cardless
+                showGroupHeader={false}
+              />
             )}
           </section>
+          )}
       </div>
     </div>
   );
