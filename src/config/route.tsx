@@ -44,6 +44,7 @@ import FacultyPage from "../pages/orgAdmin/FacultyPage";
 import ProgramPage from "../pages/orgAdmin/ProgramPage";
 import DepartmentPage from "../pages/orgAdmin/DepartmentPage";
 import TnaPage from "../pages/orgAdmin/TnaPage";
+import TnaSkillRoleSetupPage from "../pages/orgAdmin/TnaSkillRoleSetupPage";
 import TnaEmployeeRecommendationsPage from "../pages/orgAdmin/TnaEmployeeRecommendationsPage";
 import TnaExecutionPipelinePage from "../pages/orgAdmin/TnaExecutionPipelinePage";
 import FAQ from "../pages/common/FAQ";
@@ -155,6 +156,10 @@ export const appRoutes = [
       {
         path: "/:orgCode/admin/department",
         element: <DepartmentPage />,
+      },
+      {
+        path: "/:orgCode/admin/tna/configuration",
+        element: <TnaSkillRoleSetupPage />,
       },
       {
         path: "/:orgCode/admin/tna",

@@ -105,6 +105,10 @@ export const BASE_NAVIGATION: {
           PATH: "/:code/admin/department",
         },
         {
+          LABEL: "TNA Skill and Role Setup",
+          PATH: "/:code/admin/tna/configuration",
+        },
+        {
           LABEL: "Training Needs",
           PATH: "/:code/admin/tna",
         },

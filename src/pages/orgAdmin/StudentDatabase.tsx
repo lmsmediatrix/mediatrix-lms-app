@@ -1,11 +1,9 @@
 import { PlusIcon } from "@/components/ui/plus-icon";
-import { FiEdit2, FiTrash2 } from "react-icons/fi";
 import { useSearchParams, useNavigate } from "react-router-dom";
-import Table from "../../components/common/Table";
 import Button from "../../components/common/Button";
 import UpsertStudentModal from "../../components/student/UpsertStudentModal";
 import BulkImportStudentModal from "../../components/student/BulkImportStudentModal";
-import { useState, Suspense } from "react";
+import { useMemo, useState, Suspense } from "react";
 import StatsCards from "../../components/common/StatsCards";
 import { dateFilter, IStudent } from "../../types/interfaces";
 import { generateStats } from "../../components/common/statUtils";
@@ -30,6 +28,11 @@ import TableSkeletonClean from "../../components/skeleton/TableSkeletonClean";
 import ResetUserPassword from "../../components/ResetUserPassword";
 import { MdLockReset } from "react-icons/md";
 import { useDebounce } from "../../hooks/useDebounce";
+import {
+  GroupedTableColumn,
+  GroupedTableGroup,
+  default as GroupedDataTable,
+} from "../../components/common/GroupedDataTable";
 
 const STUDENT_STATUS = ["active", "inactive"];
 
@@ -139,28 +142,6 @@ export default function StudentDatabase() {
     });
   };
 
-  const tableColumns = [
-    {
-      key: "studentName",
-      header: `${learnerTerm} name`,
-      width: "30%",
-    },
-    ...(orgType === "school"
-      ? [
-          {
-            key: "studentId",
-            header: `${learnerTerm} ID`,
-            width: "15%",
-          },
-        ]
-      : []),
-    ...(orgType === "school"
-      ? [{ key: "program", header: "Program", width: "20%" }]
-      : []),
-    { key: "status", header: "Status", width: "10%" },
-    { key: "actions", header: "Actions", width: "10%" },
-  ];
-
   // Skeleton configuration based on organization type
   const studentTableColumns = [
     { width: "30%", hasAvatar: true }, // Student name with avatar
@@ -212,146 +193,163 @@ export default function StudentDatabase() {
     });
   };
 
-  const renderTableRows = () => {
-    if (!studentsData?.students || studentsData.students.length === 0) {
-      const isFiltered = Boolean(
-        searchTerm ||
-          filters.status ||
-          filters.program ||
-          archiveStatus !== "none"
-      );
-      return (
-        <TableEmptyState
-          title={`Add Your First ${learnerTerm}`}
-          description={`Start by adding ${learnersTerm.toLowerCase()} who will take your courses.`}
-          primaryActionLabel={`Add ${learnerTerm}`}
-          primaryActionPath="?modal=create-student"
-          secondaryActionLabel="Bulk Import"
-          onSecondaryAction={() => setIsBulkImportOpen(true)}
-          colSpan={orgType === "school" ? 5 : 3}
-          type="student"
-          isFiltered={isFiltered}
-        />
-      );
-    }
+  const studentRows = useMemo(
+    () =>
+      ((studentsData?.students || []).filter(
+        (student: any) => student.role === "student",
+      ) as IStudent[]),
+    [studentsData?.students],
+  );
 
-    return studentsData.students
-      .filter((student: any) => student.role === "student")
-      .map((student: any) => (
-        <tr
-          key={student._id}
-          onClick={() => navigate(student._id)}
-          className={`border-b border-gray-200 hover:bg-gray-100 cursor-pointer ${
-            archiveStatus === "only" ? "text-gray-500 line-through" : ""
-          }`}
-        >
-          <td className="py-4 px-4">
-            <div className="flex items-center gap-3">
-              {student.avatar ? (
-                <img
-                  src={student.avatar}
-                  alt={`${student.firstName} ${student.lastName}'s avatar`}
-                  className="w-10 h-10 rounded-full object-cover"
-                />
-              ) : (
-                <span className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center text-gray-600 font-medium">
-                  {`${student.firstName?.[0] ?? ""}${
-                    student.lastName?.[0] ?? ""
-                  }`}
-                </span>
-              )}
-              <div>
-                <span>{`${student.firstName} ${student.lastName}`}</span>
-                <p className="text-sm text-gray-500">{student.email}</p>
-              </div>
-            </div>
-          </td>
-          {orgType === "school" && (
-            <td className="py-4 px-4">
-              <span className="font-medium">{student.studentId}</span>
-            </td>
-          )}
-          {orgType === "school" && (
-            <td className="py-4 px-4 text-gray-600">
-              {student.program?.code || "N/A"}
-            </td>
-          )}
-          <td className="py-4 px-4">
-            <div className="flex items-center">
-              <span
-                className={`px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm text-center whitespace-normal break-words ${
-                  student.status === "active"
-                    ? "bg-green-100 text-green-800"
-                    : student.status === "inactive"
-                    ? "bg-red-100 text-red-800"
-                    : "bg-blue-100 text-blue-800"
-                }`}
-              >
-                {student.status
-                  ? student.status.charAt(0).toUpperCase() +
-                    student.status.slice(1)
-                  : "N/A"}
+  const tableGroups = useMemo(
+    (): GroupedTableGroup<IStudent>[] => [
+      {
+        key: "students",
+        title: learnersTerm,
+        rows: studentRows,
+        badgeText: `${studentRows.length} total`,
+      },
+    ],
+    [learnersTerm, studentRows],
+  );
+
+  const tableColumns = useMemo((): GroupedTableColumn<IStudent>[] => {
+    const columns: GroupedTableColumn<IStudent>[] = [
+      {
+        key: "studentName",
+        label: `${learnerTerm} Name`,
+        sortable: true,
+        filterable: true,
+        filterPlaceholder: `Search ${learnerTerm.toLowerCase()}`,
+        sortAccessor: (row) => `${row.firstName || ""} ${row.lastName || ""}`.trim(),
+        filterAccessor: (row) =>
+          `${row.firstName || ""} ${row.lastName || ""} ${row.email || ""}`.trim(),
+        className: "min-w-[280px]",
+        render: (row) => (
+          <div className="flex items-center gap-3">
+            {row.avatar ? (
+              <img
+                src={row.avatar}
+                alt={`${row.firstName} ${row.lastName} avatar`}
+                className="w-10 h-10 rounded-full object-cover"
+              />
+            ) : (
+              <span className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center text-gray-600 font-medium">
+                {`${row.firstName?.[0] ?? ""}${row.lastName?.[0] ?? ""}`}
               </span>
+            )}
+            <div>
+              <span className="text-slate-900">{`${row.firstName} ${row.lastName}`}</span>
+              <p className="text-xs text-slate-500">{row.email}</p>
             </div>
-          </td>
-          <td className="py-4 px-4">
-            <div className="flex">
-              <button
-                onClick={(e) => {
-                  e.stopPropagation(); // Prevent row click
-                  setResetUserPassword(student);
-                }}
-                className={`p-2 rounded-full ${
-                  archiveStatus === "only"
-                    ? "cursor-not-allowed text-gray-400"
-                    : "hover:bg-gray-200"
-                }`}
-                disabled={archiveStatus === "only"}
-              >
-                <MdLockReset className="size-6 text-gray-700" />
-              </button>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation(); // Prevent row click
+          </div>
+        ),
+      },
+      ...(orgType === "school"
+        ? [
+            {
+              key: "studentId",
+              label: `${learnerTerm} ID`,
+              sortable: true,
+              filterable: true,
+              filterPlaceholder: `Search ${learnerTerm.toLowerCase()} ID`,
+              sortAccessor: (row: IStudent) => row.studentId || "",
+              filterAccessor: (row: IStudent) => row.studentId || "",
+              className: "min-w-[160px]",
+              render: (row: IStudent) => (
+                <span className="font-medium text-slate-700">{row.studentId || "N/A"}</span>
+              ),
+            } as GroupedTableColumn<IStudent>,
+            {
+              key: "program",
+              label: "Program",
+              sortable: true,
+              filterable: true,
+              filterPlaceholder: "Search program",
+              sortAccessor: (row: IStudent) =>
+                ((row as any).program?.code || row.program?.name || "") as string,
+              filterAccessor: (row: IStudent) =>
+                `${(row as any).program?.code || ""} ${row.program?.name || ""}`.trim(),
+              className: "min-w-[170px]",
+              render: (row: IStudent) => (
+                <span className="text-sm text-slate-600">
+                  {(row as any).program?.code || row.program?.name || "N/A"}
+                </span>
+              ),
+            } as GroupedTableColumn<IStudent>,
+          ]
+        : []),
+      {
+        key: "status",
+        label: "Status",
+        sortable: true,
+        filterable: true,
+        filterPlaceholder: "Search status",
+        sortAccessor: (row) => row.status || "",
+        filterAccessor: (row) => row.status || "",
+        className: "min-w-[130px]",
+        render: (row) => (
+          <span
+            className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${
+              row.status === "active"
+                ? "bg-green-100 text-green-800"
+                : row.status === "inactive"
+                ? "bg-red-100 text-red-800"
+                : "bg-blue-100 text-blue-800"
+            }`}
+          >
+            {row.status
+              ? row.status.charAt(0).toUpperCase() + row.status.slice(1)
+              : "N/A"}
+          </span>
+        ),
+      },
+      {
+        key: "actions",
+        label: "Actions",
+        align: "right",
+        className: "min-w-[120px]",
+        render: (row) => (
+          <ActionMenuButton
+            buttonClassName="!px-2 !py-1.5"
+            items={[
+              {
+                key: "view",
+                label: "View",
+                onClick: () => navigate(row._id),
+              },
+              {
+                key: "update",
+                label: "Update",
+                onClick: () =>
+                  setSearchParams({
+                    modal: "edit-student",
+                    id: row._id,
+                  }),
+                disabled: archiveStatus === "only",
+              },
+              {
+                key: "reset-password",
+                label: "Reset Password",
+                icon: <MdLockReset className="size-4" />,
+                onClick: () => setResetUserPassword(row),
+                disabled: archiveStatus === "only",
+              },
+              {
+                key: "delete",
+                label: "Delete",
+                onClick: () => handleDeleteClick(row),
+                disabled: archiveStatus === "only",
+                danger: true,
+              },
+            ]}
+          />
+        ),
+      },
+    ];
 
-                  if (archiveStatus !== "only") {
-                    setSearchParams({
-                      modal: "edit-student",
-                      id: student._id,
-                    });
-                  }
-                }}
-                className={`p-2 rounded-full ${
-                  archiveStatus === "only"
-                    ? "cursor-not-allowed text-gray-400"
-                    : "hover:bg-gray-200"
-                }`}
-                disabled={archiveStatus === "only"}
-              >
-                <FiEdit2 className="w-4 h-4" />
-              </button>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation(); // Prevent row click
-
-                  if (archiveStatus !== "only") {
-                    handleDeleteClick(student);
-                  }
-                }}
-                className={`p-2 rounded-full ${
-                  archiveStatus === "only"
-                    ? "cursor-not-allowed text-gray-400"
-                    : "hover:bg-gray-200 text-red-600"
-                }`}
-                disabled={archiveStatus === "only"}
-              >
-                <FiTrash2 className="w-4 h-4" />
-              </button>
-            </div>
-          </td>
-        </tr>
-      ));
-  };
+    return columns;
+  }, [archiveStatus, learnerTerm, navigate, orgType, setSearchParams]);
 
   return (
     <div className="pt-14 pb-6 px-6 lg:p-6">
@@ -558,6 +556,7 @@ export default function StudentDatabase() {
           </Button>
           <ActionMenuButton
             entityTerm={learnerTerm}
+            onAdd={() => setSearchParams({ modal: "create-student" })}
             onBulkImport={() => setIsBulkImportOpen(true)}
             onExport={() => setIsExportModalOpen(true)}
           />
@@ -596,10 +595,30 @@ export default function StudentDatabase() {
 
       {isStudentsPending ? (
         <TableSkeletonClean columns={studentTableColumns} rows={5} />
+      ) : studentRows.length === 0 ? (
+        <TableEmptyState
+          title={`Add Your First ${learnerTerm}`}
+          description={`Start by adding ${learnersTerm.toLowerCase()} who will take your courses.`}
+          primaryActionLabel={`Add ${learnerTerm}`}
+          primaryActionPath="?modal=create-student"
+          secondaryActionLabel="Bulk Import"
+          onSecondaryAction={() => setIsBulkImportOpen(true)}
+          colSpan={orgType === "school" ? 5 : 3}
+          type="student"
+          isFiltered={Boolean(searchTerm || filters.status || filters.program || archiveStatus !== "none")}
+        />
       ) : (
-        <Table columns={tableColumns} scrollable={true} maxHeight="370px">
-          {renderTableRows()}
-        </Table>
+        <GroupedDataTable
+          groups={tableGroups}
+          columns={tableColumns}
+          rowKey={(row) => row._id}
+          tableMinWidthClassName={orgType === "school" ? "min-w-[1100px]" : "min-w-[860px]"}
+          showPagination={false}
+          cardless
+          showGroupHeader={false}
+          onRowClick={(row) => navigate(row._id)}
+          emptyFilteredText={`No matching ${learnersTerm.toLowerCase()} found.`}
+        />
       )}
 
       {/* Pagination */}

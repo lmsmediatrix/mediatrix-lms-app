@@ -1,12 +1,11 @@
 import { FaPlus } from "react-icons/fa";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
-import Table from "../../components/common/Table";
 import Button from "../../components/common/Button";
 import {
   useAdminSections,
   useExportSectionToCsv,
 } from "../../hooks/useSection";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useAuth } from "../../context/AuthContext";
 import { getTerm } from "../../lib/utils";
 import { exportToCSVUtil } from "../../lib/exportCsvUtils";
@@ -20,6 +19,11 @@ import { useCoursesForDropdown } from "../../hooks/useCourse";
 import { useInstructorsForDropdown } from "../../hooks/useInstructor";
 import TableSkeletonClean from "../../components/skeleton/TableSkeletonClean";
 import { useDebounce } from "../../hooks/useDebounce";
+import {
+  GroupedTableColumn,
+  GroupedTableGroup,
+  default as GroupedDataTable,
+} from "../../components/common/GroupedDataTable";
 
 export default function SectionPage() {
   const { currentUser } = useAuth();
@@ -139,18 +143,6 @@ export default function SectionPage() {
     });
   };
 
-  const tableColumns = [
-    { key: "code", header: `${sectionTerm} Code`, width: "20%" },
-    { key: "name", header: "Name", width: "20%" },
-    { key: "instructor", header: instructorTerm, width: "20%" },
-    { key: "course", header: "Course", width: "25%" },
-    {
-      key: "students",
-      header: `Total ${learnerTerm}`,
-      width: "15%",
-    },
-  ];
-
   // Skeleton configuration for sections
   const sectionTableColumns = [
     { width: "20%" }, // Section Code
@@ -179,75 +171,131 @@ export default function SectionPage() {
     });
   };
 
-  const renderTableRows = () => {
-    if (isError) {
-      return (
-        <tr className="border-b border-gray-200">
-          <td colSpan={5} className="py-4 px-4 text-center text-gray-500">
-            Error loading {sectionsTerm.toLowerCase()}
-          </td>
-        </tr>
-      );
-    }
+  const sectionRows = useMemo(
+    () => ((data?.sections || []) as ISection[]),
+    [data?.sections],
+  );
 
-    if (!data?.sections || data.sections.length === 0) {
-      const isFiltered = Boolean(
-        searchTerm ||
-          selectedCourse ||
-          selectedInstructor ||
-          archiveStatus !== "none"
-      );
-      return (
-        <TableEmptyState
-          title={`Create Your First ${sectionTerm}`}
-          description={`Start by creating a ${sectionTerm.toLowerCase()}. You'll need courses, ${instructorTerm.toLowerCase()}s, and ${learnerTerm.toLowerCase()}s first.`}
-          primaryActionLabel={`Create ${sectionTerm}`}
-          primaryActionPath={`/${orgCode}/admin/section/new`}
-          colSpan={5}
-          type="section"
-          isFiltered={isFiltered}
-        />
-      );
-    }
+  const tableGroups = useMemo(
+    (): GroupedTableGroup<ISection>[] => [
+      {
+        key: "sections",
+        title: sectionsTerm,
+        rows: sectionRows,
+        badgeText: `${sectionRows.length} total`,
+      },
+    ],
+    [sectionRows, sectionsTerm],
+  );
 
-    return data.sections.map((section: ISection) => (
-      <tr
-        key={section._id}
-        className={`border-b border-gray-200 hover:bg-gray-50 cursor-pointer ${
-          archiveStatus === "only" ? "text-gray-500 line-through" : ""
-        }`}
-        onClick={() => navigate(`/${orgCode}/admin/section/${section.code}`)}
-      >
-        <td className="py-4 px-4">
-          <span className="font-semibold">{section.code}</span>
-        </td>
-        <td className="py-4 px-4">
-          <span>{section.name}</span>
-        </td>
-        <td className="py-4 px-4">
-          {section.instructor && (
-            <span>{`${section.instructor.firstName} ${section.instructor.lastName}`}</span>
-          )}
-        </td>
-        <td className="py-4 px-4">
-          {section.instructor && <span>{section.course?.title}</span>}
-        </td>
-        <td className="py-4 px-4">
-          <div className="flex flex-col">
+  const tableColumns = useMemo(
+    (): GroupedTableColumn<ISection>[] => [
+      {
+        key: "code",
+        label: `${sectionTerm} Code`,
+        sortable: true,
+        filterable: true,
+        filterPlaceholder: "Search code",
+        sortAccessor: (row) => row.code || "",
+        filterAccessor: (row) => row.code || "",
+        className: "min-w-[180px]",
+        render: (row) => <span className="font-semibold text-slate-900">{row.code}</span>,
+      },
+      {
+        key: "name",
+        label: "Name",
+        sortable: true,
+        filterable: true,
+        filterPlaceholder: "Search name",
+        sortAccessor: (row) => row.name || "",
+        filterAccessor: (row) => row.name || "",
+        className: "min-w-[220px]",
+        render: (row) => <span className="text-slate-900">{row.name}</span>,
+      },
+      {
+        key: "instructor",
+        label: instructorTerm,
+        sortable: true,
+        filterable: true,
+        filterPlaceholder: `Search ${instructorTerm.toLowerCase()}`,
+        sortAccessor: (row) =>
+          row.instructor
+            ? `${row.instructor.firstName || ""} ${row.instructor.lastName || ""}`.trim()
+            : "",
+        filterAccessor: (row) =>
+          row.instructor
+            ? `${row.instructor.firstName || ""} ${row.instructor.lastName || ""}`.trim()
+            : "",
+        className: "min-w-[230px]",
+        render: (row) => (
+          <span className="text-sm text-slate-700">
+            {row.instructor
+              ? `${row.instructor.firstName || ""} ${row.instructor.lastName || ""}`.trim()
+              : "N/A"}
+          </span>
+        ),
+      },
+      {
+        key: "course",
+        label: "Course",
+        sortable: true,
+        filterable: true,
+        filterPlaceholder: "Search course",
+        sortAccessor: (row) => row.course?.title || "",
+        filterAccessor: (row) => row.course?.title || "",
+        className: "min-w-[240px]",
+        render: (row) => (
+          <span className="text-sm text-slate-700">{row.course?.title || "N/A"}</span>
+        ),
+      },
+      {
+        key: "students",
+        label: `Total ${learnerTerm}`,
+        sortable: true,
+        filterable: true,
+        filterPlaceholder: "Search count",
+        sortAccessor: (row) => row.totalStudent || 0,
+        filterAccessor: (row) => String(row.totalStudent || 0),
+        className: "min-w-[180px]",
+        render: (row) => (
+          <div className="flex flex-col text-sm text-slate-700">
             <span>
-              {section.totalStudent} {learnerTerm.toLowerCase()}
-              {section.totalStudent !== 1 ? "s" : ""}
+              {row.totalStudent || 0} {learnerTerm.toLowerCase()}
+              {(row.totalStudent || 0) !== 1 ? "s" : ""}
             </span>
-            {section.maxStudents && (
-              <span className="text-sm text-gray-500">
-                Max: {section.maxStudents}
-              </span>
+            {row.maxStudents && (
+              <span className="text-xs text-slate-500">Max: {row.maxStudents}</span>
             )}
           </div>
-        </td>
-      </tr>
-    ));
-  };
+        ),
+      },
+      {
+        key: "actions",
+        label: "Actions",
+        align: "right",
+        className: "min-w-[120px]",
+        render: (row) => (
+          <ActionMenuButton
+            buttonClassName="!px-2 !py-1.5"
+            items={[
+              {
+                key: "view",
+                label: "View",
+                onClick: () => navigate(`/${orgCode}/admin/section/${row.code}`),
+              },
+              {
+                key: "update",
+                label: "Update",
+                onClick: () => navigate(`/${orgCode}/admin/section/${row.code}`),
+                disabled: archiveStatus === "only",
+              },
+            ]}
+          />
+        ),
+      },
+    ],
+    [archiveStatus, instructorTerm, learnerTerm, navigate, orgCode, sectionTerm],
+  );
 
   return (
     <div className=" pt-14 pb-6 px-6 lg:p-6">
@@ -387,7 +435,8 @@ export default function SectionPage() {
             <span className="sm:hidden">Create</span>
           </Button>
           <ActionMenuButton
-            entityTerm="Course"
+            entityTerm={sectionTerm}
+            onAdd={() => navigate(`/${orgCode}/admin/section/new`)}
             onExport={() => setIsExportModalOpen(true)}
           />
 
@@ -426,10 +475,34 @@ export default function SectionPage() {
 
       {isLoading ? (
         <TableSkeletonClean columns={sectionTableColumns} rows={10} />
+      ) : isError ? (
+        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          Error loading {sectionsTerm.toLowerCase()}
+        </div>
+      ) : sectionRows.length === 0 ? (
+        <TableEmptyState
+          title={`Create Your First ${sectionTerm}`}
+          description={`Start by creating a ${sectionTerm.toLowerCase()}. You'll need courses, ${instructorTerm.toLowerCase()}s, and ${learnerTerm.toLowerCase()}s first.`}
+          primaryActionLabel={`Create ${sectionTerm}`}
+          primaryActionPath={`/${orgCode}/admin/section/new`}
+          colSpan={5}
+          type="section"
+          isFiltered={Boolean(
+            searchTerm || selectedCourse || selectedInstructor || archiveStatus !== "none",
+          )}
+        />
       ) : (
-        <Table columns={tableColumns} scrollable={true} maxHeight="500px">
-          {renderTableRows()}
-        </Table>
+        <GroupedDataTable
+          groups={tableGroups}
+          columns={tableColumns}
+          rowKey={(row) => row._id}
+          tableMinWidthClassName="min-w-[1220px]"
+          showPagination={false}
+          cardless
+          showGroupHeader={false}
+          onRowClick={(row) => navigate(`/${orgCode}/admin/section/${row.code}`)}
+          emptyFilteredText={`No matching ${sectionsTerm.toLowerCase()} found.`}
+        />
       )}
 
       {/* Pagination */}

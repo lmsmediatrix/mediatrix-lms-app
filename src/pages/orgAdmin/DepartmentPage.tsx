@@ -1,10 +1,8 @@
 import Button from "../../components/common/Button";
-import Table from "../../components/common/Table";
-import { FaPlus, FaEye } from "react-icons/fa";
+import { FaPlus } from "react-icons/fa";
 import { Navigate, useSearchParams } from "react-router-dom";
-import { FiEdit2, FiTrash2 } from "react-icons/fi";
 import { useDepartments } from "../../hooks/useDepartment";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useAuth } from "../../context/AuthContext";
 import TableEmptyState from "../../components/common/TableEmptyState";
 import FilterDropdownButton from "../../components/orgAdmin/FilterDropdownButton";
@@ -14,6 +12,12 @@ import ViewDepartmentModal from "../../components/orgAdmin/ViewDepartmentModal";
 import DeleteDepartmentModal from "../../components/orgAdmin/DeleteDepartmentModal";
 import TableSkeletonClean from "../../components/skeleton/TableSkeletonClean";
 import { useDebounce } from "../../hooks/useDebounce";
+import {
+  GroupedTableColumn,
+  GroupedTableGroup,
+  default as GroupedDataTable,
+} from "../../components/common/GroupedDataTable";
+import ActionMenuButton from "../../components/orgAdmin/ActionMenuButton";
 
 const DEPARTMENT_STATUS = [
   { value: "true", label: "Active" },
@@ -24,6 +28,14 @@ interface DepartmentToDelete {
   id: string;
   name: string;
 }
+
+type DepartmentRow = {
+  _id: string;
+  code: string;
+  name: string;
+  description?: string;
+  isActive: boolean;
+};
 
 export default function DepartmentPage() {
   const { currentUser } = useAuth();
@@ -109,130 +121,119 @@ export default function DepartmentPage() {
     });
   };
 
-  const renderTableRows = () => {
-    if (isError) {
-      return (
-        <tr className="border-b border-gray-200">
-          <td colSpan={5} className="py-4 px-4 text-center text-gray-500">
-            Error loading departments
-          </td>
-        </tr>
-      );
-    }
+  const departmentRows = useMemo(
+    () => ((data?.departments || []) as DepartmentRow[]),
+    [data?.departments],
+  );
 
-    if (!data?.departments || data.departments.length === 0) {
-      const isFiltered = Boolean(
-        searchTerm || selectedStatus || archiveStatus !== "none"
-      );
-      return (
-        <TableEmptyState
-          title="Create Your First Department"
-          description="Start by creating a department to organize your corporate workforce."
-          primaryActionLabel="Add Department"
-          primaryActionPath="?modal=create-department"
-          colSpan={5}
-          isFiltered={isFiltered}
-        />
-      );
-    }
+  const tableGroups = useMemo(
+    (): GroupedTableGroup<DepartmentRow>[] => [
+      {
+        key: "departments",
+        title: "Departments",
+        rows: departmentRows,
+        badgeText: `${departmentRows.length} total`,
+      },
+    ],
+    [departmentRows],
+  );
 
-    return data.departments.map((department: any) => (
-      <tr
-        key={department._id}
-        className={`border-b border-gray-200 hover:bg-gray-50 cursor-pointer ${
-          archiveStatus === "only" ? "text-gray-500 line-through" : ""
-        }`}
-        onClick={() =>
-          setSearchParams({ modal: "view-department", id: department._id })
-        }
-      >
-        <td className="py-4 px-4">
-          <div>
-            <span className="font-semibold">{department.code}</span>
-          </div>
-        </td>
-        <td className="py-4 px-4">
-          <div>
-            <span className="font-semibold">{department.name}</span>
-          </div>
-        </td>
-        <td className="py-4 px-4">
-          <div className="text-sm text-gray-900 max-w-xs truncate">
-            {department.description || "No description"}
-          </div>
-        </td>
-        <td className="py-4 px-4">
-          <div className="flex items-center">
-            <span
-              className={`px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm text-center whitespace-normal break-words ${
-                department.isActive
-                  ? "bg-green-100 text-green-800"
-                  : "bg-red-100 text-red-800"
-              }`}
-            >
-              {department.isActive ? "Active" : "Inactive"}
-            </span>
-          </div>
-        </td>
-        <td className="py-4 px-4">
-          <div className="flex gap-2">
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setSearchParams({ modal: "view-department", id: department._id });
-              }}
-              className="p-2 rounded-full hover:bg-gray-100 text-primary"
-              title="View Department Details"
-            >
-              <FaEye className="w-4 h-4" />
-            </button>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                if (archiveStatus !== "only") {
-                  setSearchParams({ modal: "edit-department", id: department._id });
-                }
-              }}
-              className={`p-2 rounded-full ${
-                archiveStatus === "only"
-                  ? "cursor-not-allowed text-gray-400"
-                  : "hover:bg-gray-100"
-              }`}
-              disabled={archiveStatus === "only"}
-              title="Edit Department"
-            >
-              <FiEdit2 className="w-4 h-4" />
-            </button>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                if (archiveStatus !== "only") {
-                  handleDeleteClick(department);
-                }
-              }}
-              className={`p-2 rounded-full ${
-                archiveStatus === "only"
-                  ? "cursor-not-allowed text-gray-400"
-                  : "hover:bg-gray-100 text-red-600"
-              }`}
-              disabled={archiveStatus === "only"}
-              title="Delete Department"
-            >
-              <FiTrash2 className="w-4 h-4" />
-            </button>
-          </div>
-        </td>
-      </tr>
-    ));
-  };
-
-  const columns = [
-    { key: "code", header: "Department Code", width: "15%" },
-    { key: "name", header: "Department Name", width: "25%" },
-    { key: "description", header: "Description", width: "25%" },
-    { key: "status", header: "Status", width: "15%" },
-    { key: "actions", header: "Actions", width: "20%" },
-  ];
+  const tableColumns = useMemo(
+    (): GroupedTableColumn<DepartmentRow>[] => [
+      {
+        key: "code",
+        label: "Department Code",
+        sortable: true,
+        filterable: true,
+        filterPlaceholder: "Search code",
+        sortAccessor: (row) => row.code || "",
+        filterAccessor: (row) => row.code || "",
+        className: "min-w-[170px]",
+        render: (row) => <span className="font-semibold text-slate-900">{row.code}</span>,
+      },
+      {
+        key: "name",
+        label: "Department Name",
+        sortable: true,
+        filterable: true,
+        filterPlaceholder: "Search name",
+        sortAccessor: (row) => row.name || "",
+        filterAccessor: (row) => row.name || "",
+        className: "min-w-[240px]",
+        render: (row) => <span className="font-semibold text-slate-900">{row.name}</span>,
+      },
+      {
+        key: "description",
+        label: "Description",
+        sortable: true,
+        filterable: true,
+        filterPlaceholder: "Search description",
+        sortAccessor: (row) => row.description || "",
+        filterAccessor: (row) => row.description || "",
+        className: "min-w-[260px]",
+        render: (row) => (
+          <span className="text-sm text-slate-600 max-w-xs truncate inline-block">
+            {row.description || "No description"}
+          </span>
+        ),
+      },
+      {
+        key: "status",
+        label: "Status",
+        sortable: true,
+        filterable: true,
+        filterPlaceholder: "Search status",
+        sortAccessor: (row) => (row.isActive ? "active" : "inactive"),
+        filterAccessor: (row) => (row.isActive ? "active" : "inactive"),
+        className: "min-w-[140px]",
+        render: (row) => (
+          <span
+            className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${
+              row.isActive
+                ? "bg-green-100 text-green-800"
+                : "bg-red-100 text-red-800"
+            }`}
+          >
+            {row.isActive ? "Active" : "Inactive"}
+          </span>
+        ),
+      },
+      {
+        key: "actions",
+        label: "Actions",
+        align: "right",
+        className: "min-w-[120px]",
+        render: (row) => (
+          <ActionMenuButton
+            buttonClassName="!px-2 !py-1.5"
+            items={[
+              {
+                key: "view",
+                label: "View",
+                onClick: () =>
+                  setSearchParams({ modal: "view-department", id: row._id }),
+              },
+              {
+                key: "update",
+                label: "Update",
+                onClick: () =>
+                  setSearchParams({ modal: "edit-department", id: row._id }),
+                disabled: archiveStatus === "only",
+              },
+              {
+                key: "delete",
+                label: "Delete",
+                onClick: () => handleDeleteClick(row),
+                disabled: archiveStatus === "only",
+                danger: true,
+              },
+            ]}
+          />
+        ),
+      },
+    ],
+    [archiveStatus, setSearchParams],
+  );
 
   const departmentTableColumns = [
     { width: "15%" },
@@ -347,10 +348,33 @@ export default function DepartmentPage() {
 
       {isLoading ? (
         <TableSkeletonClean columns={departmentTableColumns} rows={10} />
+      ) : isError ? (
+        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          Error loading departments
+        </div>
+      ) : departmentRows.length === 0 ? (
+        <TableEmptyState
+          title="Create Your First Department"
+          description="Start by creating a department to organize your corporate workforce."
+          primaryActionLabel="Add Department"
+          primaryActionPath="?modal=create-department"
+          colSpan={5}
+          isFiltered={Boolean(searchTerm || selectedStatus || archiveStatus !== "none")}
+        />
       ) : (
-        <Table columns={columns} scrollable={true} maxHeight="580px">
-          {renderTableRows()}
-        </Table>
+        <GroupedDataTable
+          groups={tableGroups}
+          columns={tableColumns}
+          rowKey={(row) => row._id}
+          tableMinWidthClassName="min-w-[1080px]"
+          showPagination={false}
+          cardless
+          showGroupHeader={false}
+          onRowClick={(row) =>
+            setSearchParams({ modal: "view-department", id: row._id })
+          }
+          emptyFilteredText="No matching departments found."
+        />
       )}
 
       {!isLoading && (
