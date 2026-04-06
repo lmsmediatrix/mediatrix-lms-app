@@ -102,6 +102,19 @@ export default function SidePanel({
     },
   };
 
+  const panelBackground = fitToColumn
+    ? "color-mix(in srgb, var(--color-primary, #3b82f6) 2%, white 98%)"
+    : "white";
+  const panelBorderColor = fitToColumn
+    ? "color-mix(in srgb, var(--color-primary, #3b82f6) 10%, white 90%)"
+    : "color-mix(in srgb, var(--color-primary, #3b82f6) 15%, white 85%)";
+  const itemBackground = fitToColumn
+    ? "color-mix(in srgb, var(--color-primary, #3b82f6) 4%, white 96%)"
+    : "color-mix(in srgb, var(--color-primary, #3b82f6) 6%, white 94%)";
+  const itemBorderColor = fitToColumn
+    ? "color-mix(in srgb, var(--color-primary, #3b82f6) 14%, white 86%)"
+    : "color-mix(in srgb, var(--color-primary, #3b82f6) 18%, white 82%)";
+
   return (
     <div
       className={
@@ -117,8 +130,8 @@ export default function SidePanel({
             fitToColumn ? "flex min-h-0 flex-[3] flex-col" : ""
           }`}
           style={{
-            backgroundColor: "white",
-            borderColor: "color-mix(in srgb, var(--color-primary, #3b82f6) 15%, white 85%)",
+            backgroundColor: panelBackground,
+            borderColor: panelBorderColor,
           }}
         >
           <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
@@ -223,8 +236,8 @@ export default function SidePanel({
                         key={item.id}
                         className="snap-start min-w-[260px] lg:min-w-0 group cursor-pointer relative rounded-xl border p-4 overflow-hidden transition-all duration-200 hover:shadow-md hover:-translate-y-0.5"
                         style={{
-                          backgroundColor: "color-mix(in srgb, var(--color-primary, #3b82f6) 6%, white 94%)",
-                          borderColor: "color-mix(in srgb, var(--color-primary, #3b82f6) 18%, white 82%)",
+                          backgroundColor: itemBackground,
+                          borderColor: itemBorderColor,
                         }}
                           onClick={() => {
                             // Student: deadlines are assessments → go to assessments tab with id
@@ -357,8 +370,8 @@ export default function SidePanel({
             : ""
         }`}
         style={{
-          backgroundColor: "white",
-          borderColor: "color-mix(in srgb, var(--color-primary, #3b82f6) 15%, white 85%)",
+          backgroundColor: panelBackground,
+          borderColor: panelBorderColor,
         }}
       >
         <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">

@@ -9,6 +9,8 @@ import Button from "../../components/common/Button";
 import { useExportStudentGrades } from "../../hooks/useSection";
 import { exportToCSVUtil } from "../../lib/exportCsvUtils";
 import StudentGradesModal from "../../components/instructor/StudentGradesModal";
+import { useAuth } from "../../context/AuthContext";
+import { getTerm } from "../../lib/utils";
 
 interface IStudent {
   _id: string;
@@ -32,11 +34,14 @@ interface IStudent {
 const GradesContent = ({
   sectionCode,
   onStudentSelect,
+  learnerTerm,
 }: {
   sectionCode: string;
   onStudentSelect: (student: IStudent) => void;
+  learnerTerm: string;
 }) => {
-  const { data, isPending, isError, error } = useGetStudentGradeBySection(sectionCode);
+  const { data, isPending, isError, error } =
+    useGetStudentGradeBySection(sectionCode);
   const students: IStudent[] = data?.students || [];
   const headers: string[] = data?.headers || [];
 
@@ -64,10 +69,13 @@ const GradesContent = ({
             <thead>
               <tr className="text-left text-gray-600 text-sm bg-gray-100 rounded-t-lg">
                 <th className="p-3 font-medium min-w-[180px]">
-                  <span className="text-sm">Student Name</span>
+                  <span className="text-sm">{learnerTerm} Name</span>
                 </th>
                 {headers.map((header, index) => (
-                  <th key={index} className="font-medium min-w-[80px] text-center">
+                  <th
+                    key={index}
+                    className="font-medium min-w-[80px] text-center"
+                  >
                     <span className="text-sm capitalize">{header}</span>
                   </th>
                 ))}
@@ -100,7 +108,8 @@ const GradesContent = ({
                     <td
                       key={index}
                       className={`py-3 text-center text-sm lg:text-base ${
-                        assessment.gradeLabel === "F" || assessment.gradeLabel === "5.00"
+                        assessment.gradeLabel === "F" ||
+                        assessment.gradeLabel === "5.00"
                           ? "text-red-400"
                           : "text-blue-400"
                       }`}
@@ -121,6 +130,10 @@ const GradesContent = ({
 export default function GradesTab() {
   const location = useLocation();
   const sectionCode = location.pathname.split("/")[4];
+  const { currentUser } = useAuth();
+  const orgType = currentUser.user.organization.type;
+  const learnerTerm = getTerm("learner", orgType);
+  const learnersTerm = getTerm("learner", orgType, true);
   const exportStudentGrades = useExportStudentGrades();
   const [selectedStudent, setSelectedStudent] = useState<IStudent | null>(null);
 
@@ -132,9 +145,9 @@ export default function GradesTab() {
       mutationParams: sectionCode,
       filenamePrefix: `1bislms-${sectionCode}-grades`,
       toastMessages: {
-        pending: `Exporting student grades data to CSV...`,
-        success: `Successfully exported student grades data to CSV`,
-        error: `Failed to export student grades data to CSV`,
+        pending: `Exporting ${learnersTerm.toLowerCase()} grades data to CSV...`,
+        success: `Successfully exported ${learnersTerm.toLowerCase()} grades data to CSV`,
+        error: `Failed to export ${learnersTerm.toLowerCase()} grades data to CSV`,
       },
       onError: (error) => console.error("Export error:", error),
     });
@@ -147,7 +160,11 @@ export default function GradesTab() {
           <h1 className="text-2xl md:text-3xl font-bold">Grades</h1>
         </div>
         <div className="flex gap-2 justify-end">
-          <Button onClick={exportToCSV} variant="primary" className="text-sm md:text-base">
+          <Button
+            onClick={exportToCSV}
+            variant="primary"
+            className="text-sm md:text-base"
+          >
             <BiExport /> <span>Export</span>
           </Button>
         </div>
@@ -158,6 +175,7 @@ export default function GradesTab() {
           <GradesContent
             sectionCode={sectionCode}
             onStudentSelect={setSelectedStudent}
+            learnerTerm={learnerTerm}
           />
         </Suspense>
       </div>

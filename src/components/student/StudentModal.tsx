@@ -9,14 +9,21 @@ import {
 } from "react-icons/fa";
 import { formatDateTimeAgo } from "../../lib/dateUtils";
 import StudentModalSkeleton from "../skeleton/StudentModalSkeleton";
-import { getYearLevelText } from "../../lib/utils";
+import { getTerm, getYearLevelText } from "../../lib/utils";
+import { useAuth } from "../../context/AuthContext";
 
 export default function StudentModal() {
   const [searchParams, setSearchParams] = useSearchParams();
   const studentId = searchParams.get("studentId");
+  const { currentUser } = useAuth();
+  const learnerLabel = getTerm(
+    "learner",
+    currentUser.user.organization.type,
+    false,
+  );
 
   const { data: student, isPending } = useGetStudentDetails(
-    studentId ? studentId : ""
+    studentId ? studentId : "",
   );
 
   const handleClose = () => setSearchParams({ tab: "students" });
@@ -48,7 +55,7 @@ export default function StudentModal() {
                 {student.data.firstName} {student.data.lastName}
               </h2>
               <p className="text-gray-600">
-                Student #: {student.data.studentId}
+                {learnerLabel} #: {student.data.studentId}
               </p>
               <p className="text-gray-600">
                 Year Level: {getYearLevelText(student.data.yearLevel)}

@@ -6,8 +6,8 @@ import {
   Title,
   Tooltip,
   Legend,
-} from 'chart.js';
-import { Bar } from 'react-chartjs-2';
+} from "chart.js";
+import { Bar } from "react-chartjs-2";
 
 ChartJS.register(
   CategoryScale,
@@ -15,7 +15,7 @@ ChartJS.register(
   BarElement,
   Title,
   Tooltip,
-  Legend
+  Legend,
 );
 
 interface GradeChartProps {
@@ -24,9 +24,13 @@ interface GradeChartProps {
     values: number[];
     totalStudents: number;
   };
+  learnersLabel?: string;
 }
 
-export default function GradeChart({ data }: GradeChartProps) {
+export default function GradeChart({
+  data,
+  learnersLabel = "Students",
+}: GradeChartProps) {
   // Fallback values if data is invalid
   const labels = data?.labels || [];
   const values = data?.values || [];
@@ -36,7 +40,9 @@ export default function GradeChart({ data }: GradeChartProps) {
   if (!labels.length || !values.length || totalStudents === 0) {
     return (
       <div className="border rounded-lg px-4 py-6 bg-white">
-        <p className="text-gray-400 text-center text-sm md:text-base">No data available</p>
+        <p className="text-gray-400 text-center text-sm md:text-base">
+          No data available
+        </p>
       </div>
     );
   }
@@ -55,7 +61,7 @@ export default function GradeChart({ data }: GradeChartProps) {
       },
       title: {
         display: true,
-        text: 'Grade Distribution',
+        text: "Grade Distribution",
         font: {
           size: window.innerWidth < 768 ? 14 : 16, // Smaller title on mobile
         },
@@ -70,7 +76,7 @@ export default function GradeChart({ data }: GradeChartProps) {
       y: {
         title: {
           display: true,
-          text: `Number of students (Total: ${totalStudents})`,
+          text: `Number of ${learnersLabel.toLowerCase()} (Total: ${totalStudents})`,
           font: {
             size: window.innerWidth < 768 ? 12 : 14, // Smaller axis title on mobile
           },
@@ -86,13 +92,13 @@ export default function GradeChart({ data }: GradeChartProps) {
         grid: {
           display: true,
           drawTicks: true,
-          color: 'rgba(0, 0, 0, 0.1)',
+          color: "rgba(0, 0, 0, 0.1)",
         },
       },
       x: {
         title: {
           display: true,
-          text: 'Grade',
+          text: "Grade",
           font: {
             size: window.innerWidth < 768 ? 12 : 14, // Smaller axis title on mobile
           },
@@ -114,7 +120,7 @@ export default function GradeChart({ data }: GradeChartProps) {
     datasets: [
       {
         data: values,
-        backgroundColor: 'rgb(20, 184, 216)',
+        backgroundColor: "rgb(20, 184, 216)",
         barThickness: window.innerWidth < 768 ? 20 : 50, // Thinner bars on mobile
       },
     ],

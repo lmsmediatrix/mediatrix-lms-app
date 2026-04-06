@@ -1,6 +1,14 @@
 import React from "react";
 
-const EmptyStudentsState: React.FC = () => {
+interface EmptyStudentsStateProps {
+  learnersLabel?: string;
+  groupLabel?: string;
+}
+
+const EmptyStudentsState: React.FC<EmptyStudentsStateProps> = ({
+  learnersLabel = "Students",
+  groupLabel = "section",
+}) => {
   return (
     <div className="flex flex-col items-center justify-center py-12 px-4 bg-white rounded-lg">
       {/* Illustration */}
@@ -24,7 +32,7 @@ const EmptyStudentsState: React.FC = () => {
             strokeWidth="2"
             strokeDasharray="4 4"
           />
-          
+
           {/* Student 1 */}
           <circle cx="70" cy="60" r="15" fill="#60B2F0" fillOpacity="0.3" />
           <circle cx="70" cy="55" r="6" fill="#3E5B93" fillOpacity="0.3" />
@@ -37,7 +45,7 @@ const EmptyStudentsState: React.FC = () => {
             fill="#3E5B93"
             fillOpacity="0.3"
           />
-          
+
           {/* Student 2 */}
           <circle cx="100" cy="60" r="15" fill="#60B2F0" fillOpacity="0.3" />
           <circle cx="100" cy="55" r="6" fill="#3E5B93" fillOpacity="0.3" />
@@ -50,7 +58,7 @@ const EmptyStudentsState: React.FC = () => {
             fill="#3E5B93"
             fillOpacity="0.3"
           />
-          
+
           {/* Student 3 */}
           <circle cx="130" cy="60" r="15" fill="#60B2F0" fillOpacity="0.3" />
           <circle cx="130" cy="55" r="6" fill="#3E5B93" fillOpacity="0.3" />
@@ -63,7 +71,7 @@ const EmptyStudentsState: React.FC = () => {
             fill="#3E5B93"
             fillOpacity="0.3"
           />
-          
+
           {/* Student list lines */}
           <rect
             x="60"
@@ -97,9 +105,12 @@ const EmptyStudentsState: React.FC = () => {
 
       {/* Title and Description */}
       <div className="text-center mb-6">
-        <h3 className="text-xl font-bold text-gray-800 mb-2">No Students Enrolled</h3>
+        <h3 className="text-xl font-bold text-gray-800 mb-2">
+          No {learnersLabel} Enrolled
+        </h3>
         <p className="text-gray-600 max-w-lg mx-auto">
-          There are no students enrolled in this section yet.
+          There are no {learnersLabel.toLowerCase()} enrolled in this{" "}
+          {groupLabel.toLowerCase()} yet.
         </p>
       </div>
     </div>

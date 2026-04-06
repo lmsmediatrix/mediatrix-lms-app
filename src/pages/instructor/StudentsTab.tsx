@@ -43,6 +43,7 @@ export default function StudentsTab({ sectionCode }: StudentsTabProps) {
   const exportStudents = useExportSectionStudent();
 
   const learnerTerm = getTerm("learner", orgType, true);
+  const groupTerm = getTerm("group", orgType);
   const completionMap = new Map<string, StudentProgress>(
     (performanceData?.students || []).map(
       (student: any) =>
@@ -62,9 +63,9 @@ export default function StudentsTab({ sectionCode }: StudentsTabProps) {
       mutationParams: sectionCode,
       filenamePrefix: `1bislms-${sectionCode}-students`,
       toastMessages: {
-        pending: `Exporting student data to CSV...`,
-        success: `Successfully exported student data to CSV`,
-        error: `Failed to export student data to CSV`,
+        pending: `Exporting ${learnerTerm.toLowerCase()} data to CSV...`,
+        success: `Successfully exported ${learnerTerm.toLowerCase()} data to CSV`,
+        error: `Failed to export ${learnerTerm.toLowerCase()} data to CSV`,
       },
       onError: (error) => console.error("Export error:", error),
     });
@@ -100,7 +101,7 @@ export default function StudentsTab({ sectionCode }: StudentsTabProps) {
 
       <div className="flex justify-between items-center gap-4 mb-6">
         <div className="flex items-center gap-2">
-          <h2 className="text-xl md:text-2xl font-bold ">Class List</h2>
+          <h2 className="text-xl md:text-2xl font-bold ">{learnerTerm} List</h2>
           <p className="text-gray-600 text-sm md:text-lg">
             ({students?.length})
           </p>
@@ -230,7 +231,10 @@ export default function StudentsTab({ sectionCode }: StudentsTabProps) {
             ) : (
               <tr>
                 <td colSpan={columnCount} className="py-8">
-                  <EmptyStudentsState />
+                  <EmptyStudentsState
+                    learnersLabel={learnerTerm}
+                    groupLabel={groupTerm}
+                  />
                 </td>
               </tr>
             )}
