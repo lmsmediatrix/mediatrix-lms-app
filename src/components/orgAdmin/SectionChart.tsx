@@ -25,9 +25,14 @@ interface SectionChartProps {
     totalStudents: number;
   };
   xAxisLabel?: string;
+  learnerLabel?: string;
 }
 
-export default function SectionChart({ data, xAxisLabel = "Sections" }: SectionChartProps) {
+export default function SectionChart({
+  data,
+  xAxisLabel = "Sections",
+  learnerLabel = "Students",
+}: SectionChartProps) {
   const labels = data?.labels?.length ? data.labels : ["No Sections"];
   const values = data?.values?.length ? data.values : [0];
   const totalStudents = data?.totalStudents || 0;
@@ -82,7 +87,7 @@ export default function SectionChart({ data, xAxisLabel = "Sections" }: SectionC
       y: {
         title: {
           display: true,
-          text: `Number of Students (Total: ${totalStudents})`,
+          text: `Number of ${learnerLabel} (Total: ${totalStudents})`,
           font: { size: isMobile ? 12 : 14 },
         },
         min: 0,
@@ -126,9 +131,9 @@ export default function SectionChart({ data, xAxisLabel = "Sections" }: SectionC
   return (
     <div className="bg-white rounded-lg h-[300px] md:h-[440px] p-4 border">
       <div className="mb-1">
-        <h2 className="font-bold text-xl">Student Enrolment</h2>
+        <h2 className="font-bold text-xl">{learnerLabel} Enrolment</h2>
         <p className="text-gray-500 text-sm -mt-1">
-          Number of students enrolled in each section
+          Number of {learnerLabel.toLowerCase()} enrolled in each section
         </p>
       </div>
       <Bar options={options} data={chartData} />

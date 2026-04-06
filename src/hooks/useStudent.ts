@@ -1,4 +1,9 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  keepPreviousData,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import studentService from "../services/studentApi";
 import sectionService from "../services/sectionApi";
 import { TActiveView, ApiParams } from "../types/interfaces";
@@ -104,6 +109,7 @@ export const useSearchStudents = (
 ) => {
   return useQuery({
     queryKey: ["search-students", apiParams],
+    placeholderData: keepPreviousData,
     queryFn: async () => {
       studentService.resetQuery();
       return studentService
@@ -121,6 +127,12 @@ export const useSearchStudents = (
         .limit(apiParams?.limit || 10)
         .skip(apiParams?.skip || 0)
         .where({
+          ...(apiParams?.filters
+            ? apiParams.filters.reduce((acc, filter) => {
+                acc[filter.key] = filter.value;
+                return acc;
+              }, {} as Record<string, string>)
+            : {}),
           ...(apiParams?.filter
             ? { [apiParams.filter.key]: apiParams.filter.value }
             : {}),
@@ -237,6 +249,12 @@ export const useExportStudentToCsv = () => {
         .skip(apiParams?.skip || 0)
         .select(["studentId program firstName lastName email status createdAt"])
         .where({
+          ...(apiParams?.filters
+            ? apiParams.filters.reduce((acc, filter) => {
+                acc[filter.key] = filter.value;
+                return acc;
+              }, {} as Record<string, string>)
+            : {}),
           ...(apiParams?.filter
             ? { [apiParams.filter.key]: apiParams.filter.value }
             : {}),

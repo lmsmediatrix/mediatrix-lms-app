@@ -1,5 +1,6 @@
 import Button from "../../components/common/Button";
 import { FaPlus } from "react-icons/fa";
+import { FiBookOpen, FiCheckCircle, FiEdit3, FiList, FiToggleLeft, FiToggleRight } from "react-icons/fi";
 import { useSearchParams } from "react-router-dom";
 import UpsertCourseModal from "../../components/orgAdmin/UpsertCourseModal";
 import DeleteCourseModal from "../../components/orgAdmin/DeleteCourseModal";
@@ -12,10 +13,9 @@ import TableEmptyState from "../../components/common/TableEmptyState";
 import TableSkeletonClean from "../../components/skeleton/TableSkeletonClean";
 import ViewCourseModal from "../../components/orgAdmin/ViewCourseModal";
 import ActionMenuButton from "../../components/orgAdmin/ActionMenuButton";
-import FilterDropdownButton from "../../components/orgAdmin/FilterDropdownButton";
-import ResponsiveFilterButton from "../../components/orgAdmin/ResponsiveFilterButton";
 import { useCategoriesForDropdown } from "../../hooks/useCategory";
 import { useDebounce } from "../../hooks/useDebounce";
+import StatsCards from "../../components/common/StatsCards";
 import {
   GroupedTableColumn,
   GroupedTableGroup,
@@ -36,9 +36,21 @@ type CourseRow = {
   status: string;
 };
 
+const STATUS_OPTIONS = [
+  { value: "published", label: "Published" },
+  { value: "draft", label: "Draft" },
+];
+
+const LEVEL_OPTIONS = [
+  { value: "beginner", label: "Beginner" },
+  { value: "intermediate", label: "Intermediate" },
+  { value: "advance", label: "Advance" },
+];
+
 export default function CoursePage() {
   const { currentUser } = useAuth();
   const isCorporate = currentUser.user.organization.type === "corporate";
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
   const [filters, setFilters] = useState({
     status: searchParams.get("status") || "",
@@ -77,11 +89,10 @@ export default function CoursePage() {
     archiveStatus,
   });
 
-  const { data: categoriesData, isLoading: isLoadingCategories } =
-    useCategoriesForDropdown({
-      organizationId: currentUser.user.organization._id,
-      enabled: !isCorporate,
-    });
+  const { data: categoriesData } = useCategoriesForDropdown({
+    organizationId: currentUser.user.organization._id,
+    enabled: !isCorporate,
+  });
 
   const exportCourse = useExportCourseToCsv();
 
@@ -95,18 +106,22 @@ export default function CoursePage() {
       return;
     }
     setFilters((prev) => ({ ...prev, [filterType]: value }));
+    setSkipLimit((prev) => ({ ...prev, skip: 0 }));
     setSearchParams((prev) => {
+      const newParams = new URLSearchParams(prev);
       if (value) {
-        prev.set(filterType, value);
+        newParams.set(filterType, value);
       } else {
-        prev.delete(filterType);
+        newParams.delete(filterType);
       }
-      return prev;
+      newParams.set("page", "1");
+      return newParams;
     });
   };
 
   const handleSearchChange = (search: string) => {
     setSearchTerm(search);
+    setSkipLimit((prev) => ({ ...prev, skip: 0 }));
     setSearchParams((prev) => {
       const newParams = new URLSearchParams(prev);
       if (search) {
@@ -114,6 +129,7 @@ export default function CoursePage() {
       } else {
         newParams.delete("search");
       }
+      newParams.set("page", "1");
       return newParams;
     });
   };
@@ -126,6 +142,18 @@ export default function CoursePage() {
     setSearchParams((prev) => {
       prev.set("page", String(newSkip + 1));
       return prev;
+    });
+  };
+
+  const toggleArchiveStatus = () => {
+    const newStatus = archiveStatus === "only" ? "none" : "only";
+    setArchiveStatus(newStatus);
+    setSkipLimit((prev) => ({ ...prev, skip: 0 }));
+    setSearchParams((prev) => {
+      const newParams = new URLSearchParams(prev);
+      newParams.set("archiveStatus", newStatus);
+      newParams.set("page", "1");
+      return newParams;
     });
   };
 
@@ -160,54 +188,6 @@ export default function CoursePage() {
     });
   };
 
-  const filterConfigs = [
-    {
-      key: "status",
-      label: "Status",
-      value: filters.status,
-      options: [
-        { value: "published", label: "Published" },
-        { value: "draft", label: "Draft" },
-      ],
-      onChange: (value: string) => handleFilterChange("status", value),
-      placeholder: "All Status",
-    },
-    {
-      key: "level",
-      label: "Level",
-      value: filters.level,
-      options: [
-        { value: "beginner", label: "Beginner" },
-        { value: "intermediate", label: "Intermediate" },
-        { value: "advance", label: "Advance" },
-      ],
-      onChange: (value: string) => handleFilterChange("level", value),
-      placeholder: "All Levels",
-    },
-    ...(!isCorporate
-      ? [
-          {
-            key: "category",
-            label: "Category",
-            value: filters.category,
-            options:
-              categoriesData?.map((category: any) => ({
-                value: category._id,
-                label: category.name,
-              })) || [],
-            onChange: (value: string) => handleFilterChange("category", value),
-            loading: isLoadingCategories,
-            placeholder: "All Categories",
-          },
-        ]
-      : []),
-  ];
-
-  const activeFiltersCount =
-    (filters.status ? 1 : 0) +
-    (filters.level ? 1 : 0) +
-    (!isCorporate && filters.category ? 1 : 0);
-
   const courseTableColumns = [
     { width: "120px" }, // Course Code
     { width: "300px" }, // Course
@@ -220,6 +200,52 @@ export default function CoursePage() {
   const courseRows = useMemo(
     () => ((data?.courses || []) as CourseRow[]),
     [data?.courses],
+  );
+
+  const courseSummaryStats = useMemo(
+    () => [
+      {
+        title: "Total Courses",
+        value: data?.pagination?.totalItems || 0,
+        change: archiveStatus === "only" ? "Archived records view" : "Active records view",
+        icon: <FiBookOpen className="text-xl" />,
+        bgColor: "bg-blue-50",
+        textColor: "text-blue-600",
+        iconBgColor: "bg-blue-500",
+        iconTextColor: "text-white",
+      },
+      {
+        title: "Published (Shown)",
+        value: courseRows.filter((course) => course.status === "published").length,
+        change: "Published courses on current page",
+        icon: <FiCheckCircle className="text-xl" />,
+        bgColor: "bg-emerald-50",
+        textColor: "text-emerald-700",
+        iconBgColor: "bg-emerald-500",
+        iconTextColor: "text-white",
+      },
+      {
+        title: "Draft (Shown)",
+        value: courseRows.filter((course) => course.status === "draft").length,
+        change: "Draft courses on current page",
+        icon: <FiEdit3 className="text-xl" />,
+        bgColor: "bg-amber-50",
+        textColor: "text-amber-700",
+        iconBgColor: "bg-amber-500",
+        iconTextColor: "text-white",
+      },
+      {
+        title: "Records Shown",
+        value: courseRows.length,
+        change: `Page ${data?.pagination?.currentPage || 1} of ${data?.pagination?.totalPages || 1}`,
+        icon: <FiList className="text-xl" />,
+        bgColor: "bg-indigo-50",
+        textColor: "text-indigo-700",
+        iconBgColor: "bg-indigo-500",
+        iconTextColor: "text-white",
+      },
+    ],
+    [archiveStatus, courseRows, data?.pagination?.currentPage, data?.pagination?.totalItems, data?.pagination?.totalPages],
   );
 
   const tableGroups = useMemo(
@@ -253,6 +279,8 @@ export default function CoursePage() {
         sortable: true,
         filterable: true,
         filterPlaceholder: "Search course",
+        filterValue: searchTerm,
+        onFilterChange: handleSearchChange,
         sortAccessor: (row) => row.title || "",
         filterAccessor: (row) =>
           `${row.title || ""} ${row.code || ""} ${row.category?.name || ""}`.trim(),
@@ -280,7 +308,15 @@ export default function CoursePage() {
               label: "Category",
               sortable: true,
               filterable: true,
-              filterPlaceholder: "Search category",
+              filterVariant: "select",
+              filterSelectAllLabel: "All Categories",
+              filterValue: filters.category,
+              onFilterChange: (value: string) => handleFilterChange("category", value),
+              filterOptions:
+                categoriesData?.map((category: any) => ({
+                  value: category._id,
+                  label: category.name,
+                })) || [],
               sortAccessor: (row: CourseRow) => row.category?.name || "",
               filterAccessor: (row: CourseRow) => row.category?.name || "",
               className: "min-w-[180px] hidden md:table-cell",
@@ -295,7 +331,11 @@ export default function CoursePage() {
         label: "Level",
         sortable: true,
         filterable: true,
-        filterPlaceholder: "Search level",
+        filterVariant: "select",
+        filterSelectAllLabel: "All Levels",
+        filterValue: filters.level,
+        onFilterChange: (value: string) => handleFilterChange("level", value),
+        filterOptions: LEVEL_OPTIONS,
         sortAccessor: (row) => row.level || "",
         filterAccessor: (row) => row.level || "",
         className: "min-w-[130px] hidden md:table-cell",
@@ -310,7 +350,11 @@ export default function CoursePage() {
         label: "Status",
         sortable: true,
         filterable: true,
-        filterPlaceholder: "Search status",
+        filterVariant: "select",
+        filterSelectAllLabel: "All Status",
+        filterValue: filters.status,
+        onFilterChange: (value: string) => handleFilterChange("status", value),
+        filterOptions: STATUS_OPTIONS,
         sortAccessor: (row) => row.status || "",
         filterAccessor: (row) => row.status || "",
         className: "min-w-[130px]",
@@ -357,6 +401,22 @@ export default function CoursePage() {
                 disabled: archiveStatus === "only",
                 danger: true,
               },
+              {
+                key: "export",
+                label: "Export CSV",
+                onClick: () => setIsExportModalOpen(true),
+              },
+              {
+                key: "archive-toggle",
+                label: archiveStatus === "only" ? "Show Active" : "Show Archived",
+                icon:
+                  archiveStatus === "only" ? (
+                    <FiToggleLeft className="size-4" />
+                  ) : (
+                    <FiToggleRight className="size-4" />
+                  ),
+                onClick: toggleArchiveStatus,
+              },
             ]}
           />
         ),
@@ -364,89 +424,80 @@ export default function CoursePage() {
     ];
 
     return baseColumns;
-  }, [archiveStatus, isCorporate, setSearchParams]);
+  }, [
+    archiveStatus,
+    categoriesData,
+    filters.category,
+    filters.level,
+    filters.status,
+    isCorporate,
+    searchTerm,
+    setSearchParams,
+    toggleArchiveStatus,
+  ]);
 
   return (
     <div className=" pt-14 pb-6 px-6 lg:p-6">
-      <h1 className="text-3xl font-bold">Courses</h1>
-      <p className="text-gray-400">
-        Create, organize, and manage courses to be linked with sections during
-        setup.
+      <h1 className="text-2xl md:text-3xl font-bold text-slate-900">
+        Courses Overview
+      </h1>
+      <p className="text-slate-600 mt-1">
+        View and manage all courses linked to your sections and learning tracks.
       </p>
-      <div className="flex flex-col gap-4 py-6 md:flex-row md:items-center md:justify-between">
-        {/* Search and Filter */}
-        <div className="flex flex-col gap-3 md:flex-row md:flex-1 md:items-center md:gap-2 md:min-w-0">
-          {/* Search Input */}
-          <div className="flex gap-2 items-center flex-1 md:min-w-0">
-            <input
-              type="text"
-              placeholder="Search courses..."
-              value={searchTerm}
-              onChange={(e) => handleSearchChange(e.target.value)}
-              className="flex-1 md:max-w-[400px] px-4 py-2.5 h-[42px] border border-gray-200 rounded-lg focus:outline-none focus:border-primary text-base md:text-sm"
-            />
 
-            {/* Mobile Filter Button - Next to search on mobile, hidden on tablet+ */}
-            <div className="md:hidden">
-              <ResponsiveFilterButton
-                filters={filterConfigs}
-                activeFiltersCount={activeFiltersCount}
-              />
-            </div>
-          </div>
-
-          {/* Desktop Filter Buttons - Hidden on mobile & tablet */}
-          <div className="hidden xl:flex items-center gap-2 flex-shrink-0">
-            <FilterDropdownButton
-              label="Status"
-              value={filters.status}
-              options={[
-                { value: "published", label: "Published" },
-                { value: "draft", label: "Draft" },
-              ]}
-              onChange={(value) => handleFilterChange("status", value)}
-              placeholder="All Status"
-            />
-
-            <FilterDropdownButton
-              label="Level"
-              value={filters.level}
-              options={[
-                { value: "beginner", label: "Beginner" },
-                { value: "intermediate", label: "Intermediate" },
-                { value: "advance", label: "Advance" },
-              ]}
-              onChange={(value) => handleFilterChange("level", value)}
-              placeholder="All Levels"
-            />
-
-            {!isCorporate && (
-              <FilterDropdownButton
-                label="Category"
-                value={filters.category}
-                options={
-                  categoriesData?.map((category: any) => ({
-                    value: category._id,
-                    label: category.name,
-                  })) || []
-                }
-                onChange={(value) => handleFilterChange("category", value)}
-                loading={isLoadingCategories}
-                placeholder="All Categories"
-              />
+      <div className="mt-6 mb-2">
+        <div className="flex justify-between mb-2">
+          <h2 className="text-xl md:text-2xl font-bold text-slate-900">
+            Course Summary
+          </h2>
+          <div className="relative">
+            <Button
+              variant="cancel"
+              onClick={() => setIsFilterOpen(!isFilterOpen)}
+              className="flex items-center gap-2"
+            >
+              <span className="capitalize flex justify-center items-center gap-2">
+                {archiveStatus === "only" ? "Archived Records" : "Active Records"}
+              </span>
+            </Button>
+            {isFilterOpen && (
+              <div className="absolute right-0 mt-2 w-44 bg-white rounded-md shadow-lg z-10">
+                <ul className="py-1">
+                  <li
+                    className={`px-4 py-2 hover:bg-gray-100 cursor-pointer text-sm ${
+                      archiveStatus === "none" ? "bg-gray-100 font-medium" : ""
+                    }`}
+                    onClick={() => {
+                      if (archiveStatus !== "none") toggleArchiveStatus();
+                      setIsFilterOpen(false);
+                    }}
+                  >
+                    Active Records
+                  </li>
+                  <li
+                    className={`px-4 py-2 hover:bg-gray-100 cursor-pointer text-sm ${
+                      archiveStatus === "only" ? "bg-gray-100 font-medium" : ""
+                    }`}
+                    onClick={() => {
+                      if (archiveStatus !== "only") toggleArchiveStatus();
+                      setIsFilterOpen(false);
+                    }}
+                  >
+                    Archived Records
+                  </li>
+                </ul>
+              </div>
             )}
           </div>
         </div>
+        <div className="mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <StatsCards stats={courseSummaryStats} isLoading={isLoading} />
+        </div>
+      </div>
 
+      <div className="flex flex-col gap-4 py-6 md:flex-row md:items-center md:justify-end">
         {/* Action Buttons */}
         <div className="flex gap-2 flex-shrink-0">
-          {/* Tablet Filter Button - Hidden on mobile and desktop */}
-          <div className="hidden md:block xl:hidden">
-            <ResponsiveFilterButton
-              filters={filterConfigs}
-              activeFiltersCount={activeFiltersCount}
-            />
-          </div>
           <Button
             variant="primary"
             onClick={() => setSearchParams({ modal: "create-course" })}
@@ -456,24 +507,10 @@ export default function CoursePage() {
             <span className="hidden sm:inline">Add Course</span>
             <span className="sm:hidden">Add</span>
           </Button>
-          <ActionMenuButton
-            entityTerm="Course"
-            onAdd={() => setSearchParams({ modal: "create-course" })}
-            onExport={() => setIsExportModalOpen(true)}
-          />
           {/* Archive Status Toggle Switch */}
           <div className="flex items-center gap-2">
             <button
-              onClick={() => {
-                const newStatus = archiveStatus === "only" ? "none" : "only";
-                setArchiveStatus(newStatus);
-                setSkipLimit((prev) => ({ ...prev, skip: 0 }));
-                setSearchParams((prev) => {
-                  prev.set("archiveStatus", newStatus);
-                  prev.set("page", "1");
-                  return prev;
-                });
-              }}
+              onClick={toggleArchiveStatus}
               className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-[#3E5B93] focus:ring-offset-2 ${
                 archiveStatus === "only" ? "bg-gray-200" : "bg-primary"
               }`}
@@ -509,7 +546,7 @@ export default function CoursePage() {
           colSpan={isCorporate ? 5 : 6}
           type="course"
           isFiltered={Boolean(
-            searchTerm ||
+            debouncedSearchTerm ||
               filters.status ||
               filters.level ||
               (!isCorporate && filters.category) ||

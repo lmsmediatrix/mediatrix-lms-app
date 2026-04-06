@@ -42,7 +42,7 @@ export const pageTitles: TitleMapping = {
   "/:orgCode/admin/faculty": "Faculties",
   "/:orgCode/admin/program": "Programs",
   "/:orgCode/admin/department": "Departments",
-  "/:orgCode/admin/tna/configuration": "TNA Skill and Role Setup",
+  "/:orgCode/admin/tna/configuration": "Skill and Role",
   "/:orgCode/admin/tna": "Training Needs Analysis",
   "/:orgCode/admin/tna/employees": "Employee TNA Recommendations",
   "/:orgCode/admin/tna/execution": "TNA Deployment",

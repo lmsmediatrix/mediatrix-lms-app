@@ -391,7 +391,7 @@ export default function SideNavigation({
               (subItem: NavItem) =>
                 subItem.LABEL !== "Department" &&
                 subItem.LABEL !== "Batch" &&
-                subItem.LABEL !== "TNA Skill and Role Setup" &&
+                subItem.LABEL !== "Skill and Role" &&
                 subItem.LABEL !== "Training Needs" &&
                 subItem.LABEL !== "TNA Deployment"
             );

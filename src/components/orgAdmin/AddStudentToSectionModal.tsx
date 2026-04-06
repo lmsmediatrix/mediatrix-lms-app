@@ -25,6 +25,7 @@ export default function AddStudentToSectionModal({
   const { currentUser } = useAuth();
   const orgType = currentUser?.user?.organization?.type;
   const learnerTerm = getTerm("learner", orgType);
+  const sectionTerm = getTerm("group", orgType);
 
   const [searchParams] = useSearchParams();
   const sectionCode = searchParams.get("sectionCode") || "";
@@ -86,7 +87,7 @@ export default function AddStudentToSectionModal({
 
   const handleAddStudents = () => {
     if (selectedStudents.length === 0) {
-      toast.error("Please select at least one student");
+      toast.error(`Please select at least one ${learnerTerm.toLowerCase()}`);
       return;
     }
 
@@ -101,17 +102,17 @@ export default function AddStudentToSectionModal({
             setSelectedProgram("All Programs");
           },
           onError: (error) => {
-            console.error("Error adding students to section:", error);
+            console.error(`Error adding ${learnerTerm.toLowerCase()}s to ${sectionTerm.toLowerCase()}:`, error);
           },
         }
       ),
       {
         pending: `Adding ${selectedStudents.length} ${learnerTerm}${
           selectedStudents.length > 1 ? "s" : ""
-        } to section...`,
+        } to ${sectionTerm.toLowerCase()}...`,
         success: `${selectedStudents.length} ${learnerTerm}${
           selectedStudents.length > 1 ? "s" : ""
-        } added to section successfully`,
+        } added to ${sectionTerm.toLowerCase()} successfully`,
         error: {
           render({ data }) {
             return (data as { message: string }).message;

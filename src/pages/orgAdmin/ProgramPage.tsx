@@ -16,6 +16,7 @@ import {
   default as GroupedDataTable,
 } from "../../components/common/GroupedDataTable";
 import ActionMenuButton from "../../components/orgAdmin/ActionMenuButton";
+import { getTerm } from "../../lib/utils";
 
 interface ProgramToDelete {
   id: string;
@@ -31,6 +32,8 @@ type ProgramRow = {
 
 export default function ProgramPage() {
   const { currentUser } = useAuth();
+  const orgType = currentUser.user.organization.type;
+  const learnersTerm = getTerm("learner", orgType, true);
   const [searchParams, setSearchParams] = useSearchParams();
   const [archiveStatus, setArchiveStatus] = useState<"only" | "none">(
     (searchParams.get("archiveStatus") as "only" | "none") || "none"
@@ -191,7 +194,7 @@ export default function ProgramPage() {
     <div className="pt-14 pb-6 px-6 lg:p-6">
       <h1 className="text-3xl font-bold">Programs</h1>
       <p className="text-gray-400">
-        Organize and manage your student programs.
+        Organize and manage your {learnersTerm.toLowerCase()} programs.
       </p>{" "}
       <div className="flex flex-col gap-4 py-6 md:flex-row md:items-center md:justify-between">
         {/* Search and Filter */}

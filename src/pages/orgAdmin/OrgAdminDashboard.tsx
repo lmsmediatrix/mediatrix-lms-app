@@ -73,6 +73,8 @@ export default function OrgAdminDashboard() {
   const orgType = currentUser.user.organization.type;
   const sectionTerm = getTerm("group", orgType);
   const sectionsTerm = getTerm("group", orgType, true);
+  const learnerTerm = getTerm("learner", orgType);
+  const learnersTerm = getTerm("learner", orgType, true);
   const navigate = useNavigate();
   const location = useLocation();
   const orgCode = currentUser.user?.organization.code;
@@ -142,7 +144,7 @@ export default function OrgAdminDashboard() {
           icon: "FaUserTie",
         },
         {
-          label: "Students",
+          label: learnersTerm,
           value: apiData.userMetrics.totalStudentCount[0]?.total || 0,
           icon: "FaUserGraduate",
         },
@@ -209,7 +211,7 @@ export default function OrgAdminDashboard() {
           (item: { program: string; total: number }) => ({
             label: item.program,
             value: item.total,
-            valueLabel: "students",
+            valueLabel: learnersTerm.toLowerCase(),
           }),
         ),
       },
@@ -302,7 +304,7 @@ export default function OrgAdminDashboard() {
             title="Completion Tracker"
             items={[
               {
-                label: `Students Completed ${sectionsTerm}`,
+                label: `${learnersTerm} Completed ${sectionsTerm}`,
                 value: completedSectionsStudents,
                 total: totalPerformanceStudents,
               },
@@ -354,7 +356,11 @@ export default function OrgAdminDashboard() {
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
               <div className="lg:col-span-2">
-                <SectionChart data={dashboardData.sectionChart} xAxisLabel={sectionsTerm} />
+                <SectionChart
+                  data={dashboardData.sectionChart}
+                  xAxisLabel={sectionsTerm}
+                  learnerLabel={learnersTerm}
+                />
               </div>
               <div>
                 <SectionStatus statusData={dashboardData.sectionStatus} />
@@ -381,7 +387,7 @@ export default function OrgAdminDashboard() {
             }
           />
           <SummaryListCard
-            title="Student Programs"
+            title={`${learnerTerm} Programs`}
             items={dashboardData.summaryCards.programStudents}
             buttonText="View All Programs"
             onButtonClick={() =>

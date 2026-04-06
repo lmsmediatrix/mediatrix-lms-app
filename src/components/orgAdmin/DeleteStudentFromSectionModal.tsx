@@ -2,6 +2,8 @@ import { toast } from "react-toastify";
 import Button from "../common/Button";
 import Dialog from "../common/Dialog";
 import { useRemoveStudentInSection } from "../../hooks/useSection";
+import { useAuth } from "../../context/AuthContext";
+import { getTerm } from "../../lib/utils";
 
 interface DeleteStudentFromSectionModalProps {
   isOpen: boolean;
@@ -18,6 +20,10 @@ export default function DeleteStudentFromSectionModal({
   studentId,
   studentName,
 }: DeleteStudentFromSectionModalProps) {
+  const { currentUser } = useAuth();
+  const orgType = currentUser.user.organization.type;
+  const learnerTerm = getTerm("learner", orgType);
+  const sectionTerm = getTerm("group", orgType);
   const removeStudent = useRemoveStudentInSection();
 
   const handleDelete = () => {
@@ -29,14 +35,14 @@ export default function DeleteStudentFromSectionModal({
             onClose();
           },
           onError: (error) => {
-            console.error("Error removing student from section:", error);
+            console.error(`Error removing ${learnerTerm.toLowerCase()} from ${sectionTerm.toLowerCase()}:`, error);
           },
         }
       ),
       {
-        pending: "Removing student from section...",
-        success: "Student removed from section successfully",
-        error: "Failed to remove student from section",
+        pending: `Removing ${learnerTerm.toLowerCase()} from ${sectionTerm.toLowerCase()}...`,
+        success: `${learnerTerm} removed from ${sectionTerm.toLowerCase()} successfully`,
+        error: `Failed to remove ${learnerTerm.toLowerCase()} from ${sectionTerm.toLowerCase()}`,
       }
     );
   };
@@ -45,7 +51,7 @@ export default function DeleteStudentFromSectionModal({
     <Dialog
       isOpen={isOpen}
       onClose={onClose}
-      title="Remove Student from Section"
+      title={`Remove ${learnerTerm} from ${sectionTerm}`}
       backdrop="blur"
       size="md"
     >
@@ -71,7 +77,7 @@ export default function DeleteStudentFromSectionModal({
             className="bg-red-600 text-white hover:bg-red-700"
             disabled={removeStudent.isPending}
           >
-            {removeStudent.isPending ? "Removing..." : "Remove Student"}
+            {removeStudent.isPending ? "Removing..." : `Remove ${learnerTerm}`}
           </Button>
         </div>
       </div>

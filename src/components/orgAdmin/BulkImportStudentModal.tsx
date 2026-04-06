@@ -11,6 +11,7 @@ import {
 } from "react-icons/fa";
 import { useBulkStudentAdd } from "../../hooks/useSection";
 import { useAuth } from "../../context/AuthContext";
+import { getTerm } from "../../lib/utils";
 
 interface BulkImportStudentModalProps {
   isOpen: boolean;
@@ -49,6 +50,9 @@ const BulkImportSectionStudentModal = ({
   const [isDragOver, setIsDragOver] = useState(false);
   const { currentUser } = useAuth();
   const orgType = currentUser.user.organization.type;
+  const learnerTerm = getTerm("learner", orgType);
+  const learnersTerm = getTerm("learner", orgType, true);
+  const sectionTerm = getTerm("group", orgType);
 
   const validateFile = (selectedFile: File): boolean => {
     const allowedTypes = ["text/csv"];
@@ -147,19 +151,20 @@ const BulkImportSectionStudentModal = ({
           }
         },
         onError: (error: any) => {
-          console.error("Error importing students:", error);
+          console.error(`Error importing ${learnersTerm.toLowerCase()}:`, error);
           reject(error);
         },
       });
     });
 
     toast.promise(importPromise, {
-      pending: "Importing students to section...",
-      success: "Students imported to section successfully",
+      pending: `Importing ${learnersTerm.toLowerCase()} to ${sectionTerm.toLowerCase()}...`,
+      success: `${learnersTerm} imported to ${sectionTerm.toLowerCase()} successfully`,
       error: {
         render({ data }) {
           return (
-            (data as { message: string }).message || "Failed to import students"
+            (data as { message: string }).message ||
+            `Failed to import ${learnersTerm.toLowerCase()}`
           );
         },
       },
@@ -173,7 +178,7 @@ const BulkImportSectionStudentModal = ({
         : "https://res.cloudinary.com/dyal0wstg/raw/upload/v1748419041/IMPORT-EMPLOYEE-TEMPLATE.csv_deufpc.xlsx";
     const link = document.createElement("a");
     link.href = templateUrl;
-    link.download = "section-students-import-template.csv";
+    link.download = `section-${learnersTerm.toLowerCase()}-import-template.csv`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -181,7 +186,7 @@ const BulkImportSectionStudentModal = ({
 
   return (
     <Dialog
-      title="Bulk Import Students to Section"
+      title={`Bulk Import ${learnersTerm} to ${sectionTerm}`}
       backdrop="blur"
       isOpen={isOpen}
       onClose={handleCloseModal}
@@ -193,10 +198,10 @@ const BulkImportSectionStudentModal = ({
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3">
             <div>
               <h4 className="text-sm font-medium text-gray-900 mb-1">
-                Upload Student Data
+                Upload {learnerTerm} Data
               </h4>
               <p className="text-sm text-gray-600">
-                Upload a CSV file containing student information for section{" "}
+                Upload a CSV file containing {learnerTerm.toLowerCase()} information for {sectionTerm.toLowerCase()}{" "}
                 {sectionCode}
               </p>
             </div>
@@ -289,8 +294,8 @@ const BulkImportSectionStudentModal = ({
                       </h4>
                     </div>
                     <p className="text-sm text-green-700 mt-1">
-                      The following students were imported successfully to
-                      section {sectionCode}:
+                      The following {learnersTerm.toLowerCase()} were imported successfully to
+                      {sectionTerm.toLowerCase()} {sectionCode}:
                     </p>
                   </div>
 
@@ -299,7 +304,7 @@ const BulkImportSectionStudentModal = ({
                       <thead className="bg-green-100 sticky top-0">
                         <tr>
                           <th className="px-4 py-2 text-left text-xs font-medium text-green-800 uppercase tracking-wider border-b border-green-200">
-                            Student ID
+                            {learnerTerm} ID
                           </th>
                           <th className="px-4 py-2 text-left text-xs font-medium text-green-800 uppercase tracking-wider border-b border-green-200">
                             Name
@@ -310,16 +315,16 @@ const BulkImportSectionStudentModal = ({
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-green-200">
-                        {importSuccess.map((student, index) => (
+                        {importSuccess.map((learner, index) => (
                           <tr key={index} className="hover:bg-green-75">
                             <td className="px-4 py-3 text-sm text-green-800 font-medium">
-                              {student.studentId}
+                              {learner.studentId}
                             </td>
                             <td className="px-4 py-3 text-sm text-green-700">
-                              {student.firstName} {student.lastName}
+                              {learner.firstName} {learner.lastName}
                             </td>
                             <td className="px-4 py-3 text-sm text-green-600">
-                              {student.email}
+                              {learner.email}
                             </td>
                           </tr>
                         ))}
@@ -401,7 +406,7 @@ const BulkImportSectionStudentModal = ({
               className="w-full sm:w-auto order-1 sm:order-2"
             >
               <FaFileUpload className="w-4 h-4" />
-              Import Students
+              Import {learnersTerm}
             </Button>
           </div>
         </div>

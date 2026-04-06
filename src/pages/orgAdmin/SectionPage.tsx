@@ -12,13 +12,13 @@ import { exportToCSVUtil } from "../../lib/exportCsvUtils";
 import ExportModal from "../../components/orgAdmin/ExportModal";
 import TableEmptyState from "../../components/common/TableEmptyState";
 import ActionMenuButton from "../../components/orgAdmin/ActionMenuButton";
-import FilterDropdownButton from "../../components/orgAdmin/FilterDropdownButton";
-import ResponsiveFilterButton from "../../components/orgAdmin/ResponsiveFilterButton";
 import { ISection } from "../../types/interfaces";
 import { useCoursesForDropdown } from "../../hooks/useCourse";
 import { useInstructorsForDropdown } from "../../hooks/useInstructor";
 import TableSkeletonClean from "../../components/skeleton/TableSkeletonClean";
 import { useDebounce } from "../../hooks/useDebounce";
+import { FiList, FiToggleLeft, FiToggleRight, FiUsers } from "react-icons/fi";
+import StatsCards from "../../components/common/StatsCards";
 import {
   GroupedTableColumn,
   GroupedTableGroup,
@@ -54,11 +54,11 @@ export default function SectionPage() {
   const sectionsTerm = getTerm("group", orgType, true);
   const learnerTerm = getTerm("learner", orgType);
   const instructorTerm = getTerm("instructor", orgType);
-    const debouncedSearchTerm = useDebounce(searchTerm, 500);
+  const pageTitle = `${sectionsTerm} Overview`;
+  const pageDescription = `View and manage all ${sectionsTerm.toLowerCase()} in your organization.`;
+  const debouncedSearchTerm = useDebounce(searchTerm, 500);
 
-
-  // Build filters array based on selected filters
-  const filters = [];
+  const filters: Array<{ key: string; value: string }> = [];
   if (selectedCourse) {
     filters.push({ key: "course", value: selectedCourse });
   }
@@ -71,32 +71,34 @@ export default function SectionPage() {
     value: currentUser.user.organization._id,
   });
 
-  const { data, isLoading, isError } = useAdminSections({
+  const {
+    data,
+    isLoading,
+    isFetching,
+    isError,
+  } = useAdminSections({
     skip: skipLimit.skip,
     limit: skipLimit.limit,
     searchTerm: debouncedSearchTerm,
-    filter:
-      filters.length > 0
-        ? filters[0]
-        : { key: "organizationId", value: currentUser.user.organization._id },
+    filters,
     archiveStatus,
   });
+  const isInitialSectionsLoading = isLoading && !data;
 
-  const { data: coursesData, isLoading: isLoadingCourses } =
-    useCoursesForDropdown({
-      organizationId: currentUser.user.organization._id,
-    });
+  const { data: coursesData } = useCoursesForDropdown({
+    organizationId: currentUser.user.organization._id,
+  });
 
-  const { data: instructorsData, isLoading: isLoadingInstructors } =
-    useInstructorsForDropdown({
-      organizationId: currentUser.user.organization._id,
-    });
+  const { data: instructorsData } = useInstructorsForDropdown({
+    organizationId: currentUser.user.organization._id,
+  });
 
   const navigate = useNavigate();
   const { orgCode } = useParams();
 
   const handleSearchChange = (search: string) => {
     setSearchTerm(search);
+    setSkipLimit((prev) => ({ ...prev, skip: 0 }));
     setSearchParams((prev) => {
       const newParams = new URLSearchParams(prev);
       if (search) {
@@ -104,31 +106,38 @@ export default function SectionPage() {
       } else {
         newParams.delete("search");
       }
+      newParams.set("page", "1");
       return newParams;
     });
   };
 
   const handleCourseChange = (course: string) => {
     setSelectedCourse(course);
+    setSkipLimit((prev) => ({ ...prev, skip: 0 }));
     setSearchParams((prev) => {
+      const newParams = new URLSearchParams(prev);
       if (course) {
-        prev.set("course", course);
+        newParams.set("course", course);
       } else {
-        prev.delete("course");
+        newParams.delete("course");
       }
-      return prev;
+      newParams.set("page", "1");
+      return newParams;
     });
   };
 
   const handleInstructorChange = (instructor: string) => {
     setSelectedInstructor(instructor);
+    setSkipLimit((prev) => ({ ...prev, skip: 0 }));
     setSearchParams((prev) => {
+      const newParams = new URLSearchParams(prev);
       if (instructor) {
-        prev.set("instructor", instructor);
+        newParams.set("instructor", instructor);
       } else {
-        prev.delete("instructor");
+        newParams.delete("instructor");
       }
-      return prev;
+      newParams.set("page", "1");
+      return newParams;
     });
   };
 
@@ -138,8 +147,21 @@ export default function SectionPage() {
       skip: newSkip,
     }));
     setSearchParams((prev) => {
-      prev.set("page", String(newSkip + 1));
-      return prev;
+      const newParams = new URLSearchParams(prev);
+      newParams.set("page", String(newSkip + 1));
+      return newParams;
+    });
+  };
+
+  const toggleArchiveStatus = () => {
+    const newStatus = archiveStatus === "only" ? "none" : "only";
+    setArchiveStatus(newStatus);
+    setSkipLimit((prev) => ({ ...prev, skip: 0 }));
+    setSearchParams((prev) => {
+      const newParams = new URLSearchParams(prev);
+      newParams.set("archiveStatus", newStatus);
+      newParams.set("page", "1");
+      return newParams;
     });
   };
 
@@ -150,6 +172,7 @@ export default function SectionPage() {
     { width: "20%" }, // Instructor
     { width: "25%" }, // Course
     { width: "15%" }, // Total Students
+    { width: "10%", alignment: "center" as const }, // Actions
   ];
 
   const exportToCSV = (type: "all" | "current") => {
@@ -159,8 +182,8 @@ export default function SectionPage() {
       },
       mutationParams:
         type === "all"
-          ? { limit: 1000 }
-          : { limit: skipLimit.limit, skip: skipLimit.skip },
+          ? { limit: 1000, filters, archiveStatus }
+          : { limit: skipLimit.limit, skip: skipLimit.skip, filters, archiveStatus },
       filenamePrefix: "1bislms-sections",
       toastMessages: {
         pending: `Exporting ${type} data to CSV...`,
@@ -175,6 +198,74 @@ export default function SectionPage() {
     () => ((data?.sections || []) as ISection[]),
     [data?.sections],
   );
+
+  const batchSummaryStats = useMemo(() => {
+    const shownLearners = sectionRows.reduce(
+      (total, section) => total + (section.totalStudent || 0),
+      0,
+    );
+    const avgLearnersPerBatch =
+      sectionRows.length > 0 ? shownLearners / sectionRows.length : 0;
+
+    return [
+      {
+        title: `Total ${sectionsTerm}`,
+        value: data?.pagination?.totalItems || 0,
+        change:
+          archiveStatus === "only"
+            ? "Archived records view"
+            : "Active records view",
+        icon: <FiList className="text-xl" />,
+        bgColor: "bg-blue-50",
+        textColor: "text-blue-700",
+        iconBgColor: "bg-blue-500",
+        iconTextColor: "text-white",
+      },
+      {
+        title: `Total ${learnerTerm}s (Shown)`,
+        value: shownLearners,
+        change: `${learnerTerm}s across visible ${sectionsTerm.toLowerCase()}`,
+        icon: <FiUsers className="text-xl" />,
+        bgColor: "bg-emerald-50",
+        textColor: "text-emerald-700",
+        iconBgColor: "bg-emerald-500",
+        iconTextColor: "text-white",
+      },
+      {
+        title: `${learnerTerm}s per ${sectionTerm}`,
+        value: Number.isFinite(avgLearnersPerBatch)
+          ? avgLearnersPerBatch.toFixed(1)
+          : "0.0",
+        change: `Average on current page`,
+        icon: <FiUsers className="text-xl" />,
+        bgColor: "bg-amber-50",
+        textColor: "text-amber-700",
+        iconBgColor: "bg-amber-500",
+        iconTextColor: "text-white",
+      },
+      {
+        title: "Records Shown",
+        value: sectionRows.length,
+        change: `Page ${data?.pagination?.currentPage || 1} of ${
+          data?.pagination?.totalPages || 1
+        }`,
+        icon: <FiList className="text-xl" />,
+        bgColor: "bg-indigo-50",
+        textColor: "text-indigo-700",
+        iconBgColor: "bg-indigo-500",
+        iconTextColor: "text-white",
+      },
+    ];
+  }, [
+    archiveStatus,
+    data?.pagination?.currentPage,
+    data?.pagination?.totalItems,
+    data?.pagination?.totalPages,
+    learnerTerm,
+    sectionRows,
+    sectionTerm,
+    sectionsTerm,
+  ]);
 
   const tableGroups = useMemo(
     (): GroupedTableGroup<ISection>[] => [
@@ -207,8 +298,15 @@ export default function SectionPage() {
         sortable: true,
         filterable: true,
         filterPlaceholder: "Search name",
+        filterValue: searchTerm,
+        onFilterChange: handleSearchChange,
         sortAccessor: (row) => row.name || "",
-        filterAccessor: (row) => row.name || "",
+        filterAccessor: (row) =>
+          `${row.name || ""} ${row.code || ""} ${row.course?.title || ""} ${
+            row.instructor
+              ? `${row.instructor.firstName || ""} ${row.instructor.lastName || ""}`.trim()
+              : ""
+          }`.trim(),
         className: "min-w-[220px]",
         render: (row) => <span className="text-slate-900">{row.name}</span>,
       },
@@ -217,7 +315,15 @@ export default function SectionPage() {
         label: instructorTerm,
         sortable: true,
         filterable: true,
-        filterPlaceholder: `Search ${instructorTerm.toLowerCase()}`,
+        filterVariant: "select",
+        filterSelectAllLabel: `All ${instructorTerm}s`,
+        filterValue: selectedInstructor,
+        onFilterChange: handleInstructorChange,
+        filterOptions:
+          instructorsData?.map((instructor: any) => ({
+            value: instructor._id,
+            label: `${instructor.firstName} ${instructor.lastName}`,
+          })) || [],
         sortAccessor: (row) =>
           row.instructor
             ? `${row.instructor.firstName || ""} ${row.instructor.lastName || ""}`.trim()
@@ -240,7 +346,15 @@ export default function SectionPage() {
         label: "Course",
         sortable: true,
         filterable: true,
-        filterPlaceholder: "Search course",
+        filterVariant: "select",
+        filterSelectAllLabel: "All Courses",
+        filterValue: selectedCourse,
+        onFilterChange: handleCourseChange,
+        filterOptions:
+          coursesData?.map((course: any) => ({
+            value: course._id,
+            label: course.title,
+          })) || [],
         sortAccessor: (row) => row.course?.title || "",
         filterAccessor: (row) => row.course?.title || "",
         className: "min-w-[240px]",
@@ -289,142 +403,67 @@ export default function SectionPage() {
                 onClick: () => navigate(`/${orgCode}/admin/section/${row.code}`),
                 disabled: archiveStatus === "only",
               },
+              {
+                key: "export",
+                label: "Export CSV",
+                onClick: () => setIsExportModalOpen(true),
+              },
+              {
+                key: "archive-toggle",
+                label: archiveStatus === "only" ? "Show Active" : "Show Archived",
+                icon:
+                  archiveStatus === "only" ? (
+                    <FiToggleLeft className="size-4" />
+                  ) : (
+                    <FiToggleRight className="size-4" />
+                  ),
+                onClick: toggleArchiveStatus,
+              },
             ]}
           />
         ),
       },
     ],
-    [archiveStatus, instructorTerm, learnerTerm, navigate, orgCode, sectionTerm],
+    [
+      archiveStatus,
+      coursesData,
+      instructorTerm,
+      instructorsData,
+      learnerTerm,
+      navigate,
+      orgCode,
+      searchTerm,
+      sectionTerm,
+      selectedCourse,
+      selectedInstructor,
+      toggleArchiveStatus,
+    ],
   );
 
   return (
-    <div className=" pt-14 pb-6 px-6 lg:p-6">
-      <h1 className="text-3xl font-bold">{sectionsTerm}</h1>
+    <div className="pt-14 pb-6 px-6 lg:p-6">
+      <div className="mb-6">
+        <h1 className="text-2xl md:text-3xl font-bold text-slate-900">
+          {pageTitle}
+        </h1>
+        <p className="mt-1 text-sm md:text-base text-slate-600">
+          {pageDescription}
+        </p>
+      </div>
 
-      {/* Table Section */}
-      <div className="flex flex-col gap-4 py-6 md:flex-row md:items-center md:justify-between">
-        {/* Search and Filter */}
-        <div className="flex flex-col gap-3 md:flex-row md:flex-1 md:items-center md:gap-2 md:min-w-0">
-          {/* Search Input and Mobile Filter Row */}
-          <div className="flex gap-2 items-center flex-1 md:min-w-0">
-            <input
-              type="text"
-              placeholder={`Search ${sectionsTerm.toLowerCase()}...`}
-              value={searchTerm}
-              onChange={(e) => handleSearchChange(e.target.value)}
-              className="flex-1 md:max-w-[400px] px-4 py-2.5 h-[42px] border border-gray-200 rounded-lg focus:outline-none focus:border-primary text-base md:text-sm"
-            />
-
-            {/* Mobile Filter Button - Next to search on mobile, hidden on tablet+ */}
-            <div className="md:hidden">
-              <ResponsiveFilterButton
-                activeFiltersCount={
-                  (selectedCourse ? 1 : 0) + (selectedInstructor ? 1 : 0)
-                }
-                filters={[
-                  {
-                    key: "course",
-                    label: "Course",
-                    value: selectedCourse,
-                    options:
-                      coursesData?.map((course: any) => ({
-                        value: course._id,
-                        label: course.title,
-                      })) || [],
-                    onChange: handleCourseChange,
-                    loading: isLoadingCourses,
-                    placeholder: "All Courses",
-                  },
-                  {
-                    key: "instructor",
-                    label: instructorTerm,
-                    value: selectedInstructor,
-                    options:
-                      instructorsData?.map((instructor: any) => ({
-                        value: instructor._id,
-                        label: `${instructor.firstName} ${instructor.lastName}`,
-                      })) || [],
-                    onChange: handleInstructorChange,
-                    loading: isLoadingInstructors,
-                    placeholder: `All ${instructorTerm}s`,
-                  },
-                ]}
-              />
-            </div>
-          </div>
-
-          {/* Desktop Filter Buttons - Hidden on mobile & tablet */}
-          <div className="hidden xl:flex gap-2 items-center flex-shrink-0">
-            {/* Course Filter Button */}
-            <FilterDropdownButton
-              label="Course"
-              value={selectedCourse}
-              options={
-                coursesData?.map((course: any) => ({
-                  value: course._id,
-                  label: course.title,
-                })) || []
-              }
-              onChange={handleCourseChange}
-              loading={isLoadingCourses}
-              placeholder="All Courses"
-            />
-
-            {/* Instructor Filter Button */}
-            <FilterDropdownButton
-              label={instructorTerm}
-              value={selectedInstructor}
-              options={
-                instructorsData?.map((instructor: any) => ({
-                  value: instructor._id,
-                  label: `${instructor.firstName} ${instructor.lastName}`,
-                })) || []
-              }
-              onChange={handleInstructorChange}
-              loading={isLoadingInstructors}
-              placeholder={`All ${instructorTerm}s`}
-            />
-          </div>
+      <div className="mt-6 mb-2">
+        <div className="flex justify-between mb-2">
+          <h2 className="text-xl md:text-2xl font-bold text-slate-900">
+            {sectionTerm} Summary
+          </h2>
         </div>
+        <div className="mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <StatsCards stats={batchSummaryStats} isLoading={isInitialSectionsLoading} />
+        </div>
+      </div>
 
-        {/* Action Buttons */}
+      <div className="flex flex-col gap-4 py-6 md:flex-row md:items-center md:justify-end">
         <div className="flex gap-2 flex-shrink-0">
-          {/* Tablet Filter Button - Hidden on mobile and desktop */}
-          <div className="hidden md:block xl:hidden">
-            <ResponsiveFilterButton
-              activeFiltersCount={
-                (selectedCourse ? 1 : 0) + (selectedInstructor ? 1 : 0)
-              }
-              filters={[
-                {
-                  key: "course",
-                  label: "Course",
-                  value: selectedCourse,
-                  options:
-                    coursesData?.map((course: any) => ({
-                      value: course._id,
-                      label: course.title,
-                    })) || [],
-                  onChange: handleCourseChange,
-                  loading: isLoadingCourses,
-                  placeholder: "All Courses",
-                },
-                {
-                  key: "instructor",
-                  label: instructorTerm,
-                  value: selectedInstructor,
-                  options:
-                    instructorsData?.map((instructor: any) => ({
-                      value: instructor._id,
-                      label: `${instructor.firstName} ${instructor.lastName}`,
-                    })) || [],
-                  onChange: handleInstructorChange,
-                  loading: isLoadingInstructors,
-                  placeholder: `All ${instructorTerm}s`,
-                },
-              ]}
-            />
-          </div>
           <Button
             variant="primary"
             onClick={() => navigate(`/${orgCode}/admin/section/new`)}
@@ -434,25 +473,10 @@ export default function SectionPage() {
             <span className="hidden sm:inline">Add {sectionTerm}</span>
             <span className="sm:hidden">Create</span>
           </Button>
-          <ActionMenuButton
-            entityTerm={sectionTerm}
-            onAdd={() => navigate(`/${orgCode}/admin/section/new`)}
-            onExport={() => setIsExportModalOpen(true)}
-          />
 
-          {/* Archive Status Toggle Switch */}
           <div className="flex items-center gap-2">
             <button
-              onClick={() => {
-                const newStatus = archiveStatus === "only" ? "none" : "only";
-                setArchiveStatus(newStatus);
-                setSkipLimit((prev) => ({ ...prev, skip: 0 }));
-                setSearchParams((prev) => {
-                  prev.set("archiveStatus", newStatus);
-                  prev.set("page", "1");
-                  return prev;
-                });
-              }}
+              onClick={toggleArchiveStatus}
               className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-[#3E5B93] focus:ring-offset-2 ${
                 archiveStatus === "only" ? "bg-gray-200" : "bg-primary"
               }`}
@@ -473,40 +497,41 @@ export default function SectionPage() {
         </div>
       </div>
 
-      {isLoading ? (
+      {isInitialSectionsLoading ? (
         <TableSkeletonClean columns={sectionTableColumns} rows={10} />
       ) : isError ? (
         <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
           Error loading {sectionsTerm.toLowerCase()}
         </div>
-      ) : sectionRows.length === 0 ? (
+      ) : sectionRows.length === 0 &&
+        !(debouncedSearchTerm || selectedCourse || selectedInstructor || archiveStatus !== "none") ? (
         <TableEmptyState
           title={`Create Your First ${sectionTerm}`}
           description={`Start by creating a ${sectionTerm.toLowerCase()}. You'll need courses, ${instructorTerm.toLowerCase()}s, and ${learnerTerm.toLowerCase()}s first.`}
           primaryActionLabel={`Create ${sectionTerm}`}
           primaryActionPath={`/${orgCode}/admin/section/new`}
-          colSpan={5}
+          colSpan={6}
           type="section"
-          isFiltered={Boolean(
-            searchTerm || selectedCourse || selectedInstructor || archiveStatus !== "none",
-          )}
+          isFiltered={false}
         />
       ) : (
-        <GroupedDataTable
-          groups={tableGroups}
-          columns={tableColumns}
-          rowKey={(row) => row._id}
-          tableMinWidthClassName="min-w-[1220px]"
-          showPagination={false}
-          cardless
-          showGroupHeader={false}
-          onRowClick={(row) => navigate(`/${orgCode}/admin/section/${row.code}`)}
-          emptyFilteredText={`No matching ${sectionsTerm.toLowerCase()} found.`}
-        />
+        <div className={`transition-opacity duration-200 ${isFetching ? "opacity-70" : "opacity-100"}`}>
+          <GroupedDataTable
+            groups={tableGroups}
+            columns={tableColumns}
+            rowKey={(row) => row._id}
+            tableMinWidthClassName="min-w-[1220px]"
+            showPagination={false}
+            cardless
+            showGroupHeader={false}
+            onRowClick={(row) => navigate(`/${orgCode}/admin/section/${row.code}`)}
+            emptyFilteredText={`No matching ${sectionsTerm.toLowerCase()} found.`}
+          />
+        </div>
       )}
 
       {/* Pagination */}
-      {!isLoading && (
+      {!isInitialSectionsLoading && (
         <div className="flex justify-between items-center mt-4 text-sm text-gray-500">
           <span>
             {data?.pagination?.totalItems || 0} result

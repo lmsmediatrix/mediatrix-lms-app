@@ -361,7 +361,7 @@ export default function TnaPage() {
   const saveEmployeeSkills = async () => {
     if (!employeeId) return toast.error(`${employeeTerm} is required`);
     if (!analyzeJobRole.trim()) {
-      return toast.error("Job role is required. Configure role standards in TNA Skill and Role Setup.");
+      return toast.error("Job role is required. Configure role standards in Skill and Role.");
     }
     const payloadSkills = employeeSkills.filter((item) => item.skillId).map((item) => ({
       skillId: item.skillId,
@@ -478,7 +478,7 @@ export default function TnaPage() {
               className="h-10 w-full md:w-auto"
               onClick={() => navigate(`/${orgCode}/admin/tna/configuration`)}
             >
-              Open Skill and Role Setup
+              Open Skill and Role
             </Button>
           </div>
 
@@ -653,7 +653,7 @@ export default function TnaPage() {
                           : "No role standards yet"
                       }
                       loading={roleRequirementsQuery.isLoading}
-                      emptyMessage="No role standards yet. Configure them in TNA Skill and Role Setup."
+                      emptyMessage="No role standards yet. Configure them in Skill and Role."
                       className="w-full"
                     />
                   </div>
@@ -668,7 +668,7 @@ export default function TnaPage() {
                   className="text-xs text-amber-700 underline underline-offset-2"
                   onClick={() => navigate(`/${orgCode}/admin/tna/configuration`)}
                 >
-                  No role standards found. Open Skill and Role Setup.
+                  No role standards found. Open Skill and Role.
                 </button>
               )}
             </div>
@@ -693,7 +693,7 @@ export default function TnaPage() {
                       }}
                       placeholder="Select skill"
                       loading={skillsQuery.isLoading}
-                      emptyMessage="No skills yet. Add skills in TNA Skill and Role Setup."
+                      emptyMessage="No skills yet. Add skills in Skill and Role."
                       className="w-full"
                     />
                   </div>
@@ -800,7 +800,7 @@ export default function TnaPage() {
                           : "No role standards yet"
                       }
                       loading={roleRequirementsQuery.isLoading}
-                      emptyMessage="No role standards yet. Configure them in TNA Skill and Role Setup."
+                      emptyMessage="No role standards yet. Configure them in Skill and Role."
                       className="w-full"
                     />
                   </div>
@@ -847,7 +847,7 @@ export default function TnaPage() {
                 </p>
               ) : !selectedAnalyzeRoleRequirement ? (
                 <p className="text-sm text-amber-700 mt-3">
-                  No saved role standards found for this role yet. Configure it in TNA Skill and Role Setup first.
+                  No saved role standards found for this role yet. Configure it in Skill and Role first.
                 </p>
               ) : selectedAnalyzeRoleSkills.length === 0 ? (
                 <p className="text-sm text-slate-500 mt-3">

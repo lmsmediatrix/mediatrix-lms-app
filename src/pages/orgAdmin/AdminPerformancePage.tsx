@@ -37,6 +37,8 @@ export default function AdminPerformancePage() {
   const orgType = currentUser.user.organization.type;
   const isCorporate = orgType === "corporate";
   const sectionTerm = getTerm("group", orgType);
+  const learnerTerm = getTerm("learner", orgType);
+  const learnersTerm = getTerm("learner", orgType, true);
   const [searchTerm, setSearchTerm] = useState("");
   const [riskFilter, setRiskFilter] = useState<string>("all");
   const { data, isLoading } = useGetPerformanceDashboard();
@@ -107,7 +109,7 @@ export default function AdminPerformancePage() {
             Compliance Management
           </h1>
           <p className="text-gray-500 mt-1">
-            Oversee student compliance indicators and risk levels across the
+            Oversee {learnerTerm.toLowerCase()} compliance indicators and risk levels across the
             organization.
           </p>
         </div>
@@ -177,7 +179,7 @@ export default function AdminPerformancePage() {
           <SearchIcon size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
           <input
             type="text"
-            placeholder="Search students..."
+            placeholder={`Search ${learnersTerm.toLowerCase()}...`}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-200 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
@@ -207,7 +209,7 @@ export default function AdminPerformancePage() {
             <thead>
               <tr className="bg-gray-50 border-b border-gray-200">
                 <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  Student
+                  {learnerTerm}
                 </th>
                 <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
                   {sectionTerm}
@@ -348,7 +350,7 @@ export default function AdminPerformancePage() {
                     colSpan={8}
                     className="px-6 py-12 text-center text-gray-500"
                   >
-                    No students found matching your filters.
+                    No {learnersTerm.toLowerCase()} found matching your filters.
                   </td>
                 </tr>
               )}

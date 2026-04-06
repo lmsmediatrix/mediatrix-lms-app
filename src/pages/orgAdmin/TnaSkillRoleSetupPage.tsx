@@ -14,19 +14,19 @@ import {
 type LevelRow = { skillId: string; level: number };
 type StepKey = "skill-library" | "role-requirements";
 
-const FLOW_STEPS: Array<{
+const SETUP_TABS: Array<{
   key: StepKey;
   title: string;
   description: string;
 }> = [
   {
     key: "skill-library",
-    title: "Build Skill Library",
+    title: "Skills",
     description: "Create reusable skills that can be used by every role profile.",
   },
   {
     key: "role-requirements",
-    title: "Define Role Standards",
+    title: "Role and Skills Configuration",
     description: "Set required skill levels and passing thresholds per role.",
   },
 ];
@@ -84,34 +84,6 @@ export default function TnaSkillRoleSetupPage() {
   const [threshold, setThreshold] = useState(70);
   const [requiredSkills, setRequiredSkills] = useState<LevelRow[]>([{ skillId: "", level: 1 }]);
 
-  const completionByStep = useMemo<Record<StepKey, boolean>>(
-    () => ({
-      "skill-library": skills.length > 0,
-      "role-requirements":
-        Boolean(jobRole.trim()) && requiredSkills.some((skill) => Boolean(skill.skillId)),
-    }),
-    [skills.length, jobRole, requiredSkills]
-  );
-
-  const getStepStatusMeta = (stepKey: StepKey) => {
-    if (completionByStep[stepKey]) {
-      return {
-        label: "Complete",
-        className: "border-emerald-200 bg-emerald-50 text-emerald-700",
-      };
-    }
-    if (activeStep === stepKey) {
-      return {
-        label: "In Progress",
-        className: "border-primary/25 bg-primary/10 text-primary",
-      };
-    }
-    return {
-      label: "Pending",
-      className: "border-slate-200 bg-slate-100 text-slate-600",
-    };
-  };
-
   if (orgType !== "corporate") {
     return <Navigate to={`/${orgCode}/admin/dashboard`} replace />;
   }
@@ -123,8 +95,7 @@ export default function TnaSkillRoleSetupPage() {
   const fieldLabelClassName = "text-xs font-semibold uppercase tracking-wider text-slate-500";
   const fieldHintClassName = "mt-1 text-xs text-slate-500";
   const sectionSurfaceClassName = "rounded-xl border border-slate-200 bg-white p-3.5";
-  const skillLibraryStatus = getStepStatusMeta("skill-library");
-  const roleRequirementsStatus = getStepStatusMeta("role-requirements");
+  const activeTabMeta = SETUP_TABS.find((tab) => tab.key === activeStep);
 
   const saveSkill = async () => {
     if (!skillName.trim()) return toast.error("Skill name is required");
@@ -135,7 +106,6 @@ export default function TnaSkillRoleSetupPage() {
         error: "Failed to save skill",
       });
       setSkillName("");
-      setActiveStep("role-requirements");
     } catch (error) {
       toast.error(getErrorMessage(error));
     }
@@ -176,7 +146,7 @@ export default function TnaSkillRoleSetupPage() {
           <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
             <div>
               <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">Configuration</p>
-              <h1 className="text-3xl font-bold text-slate-900 mt-1">TNA Skill And Role Setup</h1>
+              <h1 className="text-3xl font-bold text-slate-900 mt-1">Skill and Role</h1>
               <p className="text-slate-600 mt-2 max-w-3xl">
                 Manage reusable skills and role standards here. Training Needs Analysis will only
                 handle employee profile inputs and execution.
@@ -207,259 +177,226 @@ export default function TnaSkillRoleSetupPage() {
       </section>
 
       <section className="rounded-2xl border border-slate-200 bg-white p-4 md:p-5 shadow-[0_12px_36px_-24px_rgba(15,23,42,0.3)]">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-          {FLOW_STEPS.map((step, index) => {
-            const isActive = activeStep === step.key;
-            const statusMeta = getStepStatusMeta(step.key);
+        <div className="border-b border-slate-200 pb-2">
+          <div className="flex flex-wrap gap-2 md:gap-3">
+            {SETUP_TABS.map((step) => {
+              const isActive = activeStep === step.key;
 
-            return (
-              <button
-                key={step.key}
-                type="button"
-                onClick={() => setActiveStep(step.key)}
-                className={`rounded-xl border px-3 py-2 text-left transition-colors ${
-                  isActive
-                    ? "border-primary bg-primary/10"
-                    : "border-slate-200 bg-slate-50/70 hover:border-slate-300"
-                }`}
-              >
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-                  Step {index + 1}
-                </p>
-                <p className="mt-0.5 text-sm font-medium text-slate-900">{step.title}</p>
-                <p className="mt-1 text-xs text-slate-600">{step.description}</p>
-                <span
-                  className={`mt-2 inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-semibold ${statusMeta.className}`}
+              return (
+                <button
+                  key={step.key}
+                  type="button"
+                  onClick={() => setActiveStep(step.key)}
+                  className={`rounded-lg border px-3 py-2 text-left transition-colors ${
+                    isActive
+                      ? "border-primary bg-primary/10"
+                      : "border-slate-200 bg-slate-50/70 hover:border-slate-300"
+                  }`}
                 >
-                  {statusMeta.label}
-                </span>
-              </button>
-            );
-          })}
+                  <p className="text-sm font-medium text-slate-900">{step.title}</p>
+                </button>
+              );
+            })}
+          </div>
         </div>
+        <p className="mt-3 text-sm text-slate-600">
+          {activeTabMeta?.description || "Configure skills and role standards."}
+        </p>
       </section>
 
       <div className="space-y-6">
-        <section
-          id="skill-library"
-          className={`${panelClassName} space-y-4 ${
-            activeStep === "skill-library" ? "ring-2 ring-primary/20" : ""
-          }`}
-        >
-          <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-3">
+        {activeStep === "skill-library" && (
+          <section id="skill-library" className={`${panelClassName} space-y-4`}>
             <div>
-              <div className="flex items-center gap-2">
-                <p className={fieldLabelClassName}>Step 1</p>
-                <span
-                  className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-semibold ${skillLibraryStatus.className}`}
-                >
-                  {skillLibraryStatus.label}
-                </span>
-              </div>
-              <h2 className="text-xl font-semibold text-slate-900">Build Skill Library</h2>
+              <h2 className="text-xl font-semibold text-slate-900">Skills</h2>
               <p className="text-sm text-slate-600 mt-1">
                 Add standardized skills that can be reused by all role requirement profiles.
               </p>
             </div>
-            <Button variant="outline" onClick={() => setActiveStep("role-requirements")} className="h-fit">
-              Next Step
-            </Button>
-          </div>
 
-          <div className={sectionSurfaceClassName}>
-            <p className={fieldLabelClassName}>Add New Skill</p>
-            <div className="mt-1 grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_120px] gap-2">
-              <input
-                value={skillName}
-                onChange={(event) => setSkillName(event.target.value)}
-                className={inputClassName}
-                placeholder="Skill name (e.g., Emergency Care)"
-              />
-              <Button
-                variant="primary"
-                onClick={saveSkill}
-                isLoading={createSkillMutation.isPending}
-                className="h-10 whitespace-nowrap justify-center"
-              >
-                Add Skill
-              </Button>
-            </div>
-            <p className={fieldHintClassName}>
-              Keep names short and specific so reports and role standards stay clean.
-            </p>
-          </div>
-
-          <div className="rounded-xl bg-slate-50 border border-slate-200 p-3 min-h-[66px]">
-            {skillsQuery.isLoading ? (
-              <p className="text-sm text-slate-500">Loading skills...</p>
-            ) : skills.length === 0 ? (
-              <p className="text-sm text-slate-500">No skills yet. Add your first skill above.</p>
-            ) : (
-              <div className="flex flex-wrap gap-2">
-                {skills.map((skill) => (
-                  <span
-                    key={skill._id}
-                    className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-700"
-                  >
-                    {skill.name}
-                  </span>
-                ))}
-              </div>
-            )}
-          </div>
-        </section>
-
-        <section
-          id="role-requirements"
-          className={`${panelClassName} space-y-4 ${
-            activeStep === "role-requirements" ? "ring-2 ring-primary/20" : ""
-          }`}
-        >
-          <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-3">
-            <div>
-              <div className="flex items-center gap-2">
-                <p className={fieldLabelClassName}>Step 2</p>
-                <span
-                  className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-semibold ${roleRequirementsStatus.className}`}
+            <div className={sectionSurfaceClassName}>
+              <p className={fieldLabelClassName}>Add New Skill</p>
+              <div className="mt-1 grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_120px] gap-2">
+                <input
+                  value={skillName}
+                  onChange={(event) => setSkillName(event.target.value)}
+                  className={inputClassName}
+                  placeholder="Skill name (e.g., Emergency Care)"
+                />
+                <Button
+                  variant="primary"
+                  onClick={saveSkill}
+                  isLoading={createSkillMutation.isPending}
+                  className="h-10 whitespace-nowrap justify-center"
                 >
-                  {roleRequirementsStatus.label}
-                </span>
+                  Add Skill
+                </Button>
               </div>
-              <h2 className="text-xl font-semibold text-slate-900">Define Role Standards</h2>
-              <p className="text-sm text-slate-600 mt-1">
-                Set job role expectations with required skill levels and pre-assessment threshold.
+              <p className={fieldHintClassName}>
+                Keep names short and specific so reports and role standards stay clean.
               </p>
             </div>
-          </div>
 
-          <div className={`${sectionSurfaceClassName} space-y-3`}>
-            <p className={fieldLabelClassName}>Role Metadata</p>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="rounded-xl bg-slate-50 border border-slate-200 p-3 min-h-[66px]">
+              {skillsQuery.isLoading ? (
+                <p className="text-sm text-slate-500">Loading skills...</p>
+              ) : skills.length === 0 ? (
+                <p className="text-sm text-slate-500">No skills yet. Add your first skill above.</p>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {skills.map((skill) => (
+                    <span
+                      key={skill._id}
+                      className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-700"
+                    >
+                      {skill.name}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          </section>
+        )}
+
+        {activeStep === "role-requirements" && (
+          <section id="role-requirements" className={`${panelClassName} space-y-4`}>
+            <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-3">
               <div>
-                <label className={fieldLabelClassName}>Job Role</label>
-                <input
-                  value={jobRole}
-                  onChange={(event) => setJobRole(event.target.value)}
-                  className={`${inputClassName} mt-1`}
-                  placeholder="Job role (e.g., Nurse, HR Officer)"
-                />
-                <p className={fieldHintClassName}>Use a role name that matches your organization chart.</p>
-              </div>
-              <div>
-                <label className={fieldLabelClassName}>Passing Threshold (%)</label>
-                <input
-                  type="number"
-                  min={0}
-                  max={100}
-                  value={threshold}
-                  onChange={(event) => setThreshold(Number(event.target.value || 70))}
-                  className={`${inputClassName} mt-1`}
-                  placeholder="70"
-                />
-                <p className={fieldHintClassName}>Employees below this score will be flagged for support.</p>
+                <h2 className="text-xl font-semibold text-slate-900">Role and Skills Configuration</h2>
+                <p className="text-sm text-slate-600 mt-1">
+                  Set job role expectations with required skill levels and pre-assessment threshold.
+                </p>
               </div>
             </div>
-          </div>
 
-          <div className="rounded-xl border border-slate-200 bg-white p-3 space-y-2">
-            <p className={fieldLabelClassName}>Required Skills And Levels</p>
-            <div className="hidden md:grid grid-cols-12 gap-2 px-1">
-              <p className={`col-span-8 ${fieldLabelClassName}`}>Skill</p>
-              <p className={`col-span-2 ${fieldLabelClassName}`}>Level</p>
-              <p className={`col-span-2 ${fieldLabelClassName}`}>Action</p>
+            <div className={`${sectionSurfaceClassName} space-y-3`}>
+              <p className={fieldLabelClassName}>Role Metadata</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <label className={fieldLabelClassName}>Job Role</label>
+                  <input
+                    value={jobRole}
+                    onChange={(event) => setJobRole(event.target.value)}
+                    className={`${inputClassName} mt-1`}
+                    placeholder="Job role (e.g., Nurse, HR Officer)"
+                  />
+                  <p className={fieldHintClassName}>Use a role name that matches your organization chart.</p>
+                </div>
+                <div>
+                  <label className={fieldLabelClassName}>Passing Threshold (%)</label>
+                  <input
+                    type="number"
+                    min={0}
+                    max={100}
+                    value={threshold}
+                    onChange={(event) => setThreshold(Number(event.target.value || 70))}
+                    className={`${inputClassName} mt-1`}
+                    placeholder="70"
+                  />
+                  <p className={fieldHintClassName}>Employees below this score will be flagged for support.</p>
+                </div>
+              </div>
             </div>
-            {requiredSkills.map((item, index) => (
-              <div key={`required-${index}`} className="grid grid-cols-12 gap-2">
-                <div className="col-span-12 md:col-span-8">
-                  <SearchableSelect
-                    options={skillSelectOptions}
-                    value={item.skillId}
-                    onChange={(value) => {
+
+            <div className="rounded-xl border border-slate-200 bg-white p-3 space-y-2">
+              <p className={fieldLabelClassName}>Required Skills And Levels</p>
+              <div className="hidden md:grid grid-cols-12 gap-2 px-1">
+                <p className={`col-span-8 ${fieldLabelClassName}`}>Skill</p>
+                <p className={`col-span-2 ${fieldLabelClassName}`}>Level</p>
+                <p className={`col-span-2 ${fieldLabelClassName}`}>Action</p>
+              </div>
+              {requiredSkills.map((item, index) => (
+                <div key={`required-${index}`} className="grid grid-cols-12 gap-2">
+                  <div className="col-span-12 md:col-span-8">
+                    <SearchableSelect
+                      options={skillSelectOptions}
+                      value={item.skillId}
+                      onChange={(value) => {
+                        const next = [...requiredSkills];
+                        next[index] = { ...next[index], skillId: value };
+                        setRequiredSkills(next);
+                      }}
+                      placeholder="Select skill"
+                      loading={skillsQuery.isLoading}
+                      emptyMessage="No skills yet. Add skills in the Skills tab."
+                      className="w-full"
+                    />
+                  </div>
+                  <input
+                    type="number"
+                    min={0}
+                    max={5}
+                    value={item.level}
+                    onChange={(event) => {
                       const next = [...requiredSkills];
-                      next[index] = { ...next[index], skillId: value };
+                      next[index] = { ...next[index], level: Number(event.target.value || 0) };
                       setRequiredSkills(next);
                     }}
-                    placeholder="Select skill"
-                    loading={skillsQuery.isLoading}
-                    emptyMessage="No skills yet. Add skills in Step 1."
-                    className="w-full"
+                    className={`col-span-7 md:col-span-2 ${inputClassName}`}
                   />
-                </div>
-                <input
-                  type="number"
-                  min={0}
-                  max={5}
-                  value={item.level}
-                  onChange={(event) => {
-                    const next = [...requiredSkills];
-                    next[index] = { ...next[index], level: Number(event.target.value || 0) };
-                    setRequiredSkills(next);
-                  }}
-                  className={`col-span-7 md:col-span-2 ${inputClassName}`}
-                />
-                <button
-                  type="button"
-                  className="col-span-5 md:col-span-2 rounded-lg border border-red-200 text-red-600 text-sm hover:bg-red-50"
-                  onClick={() => {
-                    if (requiredSkills.length === 1) return;
-                    setRequiredSkills(requiredSkills.filter((_, rowIndex) => rowIndex !== index));
-                  }}
-                >
-                  Remove
-                </button>
-              </div>
-            ))}
-            <p className={fieldHintClassName}>Use levels 1 to 5, where 5 is expert capability.</p>
-          </div>
-
-          <div className="flex flex-wrap gap-2">
-            <Button
-              variant="outline"
-              onClick={() => setRequiredSkills([...requiredSkills, { skillId: "", level: 1 }])}
-            >
-              Add Skill Requirement
-            </Button>
-            <Button
-              variant="primary"
-              onClick={saveRoleRequirements}
-              isLoading={upsertRoleRequirementMutation.isPending}
-            >
-              Save Role Requirements
-            </Button>
-          </div>
-
-          <div className="rounded-xl bg-slate-50 border border-slate-200 p-3 min-h-[66px]">
-            <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">
-              Existing Role Standards
-            </p>
-            {roleRequirementsQuery.isLoading ? (
-              <p className="text-sm text-slate-500">Loading role standards...</p>
-            ) : roleRequirements.length === 0 ? (
-              <p className="text-sm text-slate-500">No role standards yet. Save your first role profile above.</p>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                {roleRequirements.map((roleRequirement: any) => (
-                  <div
-                    key={String(roleRequirement._id || roleRequirement.jobRole)}
-                    className="rounded-lg border border-slate-200 bg-white px-3 py-2"
+                  <button
+                    type="button"
+                    className="col-span-5 md:col-span-2 rounded-lg border border-red-200 text-red-600 text-sm hover:bg-red-50"
+                    onClick={() => {
+                      if (requiredSkills.length === 1) return;
+                      setRequiredSkills(requiredSkills.filter((_, rowIndex) => rowIndex !== index));
+                    }}
                   >
-                    <p className="text-sm font-semibold text-slate-900">
-                      {String(roleRequirement.jobRole || "Unnamed role")}
-                    </p>
-                    <p className="text-xs text-slate-500 mt-1">
-                      Threshold: {Number(roleRequirement.preAssessmentThreshold) || 70}% | Skills:{" "}
-                      {Array.isArray(roleRequirement.requiredSkills)
-                        ? roleRequirement.requiredSkills.length
-                        : 0}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </section>
+                    Remove
+                  </button>
+                </div>
+              ))}
+              <p className={fieldHintClassName}>Use levels 1 to 5, where 5 is expert capability.</p>
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              <Button
+                variant="outline"
+                onClick={() => setRequiredSkills([...requiredSkills, { skillId: "", level: 1 }])}
+              >
+                Add Skill Requirement
+              </Button>
+              <Button
+                variant="primary"
+                onClick={saveRoleRequirements}
+                isLoading={upsertRoleRequirementMutation.isPending}
+              >
+                Save Role Requirements
+              </Button>
+            </div>
+
+            <div className="rounded-xl bg-slate-50 border border-slate-200 p-3 min-h-[66px]">
+              <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">
+                Existing Role Standards
+              </p>
+              {roleRequirementsQuery.isLoading ? (
+                <p className="text-sm text-slate-500">Loading role standards...</p>
+              ) : roleRequirements.length === 0 ? (
+                <p className="text-sm text-slate-500">No role standards yet. Save your first role profile above.</p>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                  {roleRequirements.map((roleRequirement: any) => (
+                    <div
+                      key={String(roleRequirement._id || roleRequirement.jobRole)}
+                      className="rounded-lg border border-slate-200 bg-white px-3 py-2"
+                    >
+                      <p className="text-sm font-semibold text-slate-900">
+                        {String(roleRequirement.jobRole || "Unnamed role")}
+                      </p>
+                      <p className="text-xs text-slate-500 mt-1">
+                        Threshold: {Number(roleRequirement.preAssessmentThreshold) || 70}% | Skills:{" "}
+                        {Array.isArray(roleRequirement.requiredSkills)
+                          ? roleRequirement.requiredSkills.length
+                          : 0}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </section>
+        )}
       </div>
     </div>
   );
 }
-
