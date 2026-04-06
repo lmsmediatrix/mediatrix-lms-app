@@ -33,11 +33,13 @@ export default function SidePanel({
   announcements,
   upcomingDeadlines = [],
   showComingUp = true,
+  fitToColumn = false,
 }: {
   comingUpData: ComingUpCardProps[];
   announcements: AnnouncementsCardProps[];
   upcomingDeadlines?: DeadlineItem[];
   showComingUp?: boolean;
+  fitToColumn?: boolean;
 }) {
   const [showAllComingUp, setShowAllComingUp] = useState(false);
   const [showAllAnnouncements, setShowAllAnnouncements] = useState(false);
@@ -101,11 +103,19 @@ export default function SidePanel({
   };
 
   return (
-    <div className="space-y-5">
+    <div
+      className={
+        fitToColumn
+          ? "flex h-full min-h-0 flex-col space-y-5"
+          : "space-y-5"
+      }
+    >
       {/* Coming Up Section */}
       {showComingUp && (
         <div
-          className="rounded-2xl border shadow-sm overflow-hidden"
+          className={`rounded-2xl border shadow-sm overflow-hidden ${
+            fitToColumn ? "flex min-h-0 flex-[3] flex-col" : ""
+          }`}
           style={{
             backgroundColor: "white",
             borderColor: "color-mix(in srgb, var(--color-primary, #3b82f6) 15%, white 85%)",
@@ -136,16 +146,26 @@ export default function SidePanel({
               </span>
             )}
           </div>
-          <div className="p-4">
+          <div
+            className={
+              fitToColumn
+                ? "flex min-h-0 flex-1 flex-col overflow-y-auto p-4 no-scrollbar"
+                : "p-4"
+            }
+          >
             {totalComingUp > 0 ? (
               <motion.div
-                className="lg:overflow-hidden"
+                className={fitToColumn ? "min-h-0 flex-1" : "lg:overflow-hidden"}
                 variants={containerVariants}
                 initial="collapsed"
                 animate={showAllComingUp ? "expanded" : "collapsed"}
               >
                 <motion.div
-                  className="flex lg:flex-col gap-2.5 overflow-x-auto lg:overflow-hidden snap-x snap-mandatory pb-2 lg:pb-0"
+                  className={`flex lg:flex-col gap-2.5 overflow-x-auto snap-x snap-mandatory pb-2 lg:pb-0 ${
+                    fitToColumn
+                      ? "min-h-0 flex-1 overflow-y-auto no-scrollbar"
+                      : "lg:overflow-hidden"
+                  }`}
                   initial={false}
                 >
                   <AnimatePresence>
@@ -329,7 +349,13 @@ export default function SidePanel({
 
       {/* Announcements Section */}
       <div
-        className="rounded-2xl border shadow-sm overflow-hidden"
+        className={`rounded-2xl border shadow-sm overflow-hidden ${
+          fitToColumn
+            ? showComingUp
+              ? "flex min-h-0 flex-[2] flex-col"
+              : "flex min-h-0 flex-1 flex-col"
+            : ""
+        }`}
         style={{
           backgroundColor: "white",
           borderColor: "color-mix(in srgb, var(--color-primary, #3b82f6) 15%, white 85%)",
@@ -360,16 +386,26 @@ export default function SidePanel({
             </span>
           )}
         </div>
-        <div className="p-4">
+        <div
+          className={
+            fitToColumn
+              ? "flex min-h-0 flex-1 flex-col p-4"
+              : "p-4"
+          }
+        >
           {announcements?.length > 0 ? (
             <motion.div
-              className="lg:overflow-hidden"
+              className={fitToColumn ? "min-h-0 flex-1" : "lg:overflow-hidden"}
               variants={containerVariants}
               initial="collapsed"
               animate={showAllAnnouncements ? "expanded" : "collapsed"}
             >
               <motion.div
-                className="flex lg:flex-col gap-3 overflow-x-auto lg:overflow-hidden snap-x snap-mandatory pb-2 lg:pb-0"
+                className={`flex lg:flex-col gap-3 overflow-x-auto snap-x snap-mandatory pb-2 lg:pb-0 ${
+                  fitToColumn
+                    ? "min-h-0 flex-1 overflow-y-auto no-scrollbar"
+                    : "lg:overflow-hidden"
+                }`}
                 initial={false}
               >
                 <AnimatePresence>

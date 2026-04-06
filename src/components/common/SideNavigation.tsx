@@ -531,7 +531,7 @@ export default function SideNavigation({
           </div>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto px-2 py-2">
+        <div className="no-scrollbar min-h-0 flex-1 overflow-y-auto px-2 py-2">
           <div className="space-y-1 pr-1">
             {navigationItems.map((item: NavItem) => (
               <div key={item.PATH || item.LABEL}>{renderNavItem(item)}</div>

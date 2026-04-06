@@ -74,6 +74,16 @@ body {
   height: 100vh;
 }
 
+/* Hide scrollbar while preserving scroll behavior */
+.no-scrollbar {
+  -ms-overflow-style: none; /* IE/Edge */
+  scrollbar-width: none; /* Firefox */
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none; /* Chrome/Safari */
+}
+
 .lesson-rich-text {
   color: #374151;
   line-height: 1.7;

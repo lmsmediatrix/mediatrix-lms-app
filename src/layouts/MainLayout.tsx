@@ -50,11 +50,11 @@ const MainLayout = () => {
           className={`min-h-0 flex-1 transition-all duration-300 ${
             isSideNav
               ? `${isCollapsed ? "lg:ml-[104px]" : "lg:ml-[276px]"} overflow-hidden rounded-[28px] border border-white/70 bg-white/70 shadow-[0_24px_60px_-36px_rgba(15,23,42,0.4)] backdrop-blur`
-              : "overflow-auto bg-gray-50"
+              : "no-scrollbar overflow-y-auto overflow-x-hidden bg-gray-50"
           }`}
         >
           {isSideNav ? (
-            <div className="admin-content-compact h-full overflow-y-auto overscroll-contain">
+            <div className="admin-content-compact no-scrollbar h-full overflow-y-auto overscroll-contain">
               <Outlet />
             </div>
           ) : (

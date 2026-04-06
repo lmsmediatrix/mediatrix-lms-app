@@ -113,7 +113,11 @@ function ModernChartCard({
   const dashOffset = circumference - (clampedPercent / 100) * circumference;
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white/85 p-4 shadow-sm backdrop-blur">
+    <div className="group relative overflow-hidden rounded-2xl border border-slate-200/80 bg-gradient-to-br from-white via-white to-slate-50 p-4 shadow-[0_10px_30px_-22px_rgba(15,23,42,0.45)]">
+      <span
+        className="absolute right-3 top-3 h-2.5 w-2.5 rounded-full"
+        style={{ backgroundColor: color }}
+      />
       <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500">
         {label}
       </p>
@@ -125,7 +129,7 @@ function ModernChartCard({
               cy="44"
               r={radius}
               fill="none"
-              stroke="#e2e8f0"
+              stroke="#cbd5e1"
               strokeWidth="8"
             />
             <circle
@@ -147,9 +151,18 @@ function ModernChartCard({
             </span>
           </div>
         </div>
-        <p className="text-xs font-medium text-slate-600 leading-relaxed">
-          {detail}
-        </p>
+        <div className="min-w-0">
+          <p className="text-sm font-semibold text-slate-800">{clampedPercent}%</p>
+          <p className="text-xs font-medium text-slate-600 leading-relaxed">
+            {detail}
+          </p>
+          <div className="mt-2 h-1.5 rounded-full bg-slate-200 overflow-hidden">
+            <div
+              className="h-full rounded-full transition-all duration-500"
+              style={{ width: `${clampedPercent}%`, backgroundColor: color }}
+            />
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -553,28 +566,31 @@ export default function OrgAdminDashboard() {
             ),
           )}
         </div>
-        <div className="bg-white border rounded-2xl p-5 mb-4 shadow-sm">
-          <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-3 mb-4">
-            <div className="flex flex-col gap-1">
+        <div className="rounded-3xl border border-slate-200/80 bg-white p-6 mb-4 shadow-[0_14px_40px_-28px_rgba(15,23,42,0.5)]">
+          <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-3 mb-5">
+            <div className="flex flex-col gap-1.5">
+              <span className="inline-flex w-fit items-center rounded-full border border-blue-200 bg-blue-50 px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-blue-700">
+                Live Progress
+              </span>
               <h3 className="text-lg font-semibold text-slate-900">
                 Completion Progress
               </h3>
-              <p className="text-sm text-slate-600">
+              <p className="text-sm text-slate-600 max-w-2xl">
                 Track progress by instructor, with completion across batches,
                 modules, and lessons.
               </p>
             </div>
             <button
               type="button"
-              className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+              className="rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 shadow-sm"
               onClick={() => navigate(location.pathname.replace("dashboard", "completion"))}
             >
               Open Full Tracker
             </button>
           </div>
 
-          <div className="rounded-2xl border border-slate-200 bg-gradient-to-br from-slate-50 via-white to-sky-50/40 p-4 mb-4">
-            <div className="grid grid-cols-1 lg:grid-cols-5 gap-3">
+          <div className="rounded-2xl border border-slate-200 bg-gradient-to-br from-slate-50 via-white to-sky-50/40 p-4 mb-5">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
               <ModernChartCard
                 label={`Completed ${sectionsTerm}`}
                 percent={completionHierarchy.completion.completedBatchPercent}
@@ -593,51 +609,11 @@ export default function OrgAdminDashboard() {
                 detail={`${completionHierarchy.completion.completedLessonSlots}/${completionHierarchy.completion.totalLessonSlots} lesson slots`}
                 color="#10b981"
               />
-
-              <div className="rounded-2xl border border-slate-200 bg-white/90 p-4 lg:col-span-2">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500 mb-3">
-                  Completion Mix
-                </p>
-                <div className="h-32 flex items-end gap-3">
-                  {[
-                    {
-                      label: "Batches",
-                      percent: completionHierarchy.completion.completedBatchPercent,
-                      color: "from-blue-500 to-indigo-500",
-                    },
-                    {
-                      label: "Modules",
-                      percent: completionHierarchy.completion.modulePercent,
-                      color: "from-violet-500 to-fuchsia-500",
-                    },
-                    {
-                      label: "Lessons",
-                      percent: completionHierarchy.completion.lessonPercent,
-                      color: "from-emerald-500 to-teal-500",
-                    },
-                  ].map((item) => (
-                    <div key={item.label} className="flex-1 flex flex-col items-center gap-2">
-                      <div className="w-full h-24 rounded-lg bg-slate-100 overflow-hidden flex items-end">
-                        <div
-                          className={`w-full rounded-lg bg-gradient-to-t ${item.color} transition-all duration-500`}
-                          style={{ height: `${Math.max(6, item.percent)}%` }}
-                        />
-                      </div>
-                      <div className="text-center">
-                        <p className="text-[11px] font-semibold text-slate-600">
-                          {item.label}
-                        </p>
-                        <p className="text-xs text-slate-500">{item.percent}%</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
-            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
+            <div className="rounded-2xl border border-slate-200 bg-gradient-to-br from-white to-slate-50 p-3.5 shadow-sm">
               <p className="text-[11px] uppercase tracking-wide text-slate-500 font-semibold">
                 Instructors
               </p>
@@ -645,7 +621,7 @@ export default function OrgAdminDashboard() {
                 {completionHierarchy.totals.instructors}
               </p>
             </div>
-            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+            <div className="rounded-2xl border border-slate-200 bg-gradient-to-br from-white to-slate-50 p-3.5 shadow-sm">
               <p className="text-[11px] uppercase tracking-wide text-slate-500 font-semibold">
                 Batches
               </p>
@@ -653,7 +629,7 @@ export default function OrgAdminDashboard() {
                 {completionHierarchy.totals.batches}
               </p>
             </div>
-            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+            <div className="rounded-2xl border border-slate-200 bg-gradient-to-br from-white to-slate-50 p-3.5 shadow-sm">
               <p className="text-[11px] uppercase tracking-wide text-slate-500 font-semibold">
                 Modules
               </p>
@@ -661,7 +637,7 @@ export default function OrgAdminDashboard() {
                 {completionHierarchy.totals.modules}
               </p>
             </div>
-            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+            <div className="rounded-2xl border border-slate-200 bg-gradient-to-br from-white to-slate-50 p-3.5 shadow-sm">
               <p className="text-[11px] uppercase tracking-wide text-slate-500 font-semibold">
                 Lessons
               </p>
@@ -681,116 +657,148 @@ export default function OrgAdminDashboard() {
             </div>
           ) : (
             <div className="space-y-3">
-              {completionHierarchy.instructors.map((instructor) => (
+              {completionHierarchy.instructors.map((instructor, instructorIdx) => (
                 <details
                   key={instructor.id}
-                  className="group rounded-xl border border-slate-200 bg-slate-50/60"
+                  className="group rounded-2xl border border-slate-200 bg-gradient-to-r from-white via-slate-50/70 to-white shadow-sm"
                 >
                   <summary className="cursor-pointer list-none px-4 py-3">
                     <div className="flex items-center justify-between gap-4">
-                      <div>
-                        <p className="text-sm font-semibold text-slate-900">
-                          {instructor.name}
-                        </p>
-                        <p className="text-xs text-slate-500 mt-0.5">
-                          {instructor.batches.length} batch
-                          {instructor.batches.length !== 1 ? "es" : ""}
-                        </p>
+                      <div className="flex items-center gap-3">
+                        <div className="h-9 w-9 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center text-sm font-bold">
+                          {instructorIdx + 1}
+                        </div>
+                        <div>
+                          <p className="text-sm font-semibold text-slate-900">
+                            {instructor.name}
+                          </p>
+                          <p className="text-xs text-slate-500 mt-0.5">
+                            {instructor.batches.length} batch
+                            {instructor.batches.length !== 1 ? "es" : ""}
+                          </p>
+                        </div>
                       </div>
-                      <div className="min-w-[180px]">
+                      <div className="min-w-[210px]">
+                        <div className="flex items-center justify-between text-xs mb-1">
+                          <span className="font-medium text-slate-500">Progress</span>
+                          <span className="font-semibold text-slate-700">
+                            {instructor.percent}%
+                          </span>
+                        </div>
                         <div className="h-2 rounded-full bg-slate-200 overflow-hidden">
                           <div
-                            className="h-full rounded-full bg-primary transition-all duration-500"
+                            className="h-full rounded-full bg-gradient-to-r from-blue-500 to-indigo-500 transition-all duration-500"
                             style={{ width: `${instructor.percent}%` }}
                           />
                         </div>
-                        <p className="mt-1 text-right text-xs font-medium text-slate-600">
-                          {instructor.percent}% completed
-                        </p>
                       </div>
                     </div>
                   </summary>
 
-                  <div className="border-t border-slate-200 px-4 py-3 space-y-3 bg-white/70">
-                    {instructor.batches.map((batch) => (
-                      <details
-                        key={batch.id}
-                        className="rounded-lg border border-slate-200 bg-white"
-                      >
-                        <summary className="cursor-pointer list-none px-3 py-2.5">
-                          <div className="flex items-center justify-between gap-3">
-                            <div>
-                              <p className="text-sm font-medium text-slate-900">
-                                {batch.code ? `${batch.code} - ` : ""}
-                                {batch.name}
-                              </p>
-                              <p className="text-xs text-slate-500 mt-0.5">
-                                {batch.learnerCount} learners • {batch.moduleCount} modules •{" "}
-                                {batch.lessonCount} lessons
-                              </p>
-                            </div>
-                            <div className="min-w-[160px]">
-                              <div className="h-2 rounded-full bg-slate-200 overflow-hidden">
-                                <div
-                                  className="h-full rounded-full bg-blue-500 transition-all duration-500"
-                                  style={{ width: `${batch.percent}%` }}
-                                />
-                              </div>
-                              <p className="mt-1 text-right text-xs font-medium text-slate-600">
-                                {batch.percent}% completed
-                              </p>
-                            </div>
-                          </div>
-                        </summary>
+                  <div className="border-t border-slate-200 px-4 py-3 bg-white/70">
+                    <div className="rounded-xl border border-slate-200 overflow-hidden bg-white">
+                      <div className="grid grid-cols-12 gap-2 bg-slate-50 px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                        <div className="col-span-5">Batch</div>
+                        <div className="col-span-2 text-center">Learners</div>
+                        <div className="col-span-2 text-center">Modules</div>
+                        <div className="col-span-1 text-center">Lessons</div>
+                        <div className="col-span-2 text-right">Progress</div>
+                      </div>
 
-                        <div className="border-t border-slate-200 px-3 py-2.5 space-y-2 bg-slate-50/40">
-                          {batch.modules.length === 0 ? (
-                            <p className="text-xs text-slate-500">
-                              No modules in this batch yet.
-                            </p>
-                          ) : (
-                            batch.modules.map((module) => (
-                              <div
-                                key={module.id}
-                                className="rounded-md border border-slate-200 bg-white p-2.5"
-                              >
-                                <div className="flex items-center justify-between gap-3">
-                                  <p className="text-sm font-medium text-slate-800">
-                                    {module.title}
-                                  </p>
-                                  <span className="text-xs text-slate-600 font-medium">
-                                    {module.percent}%
-                                  </span>
+                      <div>
+                        {instructor.batches.map((batch) => (
+                          <details key={batch.id} className="border-t border-slate-200 first:border-t-0">
+                            <summary className="cursor-pointer list-none grid grid-cols-12 gap-2 px-3 py-2.5 items-center hover:bg-slate-50">
+                              <div className="col-span-5">
+                                <p className="text-sm font-medium text-slate-900">
+                                  {batch.code ? `${batch.code} - ` : ""}
+                                  {batch.name}
+                                </p>
+                              </div>
+                              <div className="col-span-2 text-center text-sm text-slate-700">
+                                {batch.learnerCount}
+                              </div>
+                              <div className="col-span-2 text-center text-sm text-slate-700">
+                                {batch.moduleCount}
+                              </div>
+                              <div className="col-span-1 text-center text-sm text-slate-700">
+                                {batch.lessonCount}
+                              </div>
+                              <div className="col-span-2">
+                                <div className="flex items-center justify-end gap-2 text-xs font-semibold text-slate-700 mb-1">
+                                  <span>{batch.percent}%</span>
                                 </div>
-                                <div className="mt-1.5 h-1.5 rounded-full bg-slate-200 overflow-hidden">
+                                <div className="h-1.5 rounded-full bg-slate-200 overflow-hidden">
                                   <div
-                                    className="h-full rounded-full bg-emerald-500 transition-all duration-500"
-                                    style={{ width: `${module.percent}%` }}
+                                    className="h-full rounded-full bg-gradient-to-r from-sky-500 to-blue-500 transition-all duration-500"
+                                    style={{ width: `${batch.percent}%` }}
                                   />
                                 </div>
-
-                                <div className="mt-2 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-1.5">
-                                  {module.lessons.map((lesson) => (
-                                    <div
-                                      key={lesson.id}
-                                      className="rounded border border-slate-200 bg-slate-50 px-2 py-1.5"
-                                    >
-                                      <p className="text-xs font-medium text-slate-700 truncate">
-                                        {lesson.title}
-                                      </p>
-                                      <p className="text-[11px] text-slate-500">
-                                        {lesson.percent}% ({lesson.completedCount}/
-                                        {lesson.learnerCount || 0})
-                                      </p>
-                                    </div>
-                                  ))}
-                                </div>
                               </div>
-                            ))
-                          )}
-                        </div>
-                      </details>
-                    ))}
+                            </summary>
+
+                            <div className="border-t border-slate-200 bg-slate-50/60 p-3">
+                              {batch.modules.length === 0 ? (
+                                <p className="text-xs text-slate-500">
+                                  No modules in this batch yet.
+                                </p>
+                              ) : (
+                                <div className="overflow-x-auto">
+                                  <table className="w-full min-w-[720px]">
+                                    <thead>
+                                      <tr className="text-[11px] uppercase tracking-wide text-slate-500">
+                                        <th className="text-left py-1.5 px-2">Module</th>
+                                        <th className="text-center py-1.5 px-2">Lessons</th>
+                                        <th className="text-right py-1.5 px-2">Progress</th>
+                                        <th className="text-left py-1.5 px-2">Lesson Completion</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody>
+                                      {batch.modules.map((module) => (
+                                        <tr key={module.id} className="border-t border-slate-200/80">
+                                          <td className="py-2 px-2">
+                                            <p className="text-sm font-medium text-slate-800">
+                                              {module.title}
+                                            </p>
+                                          </td>
+                                          <td className="py-2 px-2 text-center text-sm text-slate-700">
+                                            {module.lessons.length}
+                                          </td>
+                                          <td className="py-2 px-2">
+                                            <div className="flex items-center justify-end gap-2 text-xs font-semibold text-slate-700 mb-1">
+                                              <span>{module.percent}%</span>
+                                            </div>
+                                            <div className="ml-auto h-1.5 w-28 rounded-full bg-slate-200 overflow-hidden">
+                                              <div
+                                                className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 transition-all duration-500"
+                                                style={{ width: `${module.percent}%` }}
+                                              />
+                                            </div>
+                                          </td>
+                                          <td className="py-2 px-2">
+                                            <div className="flex flex-wrap gap-1">
+                                              {module.lessons.map((lesson) => (
+                                                <span
+                                                  key={lesson.id}
+                                                  className="inline-flex items-center rounded-md border border-slate-200 bg-white px-2 py-0.5 text-[11px] text-slate-600"
+                                                  title={lesson.title}
+                                                >
+                                                  {lesson.percent}% ({lesson.completedCount}/{lesson.learnerCount || 0})
+                                                </span>
+                                              ))}
+                                            </div>
+                                          </td>
+                                        </tr>
+                                      ))}
+                                    </tbody>
+                                  </table>
+                                </div>
+                              )}
+                            </div>
+                          </details>
+                        ))}
+                      </div>
+                    </div>
                   </div>
                 </details>
               ))}

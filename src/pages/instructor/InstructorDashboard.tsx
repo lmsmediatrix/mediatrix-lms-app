@@ -172,8 +172,7 @@ export default function InstructorDashboard() {
   ).length;
 
   return (
-    /* h-screen + flex-col lets the content area fill remaining height so the sidebar can truly stay fixed */
-    <div className="bg-gray-50 h-screen flex flex-col">
+    <div className="flex h-full min-h-0 flex-col overflow-hidden bg-gray-50">
       <DashboardHeader
         coverPhoto={
           currentUser.user.organization.branding?.coverPhoto || undefined
@@ -215,10 +214,10 @@ export default function InstructorDashboard() {
       />
 
       {/* Content area â€” fills the rest of the viewport */}
-      <div className="flex flex-1 min-h-0">
+      <div className="flex min-h-0 flex-1 overflow-hidden">
         <div className="flex flex-1 min-w-0 max-w-[1400px] mx-auto w-full">
           {/* Main scrollable column */}
-          <div className="flex-1 min-w-0 overflow-y-auto">
+          <div className="no-scrollbar min-w-0 flex-1 overflow-y-auto">
             {/* Main Panel */}
             <div className="p-4 lg:p-0">
               <RefetchCard loading={isRefetching} delay={0}>
@@ -512,10 +511,11 @@ export default function InstructorDashboard() {
           {/* end main scrollable column */}
 
           {/* Sidebar â€” stays visible, only main column scrolls */}
-          <div className="hidden lg:block w-[360px] shrink-0 overflow-y-auto px-4 pt-8 pb-8">
+          <div className="hidden h-full min-h-0 w-[360px] shrink-0 px-4 pb-8 pt-8 lg:block">
             <SidePanel
               comingUpData={upComingClassSchedule}
               announcements={announcements}
+              fitToColumn
             />
           </div>
         </div>
