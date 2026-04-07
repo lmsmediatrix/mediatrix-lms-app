@@ -122,7 +122,6 @@ export default function InstructorDashboard() {
     gradingQueue,
     gradingQueueStatusCounts,
     lateMissingAssignments,
-    averageGradeBySection,
   } = dashboardMetrics;
 
   if (isDashboardPending) {
@@ -147,8 +146,6 @@ export default function InstructorDashboard() {
   // Use the same definition as the Late Submissions page: late AND still pending grading.
   const lateCount = gradingQueueStatusCounts?.[0]?.late ?? 0;
   const missingCount = lateMissingAssignments?.[0]?.missing ?? 0;
-
-  const averageGrades = averageGradeBySection || [];
 
   const performanceStudents = performanceDashboard?.students || [];
   const totalPerformanceStudents = performanceStudents.length;
@@ -521,74 +518,6 @@ export default function InstructorDashboard() {
                       date={selectedDate}
                     />
                   </div>
-                </div>
-              </RefetchCard>
-
-              <RefetchCard loading={isRefetching} delay={360}>
-                <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm pr-4 mb-8">
-                  <div className="flex items-center justify-between mb-4">
-                    <h4 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">
-                      Average Grade by {getTerm("group", orgType)}
-                    </h4>
-                    <span className="text-xs text-gray-400">
-                      {averageGrades.length > 0
-                        ? `Top ${Math.min(5, averageGrades.length)} ${sectionsTerm.toLowerCase()}`
-                        : "No data yet"}
-                    </span>
-                  </div>
-                  {averageGrades.length > 0 ? (
-                    <div className="space-y-3">
-                      {averageGrades.map(
-                        (
-                          item: {
-                            section: string;
-                            sectionCode: string;
-                            average: number;
-                            gradedCount: number;
-                          },
-                          idx: number,
-                        ) => (
-                          <div
-                            key={`${item.sectionCode}-${idx}`}
-                            className="space-y-1"
-                          >
-                            <div className="flex items-center justify-between">
-                              <div className="min-w-0">
-                                <p className="text-sm font-semibold text-gray-800 truncate">
-                                  {item.section}
-                                </p>
-                                <p className="text-xs text-gray-400">
-                                  {item.sectionCode} - {item.gradedCount} graded
-                                </p>
-                              </div>
-                              <span
-                                className="text-sm font-semibold"
-                                style={{
-                                  color: "var(--color-primary, #2563eb)",
-                                }}
-                              >
-                                {Math.round(item.average)}%
-                              </span>
-                            </div>
-                            <div className="h-2 rounded-full bg-gray-100 overflow-hidden">
-                              <div
-                                className="h-full rounded-full"
-                                style={{
-                                  width: `${Math.min(100, Math.round(item.average))}%`,
-                                  backgroundColor:
-                                    "var(--color-primary, #3b82f6)",
-                                }}
-                              />
-                            </div>
-                          </div>
-                        ),
-                      )}
-                    </div>
-                  ) : (
-                    <p className="text-sm text-gray-400">
-                      No graded assessments yet.
-                    </p>
-                  )}
                 </div>
               </RefetchCard>
 
