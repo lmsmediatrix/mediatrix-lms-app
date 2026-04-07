@@ -1,12 +1,11 @@
 import Button from "../../components/common/Button";
-import Table from "../../components/common/Table";
-import { FaPlus, FaEye } from "react-icons/fa";
+import { FaPlus } from "react-icons/fa";
+import { FiBookOpen, FiCheckCircle, FiEdit3, FiList, FiToggleLeft, FiToggleRight } from "react-icons/fi";
 import { useSearchParams } from "react-router-dom";
 import UpsertCourseModal from "../../components/orgAdmin/UpsertCourseModal";
-import { FiEdit2, FiTrash2 } from "react-icons/fi";
 import DeleteCourseModal from "../../components/orgAdmin/DeleteCourseModal";
 import { useCourses, useExportCourseToCsv } from "../../hooks/useCourse";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useAuth } from "../../context/AuthContext";
 import ExportModal from "../../components/orgAdmin/ExportModal";
 import { exportToCSVUtil } from "../../lib/exportCsvUtils";
@@ -14,19 +13,44 @@ import TableEmptyState from "../../components/common/TableEmptyState";
 import TableSkeletonClean from "../../components/skeleton/TableSkeletonClean";
 import ViewCourseModal from "../../components/orgAdmin/ViewCourseModal";
 import ActionMenuButton from "../../components/orgAdmin/ActionMenuButton";
-import FilterDropdownButton from "../../components/orgAdmin/FilterDropdownButton";
-import ResponsiveFilterButton from "../../components/orgAdmin/ResponsiveFilterButton";
 import { useCategoriesForDropdown } from "../../hooks/useCategory";
 import { useDebounce } from "../../hooks/useDebounce";
+import StatsCards from "../../components/common/StatsCards";
+import {
+  GroupedTableColumn,
+  GroupedTableGroup,
+  default as GroupedDataTable,
+} from "../../components/common/GroupedDataTable";
 
 interface CourseToDelete {
   id: string;
   title: string;
 }
 
+type CourseRow = {
+  _id: string;
+  code: string;
+  title: string;
+  category?: { _id?: string; name?: string };
+  level: string;
+  status: string;
+};
+
+const STATUS_OPTIONS = [
+  { value: "published", label: "Published" },
+  { value: "draft", label: "Draft" },
+];
+
+const LEVEL_OPTIONS = [
+  { value: "beginner", label: "Beginner" },
+  { value: "intermediate", label: "Intermediate" },
+  { value: "advance", label: "Advance" },
+];
+
 export default function CoursePage() {
   const { currentUser } = useAuth();
   const isCorporate = currentUser.user.organization.type === "corporate";
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
   const [filters, setFilters] = useState({
     status: searchParams.get("status") || "",
@@ -65,11 +89,10 @@ export default function CoursePage() {
     archiveStatus,
   });
 
-  const { data: categoriesData, isLoading: isLoadingCategories } =
-    useCategoriesForDropdown({
-      organizationId: currentUser.user.organization._id,
-      enabled: !isCorporate,
-    });
+  const { data: categoriesData } = useCategoriesForDropdown({
+    organizationId: currentUser.user.organization._id,
+    enabled: !isCorporate,
+  });
 
   const exportCourse = useExportCourseToCsv();
 
@@ -83,18 +106,22 @@ export default function CoursePage() {
       return;
     }
     setFilters((prev) => ({ ...prev, [filterType]: value }));
+    setSkipLimit((prev) => ({ ...prev, skip: 0 }));
     setSearchParams((prev) => {
+      const newParams = new URLSearchParams(prev);
       if (value) {
-        prev.set(filterType, value);
+        newParams.set(filterType, value);
       } else {
-        prev.delete(filterType);
+        newParams.delete(filterType);
       }
-      return prev;
+      newParams.set("page", "1");
+      return newParams;
     });
   };
 
   const handleSearchChange = (search: string) => {
     setSearchTerm(search);
+    setSkipLimit((prev) => ({ ...prev, skip: 0 }));
     setSearchParams((prev) => {
       const newParams = new URLSearchParams(prev);
       if (search) {
@@ -102,6 +129,7 @@ export default function CoursePage() {
       } else {
         newParams.delete("search");
       }
+      newParams.set("page", "1");
       return newParams;
     });
   };
@@ -114,6 +142,18 @@ export default function CoursePage() {
     setSearchParams((prev) => {
       prev.set("page", String(newSkip + 1));
       return prev;
+    });
+  };
+
+  const toggleArchiveStatus = () => {
+    const newStatus = archiveStatus === "only" ? "none" : "only";
+    setArchiveStatus(newStatus);
+    setSkipLimit((prev) => ({ ...prev, skip: 0 }));
+    setSearchParams((prev) => {
+      const newParams = new URLSearchParams(prev);
+      newParams.set("archiveStatus", newStatus);
+      newParams.set("page", "1");
+      return newParams;
     });
   };
 
@@ -148,72 +188,6 @@ export default function CoursePage() {
     });
   };
 
-  const filterConfigs = [
-    {
-      key: "status",
-      label: "Status",
-      value: filters.status,
-      options: [
-        { value: "published", label: "Published" },
-        { value: "draft", label: "Draft" },
-      ],
-      onChange: (value: string) => handleFilterChange("status", value),
-      placeholder: "All Status",
-    },
-    {
-      key: "level",
-      label: "Level",
-      value: filters.level,
-      options: [
-        { value: "beginner", label: "Beginner" },
-        { value: "intermediate", label: "Intermediate" },
-        { value: "advance", label: "Advance" },
-      ],
-      onChange: (value: string) => handleFilterChange("level", value),
-      placeholder: "All Levels",
-    },
-    ...(!isCorporate
-      ? [
-          {
-            key: "category",
-            label: "Category",
-            value: filters.category,
-            options:
-              categoriesData?.map((category: any) => ({
-                value: category._id,
-                label: category.name,
-              })) || [],
-            onChange: (value: string) => handleFilterChange("category", value),
-            loading: isLoadingCategories,
-            placeholder: "All Categories",
-          },
-        ]
-      : []),
-  ];
-
-  const activeFiltersCount =
-    (filters.status ? 1 : 0) +
-    (filters.level ? 1 : 0) +
-    (!isCorporate && filters.category ? 1 : 0);
-
-  const columns = [
-    { key: "code", header: "Course Code", width: "120px", hideOnMobile: true },
-    { key: "course", header: "Course", width: "300px" },
-    ...(!isCorporate
-      ? [
-          {
-            key: "category",
-            header: "Category",
-            width: "150px",
-            hideOnMobile: true,
-          },
-        ]
-      : []),
-    { key: "level", header: "Level", width: "120px", hideOnMobile: true },
-    { key: "status", header: "Status", width: "120px" },
-    { key: "actions", header: "Actions", width: "140px" },
-  ];
-
   const courseTableColumns = [
     { width: "120px" }, // Course Code
     { width: "300px" }, // Course
@@ -223,222 +197,307 @@ export default function CoursePage() {
     { width: "140px", alignment: "center" as const }, // Actions
   ];
 
-  const tableColSpan = isCorporate ? 5 : 6;
+  const courseRows = useMemo(
+    () => ((data?.courses || []) as CourseRow[]),
+    [data?.courses],
+  );
 
-  const renderTableRows = () => {
-    if (isError) {
-      return (
-        <tr className="border-b border-gray-200">
-          <td colSpan={tableColSpan} className="py-4 px-4 text-center text-gray-500">
-            Error loading courses
-          </td>
-        </tr>
-      );
-    }
+  const courseSummaryStats = useMemo(
+    () => [
+      {
+        title: "Total Courses",
+        value: data?.pagination?.totalItems || 0,
+        change: archiveStatus === "only" ? "Archived records view" : "Active records view",
+        icon: <FiBookOpen className="text-xl" />,
+        bgColor: "bg-blue-50",
+        textColor: "text-blue-600",
+        iconBgColor: "bg-blue-500",
+        iconTextColor: "text-white",
+      },
+      {
+        title: "Published (Shown)",
+        value: courseRows.filter((course) => course.status === "published").length,
+        change: "Published courses on current page",
+        icon: <FiCheckCircle className="text-xl" />,
+        bgColor: "bg-emerald-50",
+        textColor: "text-emerald-700",
+        iconBgColor: "bg-emerald-500",
+        iconTextColor: "text-white",
+      },
+      {
+        title: "Draft (Shown)",
+        value: courseRows.filter((course) => course.status === "draft").length,
+        change: "Draft courses on current page",
+        icon: <FiEdit3 className="text-xl" />,
+        bgColor: "bg-amber-50",
+        textColor: "text-amber-700",
+        iconBgColor: "bg-amber-500",
+        iconTextColor: "text-white",
+      },
+      {
+        title: "Records Shown",
+        value: courseRows.length,
+        change: `Page ${data?.pagination?.currentPage || 1} of ${data?.pagination?.totalPages || 1}`,
+        icon: <FiList className="text-xl" />,
+        bgColor: "bg-indigo-50",
+        textColor: "text-indigo-700",
+        iconBgColor: "bg-indigo-500",
+        iconTextColor: "text-white",
+      },
+    ],
+    [archiveStatus, courseRows, data?.pagination?.currentPage, data?.pagination?.totalItems, data?.pagination?.totalPages],
+  );
 
-    if (!data?.courses || data.courses.length === 0) {
-      const isFiltered = Boolean(
-        searchTerm ||
-          filters.status ||
-          filters.level ||
-          (!isCorporate && filters.category) ||
-          archiveStatus !== "none"
-      );
-      return (
-        <TableEmptyState
-          title="Create Your First Course"
-          description="Start by creating a course. You'll need courses before you can create sections."
-          primaryActionLabel="Add Course"
-          primaryActionPath="?modal=create-course"
-          colSpan={tableColSpan}
-          type="course"
-          isFiltered={isFiltered}
-        />
-      );
-    }
+  const tableGroups = useMemo(
+    (): GroupedTableGroup<CourseRow>[] => [
+      {
+        key: "courses",
+        title: "Courses",
+        rows: courseRows,
+        badgeText: `${courseRows.length} total`,
+      },
+    ],
+    [courseRows],
+  );
 
-    return data.courses.map((course: any) => (
-      <tr
-        key={course._id}
-        className={`border-b border-gray-200 hover:bg-gray-50 cursor-pointer ${
-          archiveStatus === "only" ? "text-gray-500 line-through" : ""
-        }`}
-        onClick={() => setSearchParams({ modal: "view-course", id: course._id })}
-      >
-        <td className="py-4 px-4 hidden md:table-cell">
-          <span className="font-semibold">{course.code}</span>
-        </td>
-        <td className="py-4 px-4">
+  const tableColumns = useMemo((): GroupedTableColumn<CourseRow>[] => {
+    const baseColumns: GroupedTableColumn<CourseRow>[] = [
+      {
+        key: "code",
+        label: "Course Code",
+        sortable: true,
+        filterable: true,
+        filterPlaceholder: "Search code",
+        sortAccessor: (row) => row.code || "",
+        filterAccessor: (row) => row.code || "",
+        className: "min-w-[140px] hidden md:table-cell",
+        render: (row) => <span className="font-semibold text-slate-900">{row.code}</span>,
+      },
+      {
+        key: "course",
+        label: "Course",
+        sortable: true,
+        filterable: true,
+        filterPlaceholder: "Search course",
+        filterValue: searchTerm,
+        onFilterChange: handleSearchChange,
+        sortAccessor: (row) => row.title || "",
+        filterAccessor: (row) =>
+          `${row.title || ""} ${row.code || ""} ${row.category?.name || ""}`.trim(),
+        className: "min-w-[280px]",
+        render: (row) => (
           <div className="flex flex-col">
-            <span className="font-medium">{course.title}</span>
-            <div className="md:hidden text-sm text-gray-500 mt-1 space-y-1">
-              <div>Code: {course.code}</div>
-              {!isCorporate && (
-                <div>Category: {course.category?.name || "N/A"}</div>
-              )}
+            <span className="font-medium text-slate-900">{row.title}</span>
+            <div className="md:hidden text-xs text-slate-500 mt-1 space-y-1">
+              <div>Code: {row.code}</div>
+              {!isCorporate && <div>Category: {row.category?.name || "N/A"}</div>}
               <div>
                 Level:{" "}
-                {course.level.charAt(0).toUpperCase() + course.level.slice(1)}
+                {row.level
+                  ? row.level.charAt(0).toUpperCase() + row.level.slice(1)
+                  : "N/A"}
               </div>
             </div>
           </div>
-        </td>
-        {!isCorporate && (
-          <td className="py-4 px-4 text-gray-600 hidden md:table-cell">
-            {course.category?.name || "N/A"}
-          </td>
-        )}
-        <td className="py-4 px-4 text-gray-600 hidden md:table-cell">
-          {course.level.charAt(0).toUpperCase() + course.level.slice(1)}
-        </td>
-        <td className="py-4 px-4">
-          <div className="flex items-center">
-            <span
-              className={`px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm text-center whitespace-normal break-words ${
-                course.status === "published"
-                  ? "bg-green-100 text-green-800"
-                  : course.status === "draft"
-                  ? "bg-yellow-100 text-yellow-800"
-                  : "bg-red-100 text-red-800"
-              }`}
-            >
-              {course.status.charAt(0).toUpperCase() + course.status.slice(1)}
-            </span>
-          </div>
-        </td>
-        <td className="py-4 px-4">
-          <div className="flex gap-2">
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setSearchParams({ modal: "view-course", id: course._id })
-              }}
-              className="p-2 rounded-full hover:bg-gray-100 text-primary"
-              title="View Course Details"
-            >
-              <FaEye className="w-4 h-4" />
-            </button>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                if (archiveStatus !== "only") {
-                  setSearchParams({ modal: "edit-course", id: course._id });
-                }
-              }}
-              className={`p-2 rounded-full ${
-                archiveStatus === "only"
-                  ? "cursor-not-allowed text-gray-400"
-                  : "hover:bg-gray-100"
-              }`}
-              disabled={archiveStatus === "only"}
-              title="Edit Course"
-            >
-              <FiEdit2 className="w-4 h-4" />
-            </button>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                if (archiveStatus !== "only") {
-                  handleDeleteClick(course);
-                }
-              }}
-              className={`p-2 rounded-full ${
-                archiveStatus === "only"
-                  ? "cursor-not-allowed text-gray-400"
-                  : "hover:bg-gray-100 text-red-500"
-              }`}
-              disabled={archiveStatus === "only"}
-              title="Delete Course"
-            >
-              <FiTrash2 className="w-4 h-4" />
-            </button>
-          </div>
-        </td>
-      </tr>
-    ));
-  };
+        ),
+      },
+      ...(!isCorporate
+        ? [
+            {
+              key: "category",
+              label: "Category",
+              sortable: true,
+              filterable: true,
+              filterVariant: "select",
+              filterSelectAllLabel: "All Categories",
+              filterValue: filters.category,
+              onFilterChange: (value: string) => handleFilterChange("category", value),
+              filterOptions:
+                categoriesData?.map((category: any) => ({
+                  value: category._id,
+                  label: category.name,
+                })) || [],
+              sortAccessor: (row: CourseRow) => row.category?.name || "",
+              filterAccessor: (row: CourseRow) => row.category?.name || "",
+              className: "min-w-[180px] hidden md:table-cell",
+              render: (row: CourseRow) => (
+                <span className="text-sm text-slate-600">{row.category?.name || "N/A"}</span>
+              ),
+            } as GroupedTableColumn<CourseRow>,
+          ]
+        : []),
+      {
+        key: "level",
+        label: "Level",
+        sortable: true,
+        filterable: true,
+        filterVariant: "select",
+        filterSelectAllLabel: "All Levels",
+        filterValue: filters.level,
+        onFilterChange: (value: string) => handleFilterChange("level", value),
+        filterOptions: LEVEL_OPTIONS,
+        sortAccessor: (row) => row.level || "",
+        filterAccessor: (row) => row.level || "",
+        className: "min-w-[130px] hidden md:table-cell",
+        render: (row) => (
+          <span className="text-sm text-slate-600">
+            {row.level ? row.level.charAt(0).toUpperCase() + row.level.slice(1) : "N/A"}
+          </span>
+        ),
+      },
+      {
+        key: "status",
+        label: "Status",
+        sortable: true,
+        filterable: true,
+        filterVariant: "select",
+        filterSelectAllLabel: "All Status",
+        filterValue: filters.status,
+        onFilterChange: (value: string) => handleFilterChange("status", value),
+        filterOptions: STATUS_OPTIONS,
+        sortAccessor: (row) => row.status || "",
+        filterAccessor: (row) => row.status || "",
+        className: "min-w-[130px]",
+        render: (row) => (
+          <span
+            className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${
+              row.status === "published"
+                ? "bg-green-100 text-green-800"
+                : row.status === "draft"
+                ? "bg-yellow-100 text-yellow-800"
+                : "bg-red-100 text-red-800"
+            }`}
+          >
+            {row.status
+              ? row.status.charAt(0).toUpperCase() + row.status.slice(1)
+              : "N/A"}
+          </span>
+        ),
+      },
+      {
+        key: "actions",
+        label: "Actions",
+        align: "right",
+        className: "min-w-[120px]",
+        render: (row) => (
+          <ActionMenuButton
+            buttonClassName="!px-2 !py-1.5"
+            items={[
+              {
+                key: "view",
+                label: "View",
+                onClick: () => setSearchParams({ modal: "view-course", id: row._id }),
+              },
+              {
+                key: "update",
+                label: "Update",
+                onClick: () => setSearchParams({ modal: "edit-course", id: row._id }),
+                disabled: archiveStatus === "only",
+              },
+              {
+                key: "delete",
+                label: "Delete",
+                onClick: () => handleDeleteClick(row),
+                disabled: archiveStatus === "only",
+                danger: true,
+              },
+              {
+                key: "export",
+                label: "Export CSV",
+                onClick: () => setIsExportModalOpen(true),
+              },
+              {
+                key: "archive-toggle",
+                label: archiveStatus === "only" ? "Show Active" : "Show Archived",
+                icon:
+                  archiveStatus === "only" ? (
+                    <FiToggleLeft className="size-4" />
+                  ) : (
+                    <FiToggleRight className="size-4" />
+                  ),
+                onClick: toggleArchiveStatus,
+              },
+            ]}
+          />
+        ),
+      },
+    ];
+
+    return baseColumns;
+  }, [
+    archiveStatus,
+    categoriesData,
+    filters.category,
+    filters.level,
+    filters.status,
+    isCorporate,
+    searchTerm,
+    setSearchParams,
+    toggleArchiveStatus,
+  ]);
 
   return (
     <div className=" pt-14 pb-6 px-6 lg:p-6">
-      <h1 className="text-3xl font-bold">Courses</h1>
-      <p className="text-gray-400">
-        Create, organize, and manage courses to be linked with sections during
-        setup.
+      <h1 className="text-2xl md:text-3xl font-bold text-slate-900">
+        Courses Overview
+      </h1>
+      <p className="text-slate-600 mt-1">
+        View and manage all courses linked to your sections and learning tracks.
       </p>
-      <div className="flex flex-col gap-4 py-6 md:flex-row md:items-center md:justify-between">
-        {/* Search and Filter */}
-        <div className="flex flex-col gap-3 md:flex-row md:flex-1 md:items-center md:gap-2 md:min-w-0">
-          {/* Search Input */}
-          <div className="flex gap-2 items-center flex-1 md:min-w-0">
-            <input
-              type="text"
-              placeholder="Search courses..."
-              value={searchTerm}
-              onChange={(e) => handleSearchChange(e.target.value)}
-              className="flex-1 md:max-w-[400px] px-4 py-2.5 h-[42px] border border-gray-200 rounded-lg focus:outline-none focus:border-primary text-base md:text-sm"
-            />
 
-            {/* Mobile Filter Button - Next to search on mobile, hidden on tablet+ */}
-            <div className="md:hidden">
-              <ResponsiveFilterButton
-                filters={filterConfigs}
-                activeFiltersCount={activeFiltersCount}
-              />
-            </div>
-          </div>
-
-          {/* Desktop Filter Buttons - Hidden on mobile & tablet */}
-          <div className="hidden xl:flex items-center gap-2 flex-shrink-0">
-            <FilterDropdownButton
-              label="Status"
-              value={filters.status}
-              options={[
-                { value: "published", label: "Published" },
-                { value: "draft", label: "Draft" },
-              ]}
-              onChange={(value) => handleFilterChange("status", value)}
-              placeholder="All Status"
-            />
-
-            <FilterDropdownButton
-              label="Level"
-              value={filters.level}
-              options={[
-                { value: "beginner", label: "Beginner" },
-                { value: "intermediate", label: "Intermediate" },
-                { value: "advance", label: "Advance" },
-              ]}
-              onChange={(value) => handleFilterChange("level", value)}
-              placeholder="All Levels"
-            />
-
-            {!isCorporate && (
-              <FilterDropdownButton
-                label="Category"
-                value={filters.category}
-                options={
-                  categoriesData?.map((category: any) => ({
-                    value: category._id,
-                    label: category.name,
-                  })) || []
-                }
-                onChange={(value) => handleFilterChange("category", value)}
-                loading={isLoadingCategories}
-                placeholder="All Categories"
-              />
+      <div className="mt-6 mb-2">
+        <div className="flex justify-between mb-2">
+          <h2 className="text-xl md:text-2xl font-bold text-slate-900">
+            Course Summary
+          </h2>
+          <div className="relative">
+            <Button
+              variant="cancel"
+              onClick={() => setIsFilterOpen(!isFilterOpen)}
+              className="flex items-center gap-2"
+            >
+              <span className="capitalize flex justify-center items-center gap-2">
+                {archiveStatus === "only" ? "Archived Records" : "Active Records"}
+              </span>
+            </Button>
+            {isFilterOpen && (
+              <div className="absolute right-0 mt-2 w-44 bg-white rounded-md shadow-lg z-10">
+                <ul className="py-1">
+                  <li
+                    className={`px-4 py-2 hover:bg-gray-100 cursor-pointer text-sm ${
+                      archiveStatus === "none" ? "bg-gray-100 font-medium" : ""
+                    }`}
+                    onClick={() => {
+                      if (archiveStatus !== "none") toggleArchiveStatus();
+                      setIsFilterOpen(false);
+                    }}
+                  >
+                    Active Records
+                  </li>
+                  <li
+                    className={`px-4 py-2 hover:bg-gray-100 cursor-pointer text-sm ${
+                      archiveStatus === "only" ? "bg-gray-100 font-medium" : ""
+                    }`}
+                    onClick={() => {
+                      if (archiveStatus !== "only") toggleArchiveStatus();
+                      setIsFilterOpen(false);
+                    }}
+                  >
+                    Archived Records
+                  </li>
+                </ul>
+              </div>
             )}
           </div>
         </div>
+        <div className="mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <StatsCards stats={courseSummaryStats} isLoading={isLoading} />
+        </div>
+      </div>
 
+      <div className="flex flex-col gap-4 py-6 md:flex-row md:items-center md:justify-end">
         {/* Action Buttons */}
         <div className="flex gap-2 flex-shrink-0">
-          {/* Tablet Filter Button - Hidden on mobile and desktop */}
-          <div className="hidden md:block xl:hidden">
-            <ResponsiveFilterButton
-              filters={filterConfigs}
-              activeFiltersCount={activeFiltersCount}
-            />
-          </div>
           <Button
             variant="primary"
             onClick={() => setSearchParams({ modal: "create-course" })}
@@ -448,23 +507,10 @@ export default function CoursePage() {
             <span className="hidden sm:inline">Add Course</span>
             <span className="sm:hidden">Add</span>
           </Button>
-          <ActionMenuButton
-            entityTerm="Course"
-            onExport={() => setIsExportModalOpen(true)}
-          />
           {/* Archive Status Toggle Switch */}
           <div className="flex items-center gap-2">
             <button
-              onClick={() => {
-                const newStatus = archiveStatus === "only" ? "none" : "only";
-                setArchiveStatus(newStatus);
-                setSkipLimit((prev) => ({ ...prev, skip: 0 }));
-                setSearchParams((prev) => {
-                  prev.set("archiveStatus", newStatus);
-                  prev.set("page", "1");
-                  return prev;
-                });
-              }}
+              onClick={toggleArchiveStatus}
               className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-[#3E5B93] focus:ring-offset-2 ${
                 archiveStatus === "only" ? "bg-gray-200" : "bg-primary"
               }`}
@@ -487,10 +533,38 @@ export default function CoursePage() {
 
       {isLoading ? (
         <TableSkeletonClean columns={courseTableColumns} rows={10} />
+      ) : isError ? (
+        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          Error loading courses
+        </div>
+      ) : courseRows.length === 0 ? (
+        <TableEmptyState
+          title="Create Your First Course"
+          description="Start by creating a course. You'll need courses before you can create sections."
+          primaryActionLabel="Add Course"
+          primaryActionPath="?modal=create-course"
+          colSpan={isCorporate ? 5 : 6}
+          type="course"
+          isFiltered={Boolean(
+            debouncedSearchTerm ||
+              filters.status ||
+              filters.level ||
+              (!isCorporate && filters.category) ||
+              archiveStatus !== "none",
+          )}
+        />
       ) : (
-        <Table columns={columns} scrollable={true} maxHeight="580px">
-          {renderTableRows()}
-        </Table>
+        <GroupedDataTable
+          groups={tableGroups}
+          columns={tableColumns}
+          rowKey={(row) => row._id}
+          tableMinWidthClassName={isCorporate ? "min-w-[980px]" : "min-w-[1120px]"}
+          showPagination={false}
+          cardless
+          showGroupHeader={false}
+          onRowClick={(row) => setSearchParams({ modal: "view-course", id: row._id })}
+          emptyFilteredText="No matching courses found."
+        />
       )}
 
       {/* Pagination */}

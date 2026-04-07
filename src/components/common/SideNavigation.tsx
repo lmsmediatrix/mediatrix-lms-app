@@ -391,6 +391,7 @@ export default function SideNavigation({
               (subItem: NavItem) =>
                 subItem.LABEL !== "Department" &&
                 subItem.LABEL !== "Batch" &&
+                subItem.LABEL !== "Skill and Role" &&
                 subItem.LABEL !== "Training Needs" &&
                 subItem.LABEL !== "TNA Deployment"
             );
@@ -419,7 +420,7 @@ export default function SideNavigation({
   return (
     <>
       <button
-        className={`lg:hidden fixed top-4 left-4 z-50 ${
+        className={`lg:hidden fixed top-6 left-4 z-50 ${
           isMobileMenuOpen
             ? "hover:text-gray-600"
             : "text-white hover:text-gray-200"
@@ -434,27 +435,29 @@ export default function SideNavigation({
       </button>
 
       <m.nav
-        className={`bg-white border-r border-gray-200 fixed h-full left-0 z-40 flex flex-col ${
+        className={`fixed left-2 top-2 z-40 flex h-[calc(100vh-1rem)] flex-col overflow-hidden rounded-[28px] border border-slate-200/90 bg-white/95 shadow-[0_24px_60px_-38px_rgba(15,23,42,0.4)] backdrop-blur sm:left-3 sm:top-3 sm:h-[calc(100vh-1.5rem)] ${
           isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"
         } lg:translate-x-0`}
         animate={{ width: isCollapsed && !isMobileMenuOpen ? 80 : 250 }}
         transition={{ duration: 0.3, ease: "easeInOut" }}
       >
-        <div className="relative bg-[color-mix(in_srgb,var(--color-primary)_10%,transparent_90%)] flex flex-col items-center justify-center py-6 px-4">
+        <div className="relative border-b border-gray-200 bg-[color-mix(in_srgb,var(--color-primary)_10%,transparent_90%)] px-3 py-4">
           <button
-            className="absolute top-48 -right-5 bg-white rounded-full border hidden lg:block text-gray-600 hover:text-primary"
+            className="absolute -right-3.5 top-1/2 hidden size-7 -translate-y-1/2 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-600 shadow-sm transition-colors hover:text-primary lg:flex"
             onClick={() => setIsCollapsed(!isCollapsed)}
           >
             {isCollapsed ? (
-              <MdChevronRight className="size-8" />
+              <MdChevronRight className="size-5" />
             ) : (
-              <MdChevronLeft className="size-8" />
+              <MdChevronLeft className="size-5" />
             )}
           </button>
           <div ref={logoMenuRef} className="relative">
             <button
               onClick={handleLogoClick}
-              className="focus:outline-none"
+              className={`flex w-full items-center gap-3 text-left focus:outline-none ${
+                isCollapsed && !isMobileMenuOpen ? "justify-center" : ""
+              }`}
               aria-label="Open logo menu"
             >
               {role === "SUPERADMIN" ||
@@ -462,32 +465,55 @@ export default function SideNavigation({
                 <img
                   src="https://res.cloudinary.com/dyal0wstg/image/upload/v1751936802/alma_new_circle_idxrmk.png"
                   className={`${
-                    isCollapsed ? "size-10" : "size-24"
-                  } text-primary cursor-pointer rounded-full`}
+                    isCollapsed && !isMobileMenuOpen ? "size-9" : "size-10"
+                  } text-primary cursor-pointer rounded-lg border border-slate-200 bg-white object-cover`}
                   alt="Logo"
                 />
               ) : (
-                <div
-                  className={`p-1 rounded-full hover:scale-105 transition-transform shadow-lg ${
-                    role === "SUPERADMIN"
-                      ? ""
-                      : "bg-gradient-to-br from-primary to-secondary"
+                <img
+                  src={currentUser.user.organization.branding.logo}
+                  alt="Organization Logo"
+                  className={`cursor-pointer rounded-lg border border-slate-200 bg-white object-cover ${
+                    isCollapsed && !isMobileMenuOpen ? "h-9 w-9" : "h-10 w-10"
                   }`}
-                >
-                  <img
-                    src={currentUser.user.organization.branding.logo}
-                    alt="Organization Logo"
-                    className={`cursor-pointer object-cover rounded-full ${
-                      isCollapsed && !isMobileMenuOpen ? "h-10 w-10" : "h-24 w-24"
-                    }`}
-                  />
-                </div>
+                />
+              )}
+              <AnimatePresence>
+                {(!isCollapsed || isMobileMenuOpen) && (
+                  <m.div
+                    initial={{ opacity: 0, width: 0 }}
+                    animate={{ opacity: 1, width: "auto" }}
+                    exit={{ opacity: 0, width: 0 }}
+                    transition={{ duration: 0.2 }}
+                    className="min-w-0 flex-1 overflow-hidden"
+                  >
+                    {currentUser.user.organization ? (
+                      <>
+                        <p className="text-sm font-semibold leading-tight text-gray-800">
+                          {currentUser.user.organization?.name}
+                        </p>
+                        <p className="mt-1 inline-flex rounded-full bg-gray-100 px-2 py-0.5 text-[11px] text-gray-600">
+                          {currentUser.user.organization?.code}
+                        </p>
+                      </>
+                    ) : (
+                      <p className="text-sm font-semibold text-primary">ALMA</p>
+                    )}
+                  </m.div>
+                )}
+              </AnimatePresence>
+              {(!isCollapsed || isMobileMenuOpen) && performancePath && (
+                <MdKeyboardArrowDown
+                  className={`text-[20px] text-gray-500 transition-transform ${
+                    isLogoMenuOpen ? "rotate-180" : ""
+                  }`}
+                />
               )}
             </button>
             <AnimatePresence>
               {isLogoMenuOpen && performancePath && (
                 <m.div
-                  className="absolute top-full left-1/2 -translate-x-1/2 mt-3 w-[220px] bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden z-50"
+                  className="absolute left-0 right-0 top-[calc(100%+0.5rem)] z-50 overflow-hidden rounded-lg border border-gray-200 bg-white shadow-lg"
                   initial={{ opacity: 0, y: 8, scale: 0.98 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: 8, scale: 0.98 }}
@@ -503,37 +529,14 @@ export default function SideNavigation({
               )}
             </AnimatePresence>
           </div>
-          <AnimatePresence>
-            {(!isCollapsed || isMobileMenuOpen) && (
-              <m.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: "auto" }}
-                exit={{ opacity: 0, height: 0 }}
-                transition={{ duration: 0.2 }}
-              >
-                {currentUser.user.organization ? (
-                  <>
-                    <h1 className="font-bold text-xl mt-2 text-gray-800 text-center">
-                      {currentUser.user.organization?.name}
-                    </h1>
-                    <p className="bg-gray-100 rounded-full w-fit mx-auto px-2 py-1 text-xs text-center">
-                      {currentUser.user.organization?.code}
-                    </p>
-                  </>
-                ) : (<>
-                <h1 className="font-bold text-xl text-primary text-center">
-                      ALMA
-                    </h1>
-                </>)}
-              </m.div>
-            )}
-          </AnimatePresence>
         </div>
 
-        <div className="flex-1 px-2 py-2 space-y-1">
-          {navigationItems.map((item: NavItem) => (
-            <div key={item.PATH || item.LABEL}>{renderNavItem(item)}</div>
-          ))}
+        <div className="no-scrollbar min-h-0 flex-1 overflow-y-auto px-2 py-2">
+          <div className="space-y-1 pr-1">
+            {navigationItems.map((item: NavItem) => (
+              <div key={item.PATH || item.LABEL}>{renderNavItem(item)}</div>
+            ))}
+          </div>
         </div>
 
         <div className="border-t border-gray-200 relative">

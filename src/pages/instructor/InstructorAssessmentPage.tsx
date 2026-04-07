@@ -5,6 +5,8 @@ import { FaUser } from "react-icons/fa"; // Import the user icon from react-icon
 import { useGetStudentAssessment } from "../../hooks/useAssessment";
 import { IoArrowBack } from "react-icons/io5";
 import InstructorAssessmentSkeleton from "../../components/skeleton/InstructorAssessmentSkeleton";
+import { useAuth } from "../../context/AuthContext";
+import { getTerm } from "../../lib/utils";
 
 export default function InstructorAssessmentPage() {
   const location = useLocation();
@@ -12,9 +14,12 @@ export default function InstructorAssessmentPage() {
   const assessmentId = location.pathname.split("/")[6] as string;
   const { data, isPending } = useGetStudentAssessment(
     sectionCode || "",
-    assessmentId || ""
+    assessmentId || "",
   );
   const navigate = useNavigate();
+  const { currentUser } = useAuth();
+  const orgType = currentUser.user.organization.type;
+  const learnersTerm = getTerm("learner", orgType, true);
 
   const submitted = !isPending ? data?.data?.submitted || [] : [];
   const notSubmitted = !isPending ? data?.data?.notSubmitted || [] : [];
@@ -149,7 +154,7 @@ export default function InstructorAssessmentPage() {
               <div className="divide-y divide-gray-200">
                 {notSubmitted.length === 0 ? (
                   <div className="px-16 py-4 text-center text-gray-500">
-                    All students have submitted
+                    All {learnersTerm.toLowerCase()} have submitted
                   </div>
                 ) : (
                   notSubmitted.map((student: any) => (

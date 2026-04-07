@@ -3,6 +3,7 @@ import {
   useQuery,
   useQueryClient,
   useInfiniteQuery,
+  keepPreviousData,
 } from "@tanstack/react-query";
 import instructorService from "../services/instructorApi";
 import sectionService from "../services/sectionApi";
@@ -110,6 +111,7 @@ export const useSearchInstructors = (
 ) => {
   return useQuery({
     queryKey: ["search-instructors", apiParams],
+    placeholderData: keepPreviousData,
     queryFn: async () => {
       instructorService.resetQuery();
       return instructorService

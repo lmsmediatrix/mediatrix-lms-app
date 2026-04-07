@@ -55,7 +55,7 @@ export default function CreateModuleTab({
         pending: "Deleting module...",
         success: "Module deleted successfully",
         error: "Failed to delete module",
-      }
+      },
     );
   };
 
@@ -73,7 +73,7 @@ export default function CreateModuleTab({
         pending: "Deleting lesson...",
         success: "Lesson deleted successfully",
         error: "Failed to delete lesson",
-      }
+      },
     );
   };
 
@@ -183,7 +183,7 @@ export default function CreateModuleTab({
                     disabled={populateModuleAssessments.isPending}
                     className="px-2 md:px-3 text-xs md:text-sm font-medium text-primary border-l border-gray-200 hover:bg-blue-50 disabled:opacity-60 disabled:cursor-not-allowed"
                   >
-                    Sync Assessments
+                    Module Assessment
                   </button>
                   <button
                     onClick={() => openCreateLesson(module._id)}
@@ -231,14 +231,14 @@ export default function CreateModuleTab({
                             navigate(
                               location.pathname.replace(
                                 `manage`,
-                                `lessons/${lesson._id}?module=${module._id}`
+                                `lessons/${lesson._id}?module=${module._id}`,
                               ),
                               {
                                 state: {
                                   previousPage: module.title,
                                   path: location.pathname,
                                 },
-                              }
+                              },
                             )
                           }
                           className="p-1 text-gray-500 hover:text-gray-700"

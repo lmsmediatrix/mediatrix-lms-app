@@ -288,8 +288,10 @@ export const API_ENDPOINTS = {
   TNA: {
     SKILL_CREATE: "/tna/skill/create",
     SKILL_GET_ALL: "/tna/skill/get/all",
+    SKILL_REMOVE: "/tna/skill/remove/:id",
     ROLE_REQUIREMENT_GET_ALL: "/tna/role-requirement/get/all",
     ROLE_REQUIREMENT_UPSERT: "/tna/role-requirement/upsert",
+    ROLE_REQUIREMENT_REMOVE: "/tna/role-requirement/remove/:id",
     EMPLOYEE_SKILL_UPSERT: "/tna/employee-skill/upsert",
     ANALYZE: "/tna/analyze",
     RECOMMENDATION_GET_ALL: "/tna/recommendation/get/all",

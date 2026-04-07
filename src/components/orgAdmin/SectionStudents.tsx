@@ -111,7 +111,7 @@ const SectionStudents = () => {
                 {student.avatar ? (
                   <img
                     src={student.avatar}
-                    alt="Student"
+                    alt={learnerTerm}
                     className="w-full h-full object-cover"
                   />
                 ) : (
@@ -135,7 +135,7 @@ const SectionStudents = () => {
                   });
                 }}
                 className="p-2 hover:bg-gray-100 rounded-full text-red-600"
-                title="Remove student from section"
+                title={`Remove ${learnerTerm.toLowerCase()} from ${getTerm("group", orgType).toLowerCase()}`}
               >
                 <FiTrash2 className="w-4 h-4" />
               </button>
@@ -144,7 +144,7 @@ const SectionStudents = () => {
         </div>
       ) : (
         <p className="text-gray-500 text-sm sm:text-base">
-          No students enrolled in this section
+          No {learnerTerm.toLowerCase()}s enrolled in this {getTerm("group", orgType).toLowerCase()}
         </p>
       )}
 

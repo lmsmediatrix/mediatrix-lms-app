@@ -42,6 +42,7 @@ export const pageTitles: TitleMapping = {
   "/:orgCode/admin/faculty": "Faculties",
   "/:orgCode/admin/program": "Programs",
   "/:orgCode/admin/department": "Departments",
+  "/:orgCode/admin/tna/configuration": "Skill and Role",
   "/:orgCode/admin/tna": "Training Needs Analysis",
   "/:orgCode/admin/tna/employees": "Employee TNA Recommendations",
   "/:orgCode/admin/tna/execution": "TNA Deployment",
@@ -50,6 +51,7 @@ export const pageTitles: TitleMapping = {
   "/:orgCode/admin/settings": "Settings",
   "/:orgCode/admin/performance": "Compliance Management",
   "/:orgCode/admin/compliance": "Compliance Management",
+  "/:orgCode/admin/completion": "Completion Tracker",
   "/:orgCode/admin/performance/:studentId": () =>
     `${getTerms().studentTerm} Compliance Details`,
   "/:orgCode/admin/compliance/:studentId": () =>

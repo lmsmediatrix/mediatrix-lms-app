@@ -1,33 +1,39 @@
 import { useEffect, useMemo, useState } from "react";
-import { Navigate, useNavigate } from "react-router-dom";
+import { Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import Button from "../../components/common/Button";
+import GroupedDataTable, {
+  GroupedTableColumn,
+  GroupedTableGroup,
+} from "../../components/common/GroupedDataTable";
 import { SearchableSelect } from "../../components/SearchableSelect";
 import { useAuth } from "../../context/AuthContext";
 import { useCourses } from "../../hooks/useCourse";
 import { useSearchStudents } from "../../hooks/useStudent";
 import {
   useAnalyzeTna,
-  useCreateTnaSkill,
-  useDeleteTnaRecommendation,
   useGetTnaRecommendations,
   useGetTnaRoleRequirements,
   useGetTnaSkills,
   useUpdateTnaRecommendationStatus,
   useUpsertEmployeeSkill,
-  useUpsertRoleRequirement,
 } from "../../hooks/useTna";
 import { getTerm } from "../../lib/utils";
 
 type LevelRow = { skillId: string; level: number };
 type ComplianceRow = { title: string; courseId: string; mandatory: boolean };
 type RecommendationStatus = "pending" | "assigned" | "completed";
-type StepKey =
-  | "skill-library"
-  | "role-requirements"
-  | "employee-skills"
-  | "analyze"
-  | "recommendations";
+type StepKey = "employee-skills" | "analyze" | "recommendations";
+type PrefillEmployeeSkill = { skillId?: string; skillName?: string; level?: number };
+type RecommendationRow = {
+  _id: string;
+  employee?: { firstName?: string; lastName?: string; email?: string };
+  jobRole?: string;
+  createdAt?: string;
+  status?: string;
+  skillGaps?: Array<unknown>;
+  recommendedTrainings?: Array<unknown>;
+};
 
 const FLOW_STEPS: Array<{
   key: StepKey;
@@ -35,19 +41,9 @@ const FLOW_STEPS: Array<{
   description: string;
 }> = [
   {
-    key: "skill-library",
-    title: "Build Skill Library",
-    description: "Create reusable skills used by every role and employee profile.",
-  },
-  {
-    key: "role-requirements",
-    title: "Define Role Standards",
-    description: "Set required skill levels and passing threshold per job role.",
-  },
-  {
     key: "employee-skills",
-    title: "Capture Employee Skills",
-    description: "Store each employee's current competency levels.",
+    title: "Capture Employee Role and Skills",
+    description: "Select employee, target role, and current competency levels.",
   },
   {
     key: "analyze",
@@ -68,26 +64,11 @@ const STEP_GUIDANCE: Record<
     checklist: string[];
   }
 > = {
-  "skill-library": {
-    goal: "Create the master skill list that all roles and employees will use.",
-    checklist: [
-      "Add skills using clear names such as Debugging, SQL, or Incident Response.",
-      "Avoid duplicate skill wording so reports stay consistent.",
-      "Move to Step 2 after at least one core skill is saved.",
-    ],
-  },
-  "role-requirements": {
-    goal: "Define what proficiency each role needs to perform successfully.",
-    checklist: [
-      "Enter the role name and passing threshold.",
-      "Add required skills with levels from 1 to 5.",
-      "Save role standards before running analysis.",
-    ],
-  },
   "employee-skills": {
-    goal: "Capture each employee's current level so gaps can be measured accurately.",
+    goal: "Capture employee profile inputs so gaps can be measured accurately.",
     checklist: [
       "Select an employee profile.",
+      "Select the target role from configured role standards.",
       "Add current skill levels using the same 1 to 5 scale.",
       "Save before moving to analysis.",
     ],
@@ -116,6 +97,27 @@ const parseList = (value: string): string[] =>
     .map((item) => item.trim())
     .filter(Boolean);
 
+const parsePrefillEmployeeSkills = (value: string): PrefillEmployeeSkill[] => {
+  if (!value.trim()) return [];
+  try {
+    const parsed = JSON.parse(value);
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .map((item) => {
+        if (!item || typeof item !== "object") return null;
+        const raw = item as { skillId?: string; skillName?: string; level?: number };
+        return {
+          skillId: typeof raw.skillId === "string" ? raw.skillId : "",
+          skillName: typeof raw.skillName === "string" ? raw.skillName : "",
+          level: typeof raw.level === "number" ? raw.level : undefined,
+        };
+      })
+      .filter(Boolean) as PrefillEmployeeSkill[];
+  } catch (_error) {
+    return [];
+  }
+};
+
 const getErrorMessage = (error: unknown): string => {
   if (error && typeof error === "object") {
     const err = error as {
@@ -133,7 +135,7 @@ const getErrorMessage = (error: unknown): string => {
   return "Something went wrong";
 };
 
-const normalizeStatus = (status: string): RecommendationStatus => {
+const normalizeStatus = (status?: string): RecommendationStatus => {
   if (status === "assigned" || status === "completed") return status;
   return "pending";
 };
@@ -141,6 +143,7 @@ const normalizeStatus = (status: string): RecommendationStatus => {
 export default function TnaPage() {
   const { currentUser } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const orgCode = currentUser?.user?.organization?.code || "";
   const orgType = currentUser?.user?.organization?.type;
   const organizationId = currentUser?.user?.organization?._id;
@@ -158,11 +161,8 @@ export default function TnaPage() {
   const coursesQuery = useCourses({ organizationId, limit: 200, skip: 0, archiveStatus: "none" });
   const recommendationsQuery = useGetTnaRecommendations({ limit: 50, skip: 0 });
 
-  const createSkillMutation = useCreateTnaSkill();
-  const upsertRoleRequirementMutation = useUpsertRoleRequirement();
   const upsertEmployeeSkillMutation = useUpsertEmployeeSkill();
   const analyzeTnaMutation = useAnalyzeTna();
-  const deleteRecommendationMutation = useDeleteTnaRecommendation();
   const updateRecommendationStatusMutation = useUpdateTnaRecommendationStatus();
 
   const skills = useMemo(() => {
@@ -199,12 +199,12 @@ export default function TnaPage() {
     return Array.isArray(response?.data) ? response.data : [];
   }, [recommendationsQuery.data]);
 
-  const [activeStep, setActiveStep] = useState<StepKey>("skill-library");
-  const [skillName, setSkillName] = useState("");
-  const [jobRole, setJobRole] = useState("");
-  const [threshold, setThreshold] = useState(70);
-  const [requiredSkills, setRequiredSkills] = useState<LevelRow[]>([{ skillId: "", level: 1 }]);
+  const prefillEmployeeId = (searchParams.get("employeeId") || "").trim();
+  const prefillStepParam = (searchParams.get("step") || "").trim();
+  const prefillJobRole = (searchParams.get("jobRole") || "").trim();
+  const prefillEmployeeSkillsParam = (searchParams.get("employeeSkills") || "").trim();
 
+  const [activeStep, setActiveStep] = useState<StepKey>("employee-skills");
   const [employeeId, setEmployeeId] = useState("");
   const [employeeSkills, setEmployeeSkills] = useState<LevelRow[]>([{ skillId: "", level: 1 }]);
 
@@ -218,7 +218,7 @@ export default function TnaPage() {
     { title: "", courseId: "", mandatory: true },
   ]);
   const [statusDrafts, setStatusDrafts] = useState<Record<string, RecommendationStatus>>({});
-  const [deletingRecommendationId, setDeletingRecommendationId] = useState<string | null>(null);
+  const [didApplyPrefillSkills, setDidApplyPrefillSkills] = useState(false);
 
   const selectedAnalyzeRoleRequirement = useMemo(() => {
     const normalizedRole = analyzeJobRole.trim().toLowerCase();
@@ -244,8 +244,8 @@ export default function TnaPage() {
     if (Number.isFinite(roleThreshold) && roleThreshold >= 0 && roleThreshold <= 100) {
       return roleThreshold;
     }
-    return Number(threshold) || 70;
-  }, [selectedAnalyzeRoleRequirement, threshold]);
+    return 70;
+  }, [selectedAnalyzeRoleRequirement]);
 
   useEffect(() => {
     if (!employeeId && employees.length > 0) setEmployeeId(employees[0]._id);
@@ -253,14 +253,78 @@ export default function TnaPage() {
   }, [employees, employeeId, analyzeEmployeeId]);
 
   useEffect(() => {
-    if (!analyzeJobRole && jobRole) setAnalyzeJobRole(jobRole);
-  }, [jobRole, analyzeJobRole]);
+    if (!prefillEmployeeId || employees.length === 0) return;
+    const hasMatchingEmployee = employees.some(
+      (employee) => String(employee?._id || "") === prefillEmployeeId
+    );
+    if (!hasMatchingEmployee) return;
+    setEmployeeId(prefillEmployeeId);
+    setAnalyzeEmployeeId(prefillEmployeeId);
+  }, [prefillEmployeeId, employees]);
 
   useEffect(() => {
     if (!analyzeJobRole && roleOptions.length > 0) {
       setAnalyzeJobRole(roleOptions[0]);
     }
   }, [analyzeJobRole, roleOptions]);
+
+  useEffect(() => {
+    if (!prefillStepParam) return;
+    const validSteps = new Set<StepKey>(["employee-skills", "analyze", "recommendations"]);
+    if (validSteps.has(prefillStepParam as StepKey)) {
+      setActiveStep(prefillStepParam as StepKey);
+    }
+  }, [prefillStepParam]);
+
+  useEffect(() => {
+    if (!prefillJobRole) return;
+    setAnalyzeJobRole(prefillJobRole);
+  }, [prefillJobRole]);
+
+  useEffect(() => {
+    if (didApplyPrefillSkills) return;
+
+    const parsedPrefillSkills = parsePrefillEmployeeSkills(prefillEmployeeSkillsParam);
+    if (parsedPrefillSkills.length === 0) {
+      setDidApplyPrefillSkills(true);
+      return;
+    }
+
+    if (skills.length === 0) return;
+
+    const normalized = parsedPrefillSkills
+      .map((prefillSkill) => {
+        const requestedSkillId = String(prefillSkill.skillId || "").trim();
+        const requestedSkillName = String(prefillSkill.skillName || "").trim().toLowerCase();
+
+        let resolvedSkillId = requestedSkillId;
+        if (!resolvedSkillId && requestedSkillName) {
+          const matchedSkill = skills.find(
+            (skill) => String(skill?.name || "").trim().toLowerCase() === requestedSkillName
+          );
+          resolvedSkillId = String(matchedSkill?._id || "").trim();
+        }
+
+        if (!resolvedSkillId) return null;
+
+        const parsedLevel = Number(prefillSkill.level ?? 0);
+        const normalizedLevel = Number.isFinite(parsedLevel)
+          ? Math.max(0, Math.min(5, parsedLevel))
+          : 0;
+
+        return {
+          skillId: resolvedSkillId,
+          level: normalizedLevel,
+        } as LevelRow;
+      })
+      .filter(Boolean) as LevelRow[];
+
+    if (normalized.length > 0) {
+      setEmployeeSkills(normalized);
+    }
+
+    setDidApplyPrefillSkills(true);
+  }, [didApplyPrefillSkills, prefillEmployeeSkillsParam, skills]);
 
   useEffect(() => {
     const nextDrafts: Record<string, RecommendationStatus> = {};
@@ -272,28 +336,20 @@ export default function TnaPage() {
 
   const completionByStep = useMemo<Record<StepKey, boolean>>(
     () => ({
-      "skill-library": skills.length > 0,
-      "role-requirements":
-        Boolean(jobRole.trim()) && requiredSkills.some((skill) => Boolean(skill.skillId)),
-      "employee-skills": Boolean(employeeId) && employeeSkills.some((skill) => Boolean(skill.skillId)),
+      "employee-skills":
+        Boolean(employeeId) &&
+        Boolean(analyzeJobRole.trim()) &&
+        employeeSkills.some((skill) => Boolean(skill.skillId)),
       analyze: recommendations.length > 0,
       recommendations: recommendations.length > 0,
     }),
-    [skills.length, jobRole, requiredSkills, employeeId, employeeSkills, recommendations.length]
+    [employeeId, analyzeJobRole, employeeSkills, recommendations.length]
   );
 
   const pendingRecommendations = useMemo(
     () =>
       recommendations.filter(
         (recommendation) => normalizeStatus(recommendation.status) === "pending"
-      ).length,
-    [recommendations]
-  );
-
-  const assignedRecommendations = useMemo(
-    () =>
-      recommendations.filter(
-        (recommendation) => normalizeStatus(recommendation.status) === "assigned"
       ).length,
     [recommendations]
   );
@@ -373,6 +429,154 @@ export default function TnaPage() {
     []
   );
 
+  const recommendationStatusFilterOptions = useMemo(
+    () => recommendationStatusOptions.map((option) => ({ value: option.value, label: option.label })),
+    [recommendationStatusOptions]
+  );
+
+  const recommendationTableGroups = useMemo(
+    (): GroupedTableGroup<RecommendationRow>[] => [
+      {
+        key: "recommendations",
+        title: "Recommendations",
+        rows: recommendations as RecommendationRow[],
+      },
+    ],
+    [recommendations]
+  );
+
+  const recommendationTableColumns = useMemo(
+    (): GroupedTableColumn<RecommendationRow>[] => [
+      {
+        key: "employee",
+        label: "Employee",
+        sortable: true,
+        filterable: true,
+        filterPlaceholder: "Search employee",
+        sortAccessor: (row) => {
+          const firstName = String(row.employee?.firstName || "").trim();
+          const lastName = String(row.employee?.lastName || "").trim();
+          const fullName = `${firstName} ${lastName}`.trim() || row.employee?.email || "Unknown employee";
+          return fullName;
+        },
+        filterAccessor: (row) => {
+          const firstName = String(row.employee?.firstName || "").trim();
+          const lastName = String(row.employee?.lastName || "").trim();
+          const fullName = `${firstName} ${lastName}`.trim();
+          return `${fullName} ${row.employee?.email || ""}`.trim();
+        },
+        className: "min-w-[220px]",
+        render: (row) => {
+          const firstName = String(row.employee?.firstName || "").trim();
+          const lastName = String(row.employee?.lastName || "").trim();
+          const fullName = `${firstName} ${lastName}`.trim() || row.employee?.email || "Unknown employee";
+          return (
+            <div className="space-y-0.5">
+              <p className="text-sm font-semibold text-slate-900">{fullName}</p>
+              <p className="text-xs text-slate-500">{row.employee?.email || "--"}</p>
+            </div>
+          );
+        },
+      },
+      {
+        key: "role",
+        label: "Role",
+        sortable: true,
+        filterable: true,
+        filterPlaceholder: "Search role",
+        sortAccessor: (row) => row.jobRole || "",
+        filterAccessor: (row) => row.jobRole || "",
+        className: "min-w-[170px]",
+        render: (row) => <span className="text-sm text-slate-700">{row.jobRole || "--"}</span>,
+      },
+      {
+        key: "created",
+        label: "Created",
+        sortable: true,
+        filterable: true,
+        filterPlaceholder: "Search date",
+        sortAccessor: (row) => (row.createdAt ? new Date(row.createdAt).getTime() : 0),
+        filterAccessor: (row) =>
+          row.createdAt ? new Date(row.createdAt).toLocaleString() : "",
+        className: "min-w-[180px]",
+        render: (row) => (
+          <span className="text-sm text-slate-700 whitespace-nowrap">
+            {new Date(row.createdAt || Date.now()).toLocaleString()}
+          </span>
+        ),
+      },
+      {
+        key: "skillGaps",
+        label: "Skill Gaps",
+        sortable: true,
+        filterable: true,
+        filterPlaceholder: "Search count",
+        sortAccessor: (row) => (Array.isArray(row.skillGaps) ? row.skillGaps.length : 0),
+        filterAccessor: (row) => String(Array.isArray(row.skillGaps) ? row.skillGaps.length : 0),
+        align: "right",
+        className: "min-w-[120px]",
+        render: (row) => (
+          <span className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-700">
+            {Array.isArray(row.skillGaps) ? row.skillGaps.length : 0}
+          </span>
+        ),
+      },
+      {
+        key: "recommended",
+        label: "Recommended",
+        sortable: true,
+        filterable: true,
+        filterPlaceholder: "Search count",
+        sortAccessor: (row) =>
+          Array.isArray(row.recommendedTrainings) ? row.recommendedTrainings.length : 0,
+        filterAccessor: (row) =>
+          String(Array.isArray(row.recommendedTrainings) ? row.recommendedTrainings.length : 0),
+        align: "right",
+        className: "min-w-[130px]",
+        render: (row) => (
+          <span className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-700">
+            {Array.isArray(row.recommendedTrainings) ? row.recommendedTrainings.length : 0}
+          </span>
+        ),
+      },
+      {
+        key: "status",
+        label: "Status",
+        sortable: true,
+        filterable: true,
+        filterVariant: "select",
+        filterSelectAllLabel: "All Status",
+        filterOptions: recommendationStatusFilterOptions,
+        sortAccessor: (row) => normalizeStatus(row.status),
+        filterAccessor: (row) => normalizeStatus(row.status),
+        className: "min-w-[220px]",
+        render: (row) => {
+          const currentStatus = normalizeStatus(row.status);
+          const currentDraft = statusDrafts[row._id] || currentStatus;
+          return (
+            <div className="w-[190px]" data-row-click-stop="true">
+              <SearchableSelect
+                options={recommendationStatusOptions}
+                value={currentDraft}
+                onChange={(value) => {
+                  const nextStatus = value as RecommendationStatus;
+                  setStatusDrafts((previous) => ({
+                    ...previous,
+                    [row._id]: nextStatus,
+                  }));
+                  void updateStatus(row._id, nextStatus, currentStatus);
+                }}
+                placeholder="Select status"
+                className="w-full"
+              />
+            </div>
+          );
+        },
+      },
+    ],
+    [recommendationStatusFilterOptions, recommendationStatusOptions, statusDrafts]
+  );
+
   const getStepStatusMeta = (stepKey: StepKey) => {
     if (completionByStep[stepKey]) {
       return {
@@ -405,51 +609,15 @@ export default function TnaPage() {
   const fieldLabelClassName = "text-xs font-semibold uppercase tracking-wider text-slate-500";
   const fieldHintClassName = "mt-1 text-xs text-slate-500";
   const sectionSurfaceClassName = "rounded-xl border border-slate-200 bg-white p-3.5";
-  const skillLibraryStatus = getStepStatusMeta("skill-library");
-  const roleRequirementsStatus = getStepStatusMeta("role-requirements");
   const employeeSkillsStatus = getStepStatusMeta("employee-skills");
   const analyzeStatus = getStepStatusMeta("analyze");
   const recommendationsStatus = getStepStatusMeta("recommendations");
 
-  const saveSkill = async () => {
-    if (!skillName.trim()) return toast.error("Skill name is required");
-    try {
-      await toast.promise(createSkillMutation.mutateAsync({ name: skillName.trim() }), {
-        pending: "Saving skill...",
-        success: "Skill saved",
-        error: "Failed to save skill",
-      });
-      setSkillName("");
-      setActiveStep("role-requirements");
-    } catch (error) {
-      toast.error(getErrorMessage(error));
-    }
-  };
-
-  const saveRoleRequirements = async () => {
-    if (!jobRole.trim()) return toast.error("Job role is required");
-    const payloadSkills = requiredSkills.filter((item) => item.skillId).map((item) => ({
-      skillId: item.skillId,
-      requiredLevel: Number(item.level),
-    }));
-    if (payloadSkills.length === 0) return toast.error("Add at least one required skill");
-    try {
-      await toast.promise(
-        upsertRoleRequirementMutation.mutateAsync({
-          jobRole: jobRole.trim(),
-          preAssessmentThreshold: Number(threshold) || 70,
-          requiredSkills: payloadSkills,
-        }),
-        { pending: "Saving role requirements...", success: "Saved", error: "Failed to save" }
-      );
-      setActiveStep("employee-skills");
-    } catch (error) {
-      toast.error(getErrorMessage(error));
-    }
-  };
-
   const saveEmployeeSkills = async () => {
     if (!employeeId) return toast.error(`${employeeTerm} is required`);
+    if (!analyzeJobRole.trim()) {
+      return toast.error("Job role is required. Configure role standards in Skill and Role.");
+    }
     const payloadSkills = employeeSkills.filter((item) => item.skillId).map((item) => ({
       skillId: item.skillId,
       currentLevel: Number(item.level),
@@ -460,6 +628,7 @@ export default function TnaPage() {
         upsertEmployeeSkillMutation.mutateAsync({ employeeId, skills: payloadSkills }),
         { pending: "Saving employee skills...", success: "Saved", error: "Failed to save" }
       );
+      setAnalyzeEmployeeId(employeeId);
       setActiveStep("analyze");
     } catch (error) {
       toast.error(getErrorMessage(error));
@@ -512,34 +681,6 @@ export default function TnaPage() {
     }
   };
 
-  const deleteRecommendation = async (recommendationId: string) => {
-    const shouldDelete = window.confirm(
-      "Delete this recommendation? This action cannot be undone."
-    );
-    if (!shouldDelete) return;
-
-    setDeletingRecommendationId(recommendationId);
-    try {
-      await toast.promise(
-        deleteRecommendationMutation.mutateAsync({ recommendationId }),
-        {
-          pending: "Deleting recommendation...",
-          success: "Recommendation deleted",
-          error: "Failed to delete recommendation",
-        }
-      );
-      setStatusDrafts((previous) => {
-        const next = { ...previous };
-        delete next[recommendationId];
-        return next;
-      });
-    } catch (error) {
-      toast.error(getErrorMessage(error));
-    } finally {
-      setDeletingRecommendationId(null);
-    }
-  };
-
   return (
     <div className="pt-14 pb-6 px-4 md:px-6 lg:p-6 space-y-6">
       <section
@@ -550,13 +691,22 @@ export default function TnaPage() {
         }}
       >
         <div className="flex flex-col gap-5">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">Corporate Workflow</p>
-            <h1 className="text-3xl font-bold text-slate-900 mt-1">Training Needs Analysis</h1>
-            <p className="text-slate-600 mt-2 max-w-3xl">
-              Follow the flow from setup to recommendation tracking so administrators can evaluate {" "}
-              {employeeTermPlural.toLowerCase()} with consistent, auditable data.
-            </p>
+          <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">Corporate Workflow</p>
+              <h1 className="text-3xl font-bold text-slate-900 mt-1">Training Needs Analysis</h1>
+              <p className="text-slate-600 mt-2 max-w-3xl">
+                This flow is focused on employee role and level capture, analysis, and recommendation
+                tracking. Skills and role standards are configured in a separate Configuration page.
+              </p>
+            </div>
+            <Button
+              variant="outline"
+              className="h-10 w-full md:w-auto"
+              onClick={() => navigate(`/${orgCode}/admin/tna/configuration`)}
+            >
+              Open Skill and Role
+            </Button>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
@@ -564,6 +714,11 @@ export default function TnaPage() {
               <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Skill Library</p>
               <p className="text-2xl font-bold text-slate-900 mt-2">{skills.length}</p>
               <p className="text-xs text-slate-500 mt-1">Reusable skills available</p>
+            </div>
+            <div className="rounded-xl border border-slate-200 bg-white/80 p-4">
+              <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Role Standards</p>
+              <p className="text-2xl font-bold text-slate-900 mt-2">{roleOptions.length}</p>
+              <p className="text-xs text-slate-500 mt-1">Configured role profiles</p>
             </div>
             <div className="rounded-xl border border-slate-200 bg-white/80 p-4">
               <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">{employeeTermPlural}</p>
@@ -574,11 +729,6 @@ export default function TnaPage() {
               <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Pending Actions</p>
               <p className="text-2xl font-bold text-amber-600 mt-2">{pendingRecommendations}</p>
               <p className="text-xs text-slate-500 mt-1">Recommendations waiting assignment</p>
-            </div>
-            <div className="rounded-xl border border-slate-200 bg-white/80 p-4">
-              <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Assigned</p>
-              <p className="text-2xl font-bold text-cyan-700 mt-2">{assignedRecommendations}</p>
-              <p className="text-xs text-slate-500 mt-1">Recommendations in progress</p>
             </div>
           </div>
         </div>
@@ -614,12 +764,12 @@ export default function TnaPage() {
           />
         </div>
 
-        <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-2">
+        <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2">
   {FLOW_STEPS.map((step, index) => {
     const isActive = activeStep === step.key;
     const isComplete = completionByStep[step.key];
     const statusMeta = getStepStatusMeta(step.key);
-    const stepGuide = STEP_GUIDANCE[step.key] || STEP_GUIDANCE["skill-library"];
+    const stepGuide = STEP_GUIDANCE[step.key] || STEP_GUIDANCE["employee-skills"];
     const hoverAlignClass = index >= FLOW_STEPS.length - 2 ? "right-0" : "left-0";
 
     return (
@@ -673,198 +823,7 @@ export default function TnaPage() {
       </section>
 
       <div className="space-y-6">
-          <section
-            id="skill-library"
-            className={`${panelClassName} space-y-4 ${
-              activeStep === "skill-library" ? "ring-2 ring-primary/20" : ""
-            }`}
-          >
-            <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-3">
-              <div>
-                <div className="flex items-center gap-2">
-                  <p className={fieldLabelClassName}>Step 1</p>
-                  <span
-                    className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-semibold ${skillLibraryStatus.className}`}
-                  >
-                    {skillLibraryStatus.label}
-                  </span>
-                </div>
-                <h2 className="text-xl font-semibold text-slate-900">Build Skill Library</h2>
-                <p className="text-sm text-slate-600 mt-1">
-                  Add standardized skills first so they can be reused in role and employee records.
-                </p>
-              </div>
-              <Button variant="outline" onClick={() => setActiveStep("role-requirements")} className="h-fit">
-                Next Step
-              </Button>
-            </div>
-
-            <div className={sectionSurfaceClassName}>
-              <p className={fieldLabelClassName}>Add New Skill</p>
-              <div className="mt-1 grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_120px] gap-2">
-                <input
-                  value={skillName}
-                  onChange={(event) => setSkillName(event.target.value)}
-                  className={inputClassName}
-                  placeholder="Skill name (e.g., Emergency Care)"
-                />
-                <Button
-                  variant="primary"
-                  onClick={saveSkill}
-                  isLoading={createSkillMutation.isPending}
-                  className="h-10 whitespace-nowrap justify-center"
-                >
-                  Add Skill
-                </Button>
-              </div>
-              <p className={fieldHintClassName}>
-                Keep names short and specific so reports and role standards stay clean.
-              </p>
-            </div>
-
-            <div className="rounded-xl bg-slate-50 border border-slate-200 p-3 min-h-[66px]">
-              {skillsQuery.isLoading ? (
-                <p className="text-sm text-slate-500">Loading skills...</p>
-              ) : skills.length === 0 ? (
-                <p className="text-sm text-slate-500">No skills yet. Add your first skill above.</p>
-              ) : (
-                <div className="flex flex-wrap gap-2">
-                  {skills.map((skill) => (
-                    <span
-                      key={skill._id}
-                      className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-700"
-                    >
-                      {skill.name}
-                    </span>
-                  ))}
-                </div>
-              )}
-            </div>
-          </section>
-
-          <section
-            id="role-requirements"
-            className={`${panelClassName} space-y-4 ${
-              activeStep === "role-requirements" ? "ring-2 ring-primary/20" : ""
-            }`}
-          >
-            <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-3">
-              <div>
-                <div className="flex items-center gap-2">
-                  <p className={fieldLabelClassName}>Step 2</p>
-                  <span
-                    className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-semibold ${roleRequirementsStatus.className}`}
-                  >
-                    {roleRequirementsStatus.label}
-                  </span>
-                </div>
-                <h2 className="text-xl font-semibold text-slate-900">Define Role Standards</h2>
-                <p className="text-sm text-slate-600 mt-1">
-                  Set job role expectations with required skill levels and pre-assessment threshold.
-                </p>
-              </div>
-              <Button variant="outline" onClick={() => setActiveStep("employee-skills")} className="h-fit">
-                Next Step
-              </Button>
-            </div>
-
-            <div className={`${sectionSurfaceClassName} space-y-3`}>
-              <p className={fieldLabelClassName}>Role Metadata</p>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div>
-                  <label className={fieldLabelClassName}>Job Role</label>
-                  <input
-                    value={jobRole}
-                    onChange={(event) => setJobRole(event.target.value)}
-                    className={`${inputClassName} mt-1`}
-                    placeholder="Job role (e.g., Nurse, HR Officer)"
-                  />
-                  <p className={fieldHintClassName}>Use a role name that matches your organization chart.</p>
-                </div>
-                <div>
-                  <label className={fieldLabelClassName}>Passing Threshold (%)</label>
-                  <input
-                    type="number"
-                    min={0}
-                    max={100}
-                    value={threshold}
-                    onChange={(event) => setThreshold(Number(event.target.value || 70))}
-                    className={`${inputClassName} mt-1`}
-                    placeholder="70"
-                  />
-                  <p className={fieldHintClassName}>Employees below this score will be flagged for support.</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="rounded-xl border border-slate-200 bg-white p-3 space-y-2">
-              <p className={fieldLabelClassName}>Required Skills And Levels</p>
-              <div className="hidden md:grid grid-cols-12 gap-2 px-1">
-                <p className={`col-span-8 ${fieldLabelClassName}`}>Skill</p>
-                <p className={`col-span-2 ${fieldLabelClassName}`}>Level</p>
-                <p className={`col-span-2 ${fieldLabelClassName}`}>Action</p>
-              </div>
-              {requiredSkills.map((item, index) => (
-                <div key={`required-${index}`} className="grid grid-cols-12 gap-2">
-                  <div className="col-span-12 md:col-span-8">
-                    <SearchableSelect
-                      options={skillSelectOptions}
-                      value={item.skillId}
-                      onChange={(value) => {
-                        const next = [...requiredSkills];
-                        next[index] = { ...next[index], skillId: value };
-                        setRequiredSkills(next);
-                      }}
-                      placeholder="Select skill"
-                      loading={skillsQuery.isLoading}
-                      emptyMessage="No skills yet. Add skills in Step 1."
-                      className="w-full"
-                    />
-                  </div>
-                  <input
-                    type="number"
-                    min={0}
-                    max={5}
-                    value={item.level}
-                    onChange={(event) => {
-                      const next = [...requiredSkills];
-                      next[index] = { ...next[index], level: Number(event.target.value || 0) };
-                      setRequiredSkills(next);
-                    }}
-                    className={`col-span-7 md:col-span-2 ${inputClassName}`}
-                  />
-                  <button
-                    type="button"
-                    className="col-span-5 md:col-span-2 rounded-lg border border-red-200 text-red-600 text-sm hover:bg-red-50"
-                    onClick={() => {
-                      if (requiredSkills.length === 1) return;
-                      setRequiredSkills(requiredSkills.filter((_, rowIndex) => rowIndex !== index));
-                    }}
-                  >
-                    Remove
-                  </button>
-                </div>
-              ))}
-              <p className={fieldHintClassName}>Use levels 1 to 5, where 5 is expert capability.</p>
-            </div>
-
-            <div className="flex flex-wrap gap-2">
-              <Button
-                variant="outline"
-                onClick={() => setRequiredSkills([...requiredSkills, { skillId: "", level: 1 }])}
-              >
-                Add Skill Requirement
-              </Button>
-              <Button
-                variant="primary"
-                onClick={saveRoleRequirements}
-                isLoading={upsertRoleRequirementMutation.isPending}
-              >
-                Save Role Requirements
-              </Button>
-            </div>
-          </section>
-
+          {activeStep === "employee-skills" && (
           <section
             id="employee-skills"
             className={`${panelClassName} space-y-4 ${
@@ -874,16 +833,16 @@ export default function TnaPage() {
             <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-3">
               <div>
                 <div className="flex items-center gap-2">
-                  <p className={fieldLabelClassName}>Step 3</p>
+                  <p className={fieldLabelClassName}>Step 1</p>
                   <span
                     className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-semibold ${employeeSkillsStatus.className}`}
                   >
                     {employeeSkillsStatus.label}
                   </span>
                 </div>
-                <h2 className="text-xl font-semibold text-slate-900">Capture {employeeTerm} Skills</h2>
+                <h2 className="text-xl font-semibold text-slate-900">Capture {employeeTerm} Role and Skills</h2>
                 <p className="text-sm text-slate-600 mt-1">
-                  Select an employee and save current competency levels.
+                  Select an employee, pick the role, then save current competency levels.
                 </p>
               </div>
               <Button variant="outline" onClick={() => setActiveStep("analyze")} className="h-fit">
@@ -891,22 +850,55 @@ export default function TnaPage() {
               </Button>
             </div>
 
-            <div className={sectionSurfaceClassName}>
-              <label className={fieldLabelClassName}>Select {employeeTerm}</label>
-              <div className="mt-1">
-                <SearchableSelect
-                  options={employeeSelectOptions}
-                  value={employeeId}
-                  onChange={(value) => setEmployeeId(value)}
-                  placeholder={`Select ${employeeTerm.toLowerCase()}`}
-                  loading={studentsQuery.isLoading}
-                  emptyMessage={`No ${employeeTermPlural.toLowerCase()} found.`}
-                  className="w-full"
-                />
+            <div className={`${sectionSurfaceClassName} space-y-3`}>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <label className={fieldLabelClassName}>Select {employeeTerm}</label>
+                  <div className="mt-1">
+                    <SearchableSelect
+                      options={employeeSelectOptions}
+                      value={employeeId}
+                      onChange={(value) => setEmployeeId(value)}
+                      placeholder={`Select ${employeeTerm.toLowerCase()}`}
+                      loading={studentsQuery.isLoading}
+                      emptyMessage={`No ${employeeTermPlural.toLowerCase()} found.`}
+                      className="w-full"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className={fieldLabelClassName}>Job Role</label>
+                  <div className="mt-1">
+                    <SearchableSelect
+                      options={roleSelectOptions}
+                      value={analyzeJobRole}
+                      onChange={(value) => setAnalyzeJobRole(value)}
+                      placeholder={
+                        roleRequirementsQuery.isLoading
+                          ? "Loading role standards..."
+                          : roleOptions.length > 0
+                          ? "Select job role"
+                          : "No role standards yet"
+                      }
+                      loading={roleRequirementsQuery.isLoading}
+                      emptyMessage="No role standards yet. Configure them in Skill and Role."
+                      className="w-full"
+                    />
+                  </div>
+                </div>
               </div>
               <p className={fieldHintClassName}>
-                Use the same scale from the Level Guide to keep analysis accurate.
+                Use the same scale from the Level Guide. Skills and role standards are managed in Configuration.
               </p>
+              {!roleRequirementsQuery.isLoading && roleOptions.length === 0 && (
+                <button
+                  type="button"
+                  className="text-xs text-amber-700 underline underline-offset-2"
+                  onClick={() => navigate(`/${orgCode}/admin/tna/configuration`)}
+                >
+                  No role standards found. Open Skill and Role.
+                </button>
+              )}
             </div>
 
             <div className="rounded-xl border border-slate-200 bg-white p-3 space-y-2">
@@ -929,7 +921,7 @@ export default function TnaPage() {
                       }}
                       placeholder="Select skill"
                       loading={skillsQuery.isLoading}
-                      emptyMessage="No skills yet. Add skills in Step 1."
+                      emptyMessage="No skills yet. Add skills in Skill and Role."
                       className="w-full"
                     />
                   </div>
@@ -978,7 +970,9 @@ export default function TnaPage() {
               </Button>
             </div>
           </section>
+          )}
 
+          {activeStep === "analyze" && (
           <section
             id="analyze"
             className={`${panelClassName} space-y-4 ${activeStep === "analyze" ? "ring-2 ring-primary/20" : ""}`}
@@ -986,7 +980,7 @@ export default function TnaPage() {
             <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-3">
               <div>
                 <div className="flex items-center gap-2">
-                  <p className={fieldLabelClassName}>Step 4</p>
+                  <p className={fieldLabelClassName}>Step 2</p>
                   <span
                     className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-semibold ${analyzeStatus.className}`}
                   >
@@ -1036,13 +1030,13 @@ export default function TnaPage() {
                           : "No role standards yet"
                       }
                       loading={roleRequirementsQuery.isLoading}
-                      emptyMessage="No role standards yet. Define Step 2 first."
+                      emptyMessage="No role standards yet. Configure them in Skill and Role."
                       className="w-full"
                     />
                   </div>
                   {!roleRequirementsQuery.isLoading && roleOptions.length === 0 && (
                     <p className="mt-1 text-xs text-amber-700">
-                      Define role standards in Step 2 first.
+                      Define role standards in Configuration before running analysis.
                     </p>
                   )}
                 </div>
@@ -1083,7 +1077,7 @@ export default function TnaPage() {
                 </p>
               ) : !selectedAnalyzeRoleRequirement ? (
                 <p className="text-sm text-amber-700 mt-3">
-                  No saved role standards found for this role yet. Configure it in Step 2 first.
+                  No saved role standards found for this role yet. Configure it in Skill and Role first.
                 </p>
               ) : selectedAnalyzeRoleSkills.length === 0 ? (
                 <p className="text-sm text-slate-500 mt-3">
@@ -1223,7 +1217,9 @@ export default function TnaPage() {
               </Button>
             </div>
           </section>
+          )}
 
+          {activeStep === "recommendations" && (
           <section
             id="recommendations"
             className={`${panelClassName} space-y-4 ${
@@ -1233,7 +1229,7 @@ export default function TnaPage() {
             <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
               <div>
                 <div className="flex items-center gap-2">
-                  <p className={fieldLabelClassName}>Step 5</p>
+                  <p className={fieldLabelClassName}>Step 3</p>
                   <span
                     className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-semibold ${recommendationsStatus.className}`}
                   >
@@ -1267,103 +1263,21 @@ export default function TnaPage() {
               <p className="text-sm text-slate-500">Loading recommendations...</p>
             ) : recommendations.length === 0 ? (
               <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-5 text-sm text-slate-600">
-                No recommendations yet. Complete steps 1 to 4 and run analysis.
+                No recommendations yet. Complete steps 1 and 2, then run analysis.
               </div>
             ) : (
-              <div className="rounded-xl border border-slate-200 bg-white">
-                  <table className="w-full table-auto text-sm">
-                    <thead className="bg-slate-50">
-                      <tr className="text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
-                        <th className="px-4 py-3">Employee</th>
-                        <th className="px-4 py-3">Role</th>
-                        <th className="px-4 py-3">Created</th>
-                        <th className="px-4 py-3">Skill Gaps</th>
-                        <th className="px-4 py-3">Recommended</th>
-                        <th className="px-4 py-3">Status</th>
-                        <th className="px-4 py-3">Action</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {recommendations.map((recommendation) => {
-                        const currentStatus = normalizeStatus(recommendation.status);
-                        const currentDraft = statusDrafts[recommendation._id] || currentStatus;
-                        const isDeletingCurrent =
-                          deleteRecommendationMutation.isPending &&
-                          deletingRecommendationId === recommendation._id;
-                        const firstName = String(recommendation.employee?.firstName || "").trim();
-                        const lastName = String(recommendation.employee?.lastName || "").trim();
-                        const fullName =
-                          `${firstName} ${lastName}`.trim() ||
-                          recommendation.employee?.email ||
-                          "Unknown employee";
-
-                        return (
-                          <tr
-                            key={recommendation._id}
-                            className="border-t border-slate-100 align-top relative focus-within:z-20"
-                          >
-                            <td className="px-4 py-3">
-                              <p className="text-sm font-semibold text-slate-900">{fullName}</p>
-                              <p className="text-xs text-slate-500 mt-1">
-                                {recommendation.employee?.email || "--"}
-                              </p>
-                            </td>
-                            <td className="px-4 py-3 text-slate-700">{recommendation.jobRole || "--"}</td>
-                            <td className="px-4 py-3 text-slate-700">
-                              {new Date(recommendation.createdAt || Date.now()).toLocaleString()}
-                            </td>
-                            <td className="px-4 py-3">
-                              <span className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-700">
-                                {Array.isArray(recommendation.skillGaps)
-                                  ? recommendation.skillGaps.length
-                                  : 0}
-                              </span>
-                            </td>
-                            <td className="px-4 py-3">
-                              <span className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-700">
-                                {Array.isArray(recommendation.recommendedTrainings)
-                                  ? recommendation.recommendedTrainings.length
-                                  : 0}
-                              </span>
-                            </td>
-                            <td className="px-4 py-3">
-                              <div className="w-[190px]">
-                                <SearchableSelect
-                                  options={recommendationStatusOptions}
-                                  value={currentDraft}
-                                  onChange={(value) => {
-                                    const nextStatus = value as RecommendationStatus;
-                                    setStatusDrafts((previous) => ({
-                                      ...previous,
-                                      [recommendation._id]: nextStatus,
-                                    }));
-                                    void updateStatus(recommendation._id, nextStatus, currentStatus);
-                                  }}
-                                  placeholder="Select status"
-                                  className="w-full"
-                                />
-                              </div>
-                            </td>
-                            <td className="px-4 py-3">
-                              <button
-                                type="button"
-                                className="h-10 min-w-[110px] rounded-lg border border-red-200 px-3 text-sm text-red-600 transition-colors hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
-                                onClick={() => {
-                                  void deleteRecommendation(recommendation._id);
-                                }}
-                                disabled={deleteRecommendationMutation.isPending}
-                              >
-                                {isDeletingCurrent ? "Deleting..." : "Delete"}
-                              </button>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-              </div>
+              <GroupedDataTable
+                groups={recommendationTableGroups}
+                columns={recommendationTableColumns}
+                rowKey={(row) => row._id}
+                emptyFilteredText="No matching recommendations found."
+                tableMinWidthClassName="min-w-[980px]"
+                cardless
+                showGroupHeader={false}
+              />
             )}
           </section>
+          )}
       </div>
     </div>
   );

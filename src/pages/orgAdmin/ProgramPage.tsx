@@ -1,10 +1,8 @@
 import Button from "../../components/common/Button";
-import Table from "../../components/common/Table";
-import { FaPlus, FaEye } from "react-icons/fa";
+import { FaPlus } from "react-icons/fa";
 import { useSearchParams } from "react-router-dom";
-import { FiEdit2, FiTrash2 } from "react-icons/fi";
 import { usePrograms } from "../../hooks/useProgram";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useAuth } from "../../context/AuthContext";
 import TableEmptyState from "../../components/common/TableEmptyState";
 import UpsertProgramModal from "../../components/orgAdmin/UpsertProgramModal";
@@ -12,14 +10,30 @@ import ViewProgramModal from "../../components/orgAdmin/ViewProgramModal";
 import DeleteProgramModal from "../../components/orgAdmin/DeleteProgramModal";
 import TableSkeletonClean from "../../components/skeleton/TableSkeletonClean";
 import { useDebounce } from "../../hooks/useDebounce";
+import {
+  GroupedTableColumn,
+  GroupedTableGroup,
+  default as GroupedDataTable,
+} from "../../components/common/GroupedDataTable";
+import ActionMenuButton from "../../components/orgAdmin/ActionMenuButton";
+import { getTerm } from "../../lib/utils";
 
 interface ProgramToDelete {
   id: string;
   name: string;
 }
 
+type ProgramRow = {
+  _id: string;
+  code: string;
+  name: string;
+  description?: string;
+};
+
 export default function ProgramPage() {
   const { currentUser } = useAuth();
+  const orgType = currentUser.user.organization.type;
+  const learnersTerm = getTerm("learner", orgType, true);
   const [searchParams, setSearchParams] = useSearchParams();
   const [archiveStatus, setArchiveStatus] = useState<"only" | "none">(
     (searchParams.get("archiveStatus") as "only" | "none") || "none"
@@ -77,13 +91,6 @@ export default function ProgramPage() {
     });
   };
 
-  const columns = [
-    { key: "code", header: "Program Code", width: "20%" },
-    { key: "name", header: "Program Name", width: "35%" },
-    { key: "description", header: "Description", width: "30%" },
-    { key: "actions", header: "Actions", width: "15%" },
-  ];
-
   // Skeleton configuration for programs
   const programTableColumns = [
     { width: "20%" }, // Program Code
@@ -92,103 +99,102 @@ export default function ProgramPage() {
     { width: "15%", alignment: "center" as const }, // Actions
   ];
 
-  const renderTableRows = () => {
-    if (isError) {
-      return (
-        <tr className="border-b border-gray-200">
-          <td colSpan={4} className="py-4 px-4 text-center text-gray-500">
-            Error loading programs
-          </td>
-        </tr>
-      );
-    }
+  const programRows = useMemo(
+    () => ((data?.programs || []) as ProgramRow[]),
+    [data?.programs],
+  );
 
-    if (!data?.programs || data.programs.length === 0) {
-      return (
-        <TableEmptyState
-          title="Create Your First Program"
-          description="Start by creating a program. Programs help organize your academic offerings."
-          primaryActionLabel="Add Program"
-          primaryActionPath="?modal=create-program"
-          colSpan={4}
-        />
-      );
-    }
+  const tableGroups = useMemo(
+    (): GroupedTableGroup<ProgramRow>[] => [
+      {
+        key: "programs",
+        title: "Programs",
+        rows: programRows,
+        badgeText: `${programRows.length} total`,
+      },
+    ],
+    [programRows],
+  );
 
-    return data.programs.map((program: any) => (
-      <tr
-        key={program._id}
-        className={`border-b border-gray-200 hover:bg-gray-50 cursor-pointer ${
-          archiveStatus === "only" ? "text-gray-500 line-through" : ""
-        }`}
-        onClick={() => setSearchParams({ modal: "view-program", id: program._id })}
-      >
-        <td className="py-4 px-4">
-          <span className="font-semibold">{program.code}</span>
-        </td>
-        <td className="py-4 px-4">
-          <span className="font-semibold">{program.name}</span>
-        </td>
-        <td className="py-4 px-4 text-gray-600">
-          <span className="line-clamp-2">{program.description}</span>
-        </td>
-        <td className="py-4 px-4">
-          <div className="flex gap-2">
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setSearchParams({ modal: "view-program", id: program._id })
-              }}
-              className="p-2 rounded-full hover:bg-gray-100 text-primary"
-              title="View Program Details"
-            >
-              <FaEye className="w-4 h-4" />
-            </button>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                if (archiveStatus !== "only") {
-                  setSearchParams({ modal: "edit-program", id: program._id });
-                }
-              }}
-              className={`p-2 rounded-full ${
-                archiveStatus === "only"
-                  ? "cursor-not-allowed text-gray-400"
-                  : "hover:bg-gray-100"
-              }`}
-              disabled={archiveStatus === "only"}
-              title="Edit Program"
-            >
-              <FiEdit2 className="w-4 h-4" />
-            </button>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                if (archiveStatus !== "only") {
-                  handleDeleteClick(program);
-                }
-              }}
-              className={`p-2 rounded-full ${
-                archiveStatus === "only"
-                  ? "cursor-not-allowed text-gray-400"
-                  : "hover:bg-gray-100 text-red-500"
-              }`}
-              disabled={archiveStatus === "only"}
-              title="Delete Program"
-            >
-              <FiTrash2 className="w-4 h-4" />
-            </button>
-          </div>
-        </td>
-      </tr>
-    ));
-  };
+  const tableColumns = useMemo(
+    (): GroupedTableColumn<ProgramRow>[] => [
+      {
+        key: "code",
+        label: "Program Code",
+        sortable: true,
+        filterable: true,
+        filterPlaceholder: "Search code",
+        sortAccessor: (row) => row.code || "",
+        filterAccessor: (row) => row.code || "",
+        className: "min-w-[180px]",
+        render: (row) => <span className="font-semibold text-slate-900">{row.code}</span>,
+      },
+      {
+        key: "name",
+        label: "Program Name",
+        sortable: true,
+        filterable: true,
+        filterPlaceholder: "Search name",
+        sortAccessor: (row) => row.name || "",
+        filterAccessor: (row) => row.name || "",
+        className: "min-w-[260px]",
+        render: (row) => <span className="font-semibold text-slate-900">{row.name}</span>,
+      },
+      {
+        key: "description",
+        label: "Description",
+        sortable: true,
+        filterable: true,
+        filterPlaceholder: "Search description",
+        sortAccessor: (row) => row.description || "",
+        filterAccessor: (row) => row.description || "",
+        className: "min-w-[280px]",
+        render: (row) => (
+          <span className="line-clamp-2 text-sm text-slate-600">
+            {row.description || "No description"}
+          </span>
+        ),
+      },
+      {
+        key: "actions",
+        label: "Actions",
+        align: "right",
+        className: "min-w-[120px]",
+        render: (row) => (
+          <ActionMenuButton
+            buttonClassName="!px-2 !py-1.5"
+            items={[
+              {
+                key: "view",
+                label: "View",
+                onClick: () => setSearchParams({ modal: "view-program", id: row._id }),
+              },
+              {
+                key: "update",
+                label: "Update",
+                onClick: () => setSearchParams({ modal: "edit-program", id: row._id }),
+                disabled: archiveStatus === "only",
+              },
+              {
+                key: "delete",
+                label: "Delete",
+                onClick: () => handleDeleteClick(row),
+                disabled: archiveStatus === "only",
+                danger: true,
+              },
+            ]}
+          />
+        ),
+      },
+    ],
+    [archiveStatus, setSearchParams],
+  );
 
   return (
     <div className="pt-14 pb-6 px-6 lg:p-6">
       <h1 className="text-3xl font-bold">Programs</h1>
       <p className="text-gray-400">
-        Organize and manage your student programs.
+        Organize and manage your {learnersTerm.toLowerCase()} programs.
       </p>{" "}
       <div className="flex flex-col gap-4 py-6 md:flex-row md:items-center md:justify-between">
         {/* Search and Filter */}
@@ -250,10 +256,30 @@ export default function ProgramPage() {
       </div>
       {isLoading ? (
         <TableSkeletonClean columns={programTableColumns} rows={10} />
+      ) : isError ? (
+        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          Error loading programs
+        </div>
+      ) : programRows.length === 0 ? (
+        <TableEmptyState
+          title="Create Your First Program"
+          description="Start by creating a program. Programs help organize your academic offerings."
+          primaryActionLabel="Add Program"
+          primaryActionPath="?modal=create-program"
+          colSpan={4}
+        />
       ) : (
-        <Table columns={columns} scrollable={true} maxHeight="580px">
-          {renderTableRows()}
-        </Table>
+        <GroupedDataTable
+          groups={tableGroups}
+          columns={tableColumns}
+          rowKey={(row) => row._id}
+          tableMinWidthClassName="min-w-[980px]"
+          showPagination={false}
+          cardless
+          showGroupHeader={false}
+          onRowClick={(row) => setSearchParams({ modal: "view-program", id: row._id })}
+          emptyFilteredText="No matching programs found."
+        />
       )}
       {/* Pagination */}
       {!isLoading && (

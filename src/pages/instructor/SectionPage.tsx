@@ -36,6 +36,7 @@ export default function InstructorSectionPage() {
 
   const sectionTerm = getTerm("group", orgType);
   const learnerTerm = getTerm("learner", orgType);
+  const learnersTerm = getTerm("learner", orgType, true);
 
   const tabs = [
     { name: "Modules", value: "modules" },
@@ -56,40 +57,44 @@ export default function InstructorSectionPage() {
 
   const performanceStudents = sectionPerformance?.students || [];
   const totalPerformanceStudents = performanceStudents.length;
-  const completedModulesStudents = performanceStudents.filter((student: any) => {
-    const progress = student.progress;
-    if (!progress) return false;
-    const completedModules = progress.completedModules ?? 0;
-    if (completedModules > 0) return true;
-    return progress.completedLessons > 0;
-  }).length;
-  const completedAssessmentsStudents = performanceStudents.filter((student: any) => {
-    const progress = student.progress;
-    return progress && progress.completedAssessments > 0;
-  }).length;
+  const completedModulesStudents = performanceStudents.filter(
+    (student: any) => {
+      const progress = student.progress;
+      if (!progress) return false;
+      const completedModules = progress.completedModules ?? 0;
+      if (completedModules > 0) return true;
+      return progress.completedLessons > 0;
+    },
+  ).length;
+  const completedAssessmentsStudents = performanceStudents.filter(
+    (student: any) => {
+      const progress = student.progress;
+      return progress && progress.completedAssessments > 0;
+    },
+  ).length;
 
   const completionItems =
     activeTab === "modules"
       ? [
           {
-            label: "Students Completed Modules",
+            label: `${learnersTerm} Completed Modules`,
             value: completedModulesStudents,
             total: totalPerformanceStudents,
             onClick: () =>
               navigate(
-                `/${orgCode}/instructor/completion?type=modules&sectionCode=${sectionCode}`
+                `/${orgCode}/instructor/completion?type=modules&sectionCode=${sectionCode}`,
               ),
           },
         ]
       : activeTab === "assessments"
         ? [
             {
-              label: "Students Completed Assessments",
+              label: `${learnersTerm} Completed Assessments`,
               value: completedAssessmentsStudents,
               total: totalPerformanceStudents,
               onClick: () =>
                 navigate(
-                  `/${orgCode}/instructor/completion?type=assessments&sectionCode=${sectionCode}`
+                  `/${orgCode}/instructor/completion?type=assessments&sectionCode=${sectionCode}`,
                 ),
             },
           ]
@@ -109,7 +114,7 @@ export default function InstructorSectionPage() {
 
   const handlePreviousTab = () => {
     setCurrentMobileTabIndex((prevIndex) =>
-      prevIndex === 0 ? tabs.length - 1 : prevIndex - 1
+      prevIndex === 0 ? tabs.length - 1 : prevIndex - 1,
     );
     setSearchParams({
       tab: tabs[
@@ -122,7 +127,7 @@ export default function InstructorSectionPage() {
 
   const handleNextTab = () => {
     setCurrentMobileTabIndex((prevIndex) =>
-      prevIndex === tabs.length - 1 ? 0 : prevIndex + 1
+      prevIndex === tabs.length - 1 ? 0 : prevIndex + 1,
     );
     setSearchParams({
       tab: tabs[
@@ -345,7 +350,10 @@ export default function InstructorSectionPage() {
         <div className="bg-white p-2 md:p-4 border rounded-lg min-h-[500px]">
           {completionItems.length > 0 && (
             <div className="mb-4">
-              <CompletionTracker title="Completion Tracker" items={completionItems} />
+              <CompletionTracker
+                title="Completion Tracker"
+                items={completionItems}
+              />
             </div>
           )}
           {renderTabContent()}

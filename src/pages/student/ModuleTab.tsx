@@ -43,7 +43,9 @@ export default function ModuleTab({
     currentUser.user.role === "student" || currentUser.user.role === "employee";
   const isInstructor = currentUser.user.role === "instructor";
 
-  const { data: assessmentData } = useSectionAssessment(isLearner ? sectionCode : "");
+  const { data: assessmentData } = useSectionAssessment(
+    isLearner ? sectionCode : "",
+  );
   useStudentCompletedAssessments(isLearner ? userId : "");
   const totalAssessments = assessmentData?.data?.totalAssessments || 0;
   const completedAssessments = totalAssessments
@@ -52,16 +54,18 @@ export default function ModuleTab({
 
   const { totalLessons, completedLessons } = (modules || []).reduce(
     (acc: { totalLessons: number; completedLessons: number }, mod: IModule) => {
-      const publishedLessons = mod.lessons.filter((l) => l.status === "published");
+      const publishedLessons = mod.lessons.filter(
+        (l) => l.status === "published",
+      );
       acc.totalLessons += publishedLessons.length;
       acc.completedLessons += publishedLessons.filter((l) =>
         (l.progress || []).some(
-          (p) => p.userId?.toString() === userId && p.status === "completed"
-        )
+          (p) => p.userId?.toString() === userId && p.status === "completed",
+        ),
       ).length;
       return acc;
     },
-    { totalLessons: 0, completedLessons: 0 }
+    { totalLessons: 0, completedLessons: 0 },
   );
 
   const totalItems = totalLessons + totalAssessments;
@@ -90,7 +94,7 @@ export default function ModuleTab({
         pending: "Preparing module assessment...",
         success: "Assessment draft is ready",
         error: "Failed to build module assessment draft",
-      }
+      },
     );
   };
 
@@ -146,7 +150,7 @@ export default function ModuleTab({
           <div className="space-y-3">
             {modules.map((module: IModule) => {
               const publishedLessons = module.lessons.filter(
-                (l) => l.status === "published"
+                (l) => l.status === "published",
               );
               const moduleAssessments = Array.isArray(module.assessments)
                 ? module.assessments
@@ -154,8 +158,8 @@ export default function ModuleTab({
               const moduleCompleted = publishedLessons.filter((l) =>
                 (l.progress || []).some(
                   (p) =>
-                    p.userId?.toString() === userId && p.status === "completed"
-                )
+                    p.userId?.toString() === userId && p.status === "completed",
+                ),
               ).length;
 
               return (
@@ -184,7 +188,7 @@ export default function ModuleTab({
                         >
                           <IoSync className="text-sm" />
                           <span className="hidden sm:inline">
-                            Sync Assessments
+                            Module Assessment
                           </span>
                           <span className="sm:hidden">Sync</span>
                         </button>
@@ -198,12 +202,15 @@ export default function ModuleTab({
                       <div
                         key={lesson._id}
                         onClick={() =>
-                          navigate(`lessons/${lesson._id}?module=${module._id}`, {
-                            state: {
-                              previousPage: module.title,
-                              path: location.pathname,
+                          navigate(
+                            `lessons/${lesson._id}?module=${module._id}`,
+                            {
+                              state: {
+                                previousPage: module.title,
+                                path: location.pathname,
+                              },
                             },
-                          })
+                          )
                         }
                         className="flex items-center justify-between md:px-12 p-4 bg-white hover:bg-gray-50 cursor-pointer transition-colors border-b border-gray-50"
                       >
@@ -330,7 +337,8 @@ export default function ModuleTab({
             </Button>
             <Button
               onClick={() =>
-                moduleToSync && onGenerateModuleAssessmentDraft(moduleToSync._id)
+                moduleToSync &&
+                onGenerateModuleAssessmentDraft(moduleToSync._id)
               }
               variant="primary"
               className="rounded-full px-5 py-2 shadow-sm"

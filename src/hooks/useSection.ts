@@ -3,9 +3,14 @@ import {
   useQuery,
   useQueryClient,
   useInfiniteQuery,
+  keepPreviousData,
 } from "@tanstack/react-query";
 import { ApiParams } from "../types/params";
 import sectionService from "../services/sectionApi";
+
+type SectionApiParams = Partial<ApiParams> & {
+  filters?: Array<{ key: string; value: string }>;
+};
 
 export const useCreateSection = () => {
   const queryClient = useQueryClient();
@@ -88,9 +93,10 @@ export const useDeleteSection = () => {
   });
 };
 
-export const useAdminSections = (apiParams?: Partial<ApiParams>) => {
+export const useAdminSections = (apiParams?: SectionApiParams) => {
   return useQuery({
     queryKey: ["admin-sections", apiParams],
+    placeholderData: keepPreviousData,
     queryFn: async () => {
       sectionService.resetQuery();
       return sectionService
@@ -108,6 +114,10 @@ export const useAdminSections = (apiParams?: Partial<ApiParams>) => {
         .limit(apiParams?.limit || 10)
         .skip(apiParams?.skip || 0)
         .where({
+          ...((apiParams?.filters || []).reduce((acc, filter) => {
+            acc[filter.key] = filter.value;
+            return acc;
+          }, {} as Record<string, string>)),
           ...(apiParams?.filter
             ? { [apiParams.filter.key as string]: apiParams.filter.value }
             : {}),
@@ -399,7 +409,7 @@ export interface InfiniteSectionParams extends Partial<ApiParams> {
 
 export const useExportSectionToCsv = () => {
   return useMutation({
-    mutationFn: async (apiParams?: Partial<ApiParams>) => {
+    mutationFn: async (apiParams?: SectionApiParams) => {
       sectionService.resetQuery();
       return sectionService
         .select(["code", "name", "totalStudent", "status"])
@@ -409,8 +419,53 @@ export const useExportSectionToCsv = () => {
         ])
         .limit(apiParams?.limit || 10)
         .skip(apiParams?.skip || 0)
+        .where({
+          ...((apiParams?.filters || []).reduce((acc, filter) => {
+            acc[filter.key] = filter.value;
+            return acc;
+          }, {} as Record<string, string>)),
+          ...(apiParams?.filter
+            ? { [apiParams.filter.key as string]: apiParams.filter.value }
+            : {}),
+        })
         .exportSection();
     },
+  });
+};
+
+export const useAdminCompletionOverview = (organizationId?: string) => {
+  return useQuery({
+    queryKey: ["admin-completion-overview", organizationId],
+    queryFn: async () => {
+      sectionService.resetQuery();
+      return sectionService
+        .select(["_id", "code", "name", "status", "instructor", "students", "modules"])
+        .populate([
+          {
+            path: "instructor",
+            select: "_id firstName lastName",
+          },
+          {
+            path: "students",
+            select: "_id firstName lastName email",
+          },
+          {
+            path: "modules",
+            select: "_id title lessons",
+            populate: {
+              path: "lessons",
+              select: "_id title progress",
+            },
+          },
+        ])
+        .where(organizationId ? { organizationId } : {})
+        .limit(200)
+        .skip(0)
+        .withArchive("none")
+        .withDocument(true)
+        .searchSections();
+    },
+    enabled: !!organizationId,
   });
 };
 

@@ -99,12 +99,15 @@ export default function InstructorLateMissingPage() {
       : `${items.length} item${items.length !== 1 ? "s" : ""} across your sections`;
 
   const groups = useMemo((): GroupedTableGroup<LateMissingItem>[] => {
-    const grouped = items.reduce<Record<string, LateMissingItem[]>>((acc, item) => {
-      const key = item.sectionCode || "unknown";
-      if (!acc[key]) acc[key] = [];
-      acc[key].push(item);
-      return acc;
-    }, {});
+    const grouped = items.reduce<Record<string, LateMissingItem[]>>(
+      (acc, item) => {
+        const key = item.sectionCode || "unknown";
+        if (!acc[key]) acc[key] = [];
+        acc[key].push(item);
+        return acc;
+      },
+      {},
+    );
 
     return Object.entries(grouped)
       .map(([sectionCode, sectionItems]) => {
@@ -168,7 +171,9 @@ export default function InstructorLateMissingPage() {
               {row.assessmentTitle || "-"}
             </p>
             {label && (
-              <p className="text-xs text-gray-400 truncate capitalize">{label}</p>
+              <p className="text-xs text-gray-400 truncate capitalize">
+                {label}
+              </p>
             )}
           </div>
         );
@@ -180,10 +185,13 @@ export default function InstructorLateMissingPage() {
       sortable: true,
       filterable: true,
       filterPlaceholder: "Search due date",
-      sortAccessor: (row) => (row.dueDate ? new Date(row.dueDate).getTime() : 0),
+      sortAccessor: (row) =>
+        row.dueDate ? new Date(row.dueDate).getTime() : 0,
       filterAccessor: (row) => formatDueDate(row.dueDate),
       render: (row) => (
-        <span className="text-sm text-gray-700">{formatDueDate(row.dueDate)}</span>
+        <span className="text-sm text-gray-700">
+          {formatDueDate(row.dueDate)}
+        </span>
       ),
     },
     {
@@ -197,7 +205,9 @@ export default function InstructorLateMissingPage() {
       filterAccessor: (row) => formatSubmittedAt(row.submittedAt),
       render: (row) => (
         <span className="text-sm text-gray-700">
-          {row.classifiedStatus === "late" ? formatSubmittedAt(row.submittedAt) : "-"}
+          {row.classifiedStatus === "late"
+            ? formatSubmittedAt(row.submittedAt)
+            : "-"}
         </span>
       ),
     },
@@ -207,9 +217,12 @@ export default function InstructorLateMissingPage() {
       sortable: true,
       filterable: true,
       filterPlaceholder: "Search status",
-      sortAccessor: (row) => statusConfig[row.classifiedStatus]?.label || row.classifiedStatus,
+      sortAccessor: (row) =>
+        statusConfig[row.classifiedStatus]?.label || row.classifiedStatus,
       filterAccessor: (row) =>
-        (statusConfig[row.classifiedStatus]?.label || row.classifiedStatus).toLowerCase(),
+        (
+          statusConfig[row.classifiedStatus]?.label || row.classifiedStatus
+        ).toLowerCase(),
       align: "right",
       render: (row) => {
         const cfg = statusConfig[row.classifiedStatus];
@@ -236,6 +249,17 @@ export default function InstructorLateMissingPage() {
       : filterParam === "missing"
         ? "bg-red-100"
         : "bg-orange-100";
+  const filterTabs =
+    filterParam === "missing"
+      ? [
+          { label: "All", value: null },
+          { label: "Missing", value: "missing" },
+        ]
+      : [
+          { label: "All", value: null },
+          { label: "Late", value: "late" },
+          { label: "Missing", value: "missing" },
+        ];
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -249,11 +273,7 @@ export default function InstructorLateMissingPage() {
         />
 
         <div className="flex gap-2 mb-6">
-          {[
-            { label: "All", value: null },
-            { label: "Late", value: "late" },
-            { label: "Missing", value: "missing" },
-          ].map(({ label, value }) => {
+          {filterTabs.map(({ label, value }) => {
             const isActive = filterParam === value;
             return (
               <button
@@ -314,7 +334,9 @@ export default function InstructorLateMissingPage() {
             emptyFilteredText="No matching rows found."
             tableMinWidthClassName="min-w-[1050px]"
             onRowClick={(row) =>
-              navigate(`/${orgCode}/instructor/sections/${row.sectionCode}?tab=grades`)
+              navigate(
+                `/${orgCode}/instructor/sections/${row.sectionCode}?tab=grades`,
+              )
             }
           />
         )}
@@ -322,4 +344,3 @@ export default function InstructorLateMissingPage() {
     </div>
   );
 }
-

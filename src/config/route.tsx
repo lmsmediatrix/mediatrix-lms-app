@@ -4,6 +4,7 @@ import AuthLayout from "../layouts/AuthLayout";
 import Login from "../pages/auth/Login";
 import SuperadminDashboard from "../pages/superadmin/SuperadminDashboard";
 import OrgAdminDashboard from "../pages/orgAdmin/OrgAdminDashboard";
+import OrgAdminCompletionPage from "../pages/orgAdmin/OrgAdminCompletionPage";
 import Register from "../pages/Register";
 import NotFound from "../pages/NotFound";
 import Organizations from "../pages/superadmin/Organizations";
@@ -44,6 +45,7 @@ import FacultyPage from "../pages/orgAdmin/FacultyPage";
 import ProgramPage from "../pages/orgAdmin/ProgramPage";
 import DepartmentPage from "../pages/orgAdmin/DepartmentPage";
 import TnaPage from "../pages/orgAdmin/TnaPage";
+import TnaSkillRoleSetupPage from "../pages/orgAdmin/TnaSkillRoleSetupPage";
 import TnaEmployeeRecommendationsPage from "../pages/orgAdmin/TnaEmployeeRecommendationsPage";
 import TnaExecutionPipelinePage from "../pages/orgAdmin/TnaExecutionPipelinePage";
 import FAQ from "../pages/common/FAQ";
@@ -109,6 +111,10 @@ export const appRoutes = [
         element: <OrgAdminDashboard />,
       },
       {
+        path: "/:orgCode/admin/completion",
+        element: <OrgAdminCompletionPage />,
+      },
+      {
         path: "/:orgCode/admin/instructor",
         element: <InstructorDatabase />,
       },
@@ -155,6 +161,10 @@ export const appRoutes = [
       {
         path: "/:orgCode/admin/department",
         element: <DepartmentPage />,
+      },
+      {
+        path: "/:orgCode/admin/tna/configuration",
+        element: <TnaSkillRoleSetupPage />,
       },
       {
         path: "/:orgCode/admin/tna",

@@ -7,6 +7,8 @@ import { ISchedule, TAttendanceStatus } from "../../types/interfaces";
 import { useUpdateAttendance } from "../../hooks/useSection";
 import { toast } from "react-toastify";
 import AttendanceDropdown from "../../components/instructor/AttendanceDropdown";
+import { useAuth } from "../../context/AuthContext";
+import { getTerm } from "../../lib/utils";
 
 interface AttendanceEntry {
   label: TAttendanceStatus;
@@ -30,12 +32,16 @@ export default function AttendanceTab({
 }) {
   const location = useLocation();
   const sectionCode = location.pathname.split("/")[4];
+  const { currentUser } = useAuth();
+  const orgType = currentUser.user.organization.type;
+  const learnerTerm = getTerm("learner", orgType);
+  const learnersTerm = getTerm("learner", orgType, true);
 
   const [selectedDate, setSelectedDate] = useState<string>(() => {
     const today = new Date();
     return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(
       2,
-      "0"
+      "0",
     )}-${String(today.getDate()).padStart(2, "0")}`;
   });
 
@@ -47,7 +53,7 @@ export default function AttendanceTab({
     const fromDate = new Date(toDate);
     fromDate.setDate(toDate.getDate() - 6);
     return `${fromDate.getFullYear()}-${String(
-      fromDate.getMonth() + 1
+      fromDate.getMonth() + 1,
     ).padStart(2, "0")}-${String(fromDate.getDate()).padStart(2, "0")}`;
   };
 
@@ -66,7 +72,7 @@ export default function AttendanceTab({
       week.push({
         date: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(
           2,
-          "0"
+          "0",
         )}-${String(d.getDate()).padStart(2, "0")}`,
         day: d.getDate(),
         weekday: d.toLocaleString("en-US", { weekday: "short" }),
@@ -79,7 +85,7 @@ export default function AttendanceTab({
   const handleAttendanceUpdate = async (
     studentId: string,
     dateIndex: number,
-    status: TAttendanceStatus
+    status: TAttendanceStatus,
   ) => {
     const selectedAttendanceDate = weekFullDates[dateIndex].date;
     const body = {
@@ -101,7 +107,7 @@ export default function AttendanceTab({
         pending: "Updating attendance...",
         success: "Attendance updated successfully",
         error: "Failed to update attendance",
-      }
+      },
     );
   };
 
@@ -122,8 +128,8 @@ export default function AttendanceTab({
     setSelectedDate(
       `${current.getFullYear()}-${String(current.getMonth() + 1).padStart(
         2,
-        "0"
-      )}-${String(current.getDate()).padStart(2, "0")}`
+        "0",
+      )}-${String(current.getDate()).padStart(2, "0")}`,
     );
   };
 
@@ -133,8 +139,8 @@ export default function AttendanceTab({
     setSelectedDate(
       `${current.getFullYear()}-${String(current.getMonth() + 1).padStart(
         2,
-        "0"
-      )}-${String(current.getDate()).padStart(2, "0")}`
+        "0",
+      )}-${String(current.getDate()).padStart(2, "0")}`,
     );
   };
 
@@ -143,8 +149,8 @@ export default function AttendanceTab({
     if (newLastDate >= scheduleStartDate) {
       setSelectedDate(
         `${newLastDate.getFullYear()}-${String(
-          newLastDate.getMonth() + 1
-        ).padStart(2, "0")}-${String(newLastDate.getDate()).padStart(2, "0")}`
+          newLastDate.getMonth() + 1,
+        ).padStart(2, "0")}-${String(newLastDate.getDate()).padStart(2, "0")}`,
       );
     }
     setShowCalendar(false);
@@ -175,7 +181,7 @@ export default function AttendanceTab({
       <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
         <div className="flex items-center gap-4">
           <span className="text-gray-600 text-sm md:text-base">
-            Total Students Enrolled:
+            Total {learnersTerm} Enrolled:
           </span>
           <span className="font-medium text-sm md:text-base">
             {attendanceData?.totalEnrolled || 0}
@@ -228,7 +234,7 @@ export default function AttendanceTab({
             <thead>
               <tr className="border-b border-gray-200">
                 <th className="px-4 py-3 md:px-6 md:py-4 text-left text-xs md:text-sm text-gray-500 font-medium bg-[#F9FAFB] sticky left-0">
-                  Student Name
+                  {learnerTerm} Name
                 </th>
                 {weekFullDates.map((date) => (
                   <th
@@ -287,7 +293,7 @@ export default function AttendanceTab({
                           index={index}
                           handleAttendanceUpdate={handleAttendanceUpdate}
                         />
-                      )
+                      ),
                   )}
                 </tr>
               ))}

@@ -85,6 +85,11 @@ export const BASE_NAVIGATION: {
       ICON: LayoutGridIcon,
     },
     {
+      LABEL: "Progress",
+      PATH: "/:code/admin/completion",
+      ICON: ChartNoAxesCombinedIcon,
+    },
+    {
       LABEL: "Configuration",
       ICON: SettingsIcon,
       SUBMENU: [
@@ -103,6 +108,10 @@ export const BASE_NAVIGATION: {
         {
           LABEL: "Department",
           PATH: "/:code/admin/department",
+        },
+        {
+          LABEL: "Skill and Role",
+          PATH: "/:code/admin/tna/configuration",
         },
         {
           LABEL: "Training Needs",

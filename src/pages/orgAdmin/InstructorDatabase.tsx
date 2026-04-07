@@ -1,13 +1,11 @@
 import { useNavigate, useSearchParams } from "react-router-dom";
 import Button from "../../components/common/Button";
-import Table from "../../components/common/Table";
 import UpsertInstructorModal from "../../components/instructor/UpsertInstructorModal";
-import { FiEdit2, FiTrash2 } from "react-icons/fi";
 import { PlusIcon } from "@/components/ui/plus-icon";
 
 import { formatDateMMMDDYYY } from "../../lib/dateUtils";
 import { dateFilter, IInstructor } from "../../types/interfaces";
-import { useState, Suspense } from "react";
+import { useMemo, useState, Suspense } from "react";
 import BulkImportInstructorModal from "../../components/instructor/BulkImportInstructorModal";
 import StatsCards from "../../components/common/StatsCards";
 import { generateStats } from "../../components/common/statUtils";
@@ -24,13 +22,16 @@ import { exportToCSVUtil } from "../../lib/exportCsvUtils";
 import ExportModal from "../../components/orgAdmin/ExportModal";
 import TableEmptyState from "../../components/common/TableEmptyState";
 import ActionMenuButton from "../../components/orgAdmin/ActionMenuButton";
-import FilterDropdownButton from "../../components/orgAdmin/FilterDropdownButton";
-import ResponsiveFilterButton from "../../components/orgAdmin/ResponsiveFilterButton";
-import { useFacultiesForDropdown } from "../../hooks/useFaculty";
 import TableSkeletonClean from "../../components/skeleton/TableSkeletonClean";
 import { MdLockReset } from "react-icons/md";
+import { FiToggleLeft, FiToggleRight } from "react-icons/fi";
 import ResetUserPassword from "../../components/ResetUserPassword";
 import { useDebounce } from "../../hooks/useDebounce";
+import {
+  GroupedTableColumn,
+  GroupedTableGroup,
+  default as GroupedDataTable,
+} from "../../components/common/GroupedDataTable";
 
 const EMPLOYMENT_TYPES = [
   "full_time",
@@ -54,7 +55,6 @@ export default function InstructorDatabase() {
     useState<IInstructor | null>(null);
   const [filters, setFilters] = useState({
     employmentType: searchParams.get("employmentType") || "",
-    faculty: searchParams.get("faculty") || "",
   });
   const [archiveStatus, setArchiveStatus] = useState<"only" | "none">(
     (searchParams.get("archiveStatus") as "only" | "none") || "none"
@@ -73,6 +73,8 @@ export default function InstructorDatabase() {
 
   const instructorTerm = getTerm("instructor", orgType);
   const instructorsTerm = getTerm("instructor", orgType, true);
+  const pageTitle = `${instructorsTerm} Overview`;
+  const pageDescription = `View and manage all ${instructorsTerm.toLowerCase()} in your organization.`;
 
   const { data: metricsData, isPending: isMetricsDataPending } =
     useGetUserMetrics("instructor", selectedPeriod);
@@ -82,8 +84,11 @@ export default function InstructorDatabase() {
     .filter(([_, value]) => value !== "")
     .map(([key, value]) => ({ key, value }));
 
-  const { data: teachersData, isPending: isTeachersPending } =
-    useSearchInstructors({
+  const {
+    data: teachersData,
+    isPending: isTeachersPending,
+    isFetching: isTeachersFetching,
+  } = useSearchInstructors({
       skip: skipLimit.skip,
       limit: skipLimit.limit,
       searchTerm: debouncedSearchTerm,
@@ -94,12 +99,7 @@ export default function InstructorDatabase() {
       organizationId: currentUser.user.organization._id,
       archiveStatus,
     });
-
-  // Faculty dropdown hook (only for school organizations)
-  const { data: facultiesData, isLoading: isLoadingFaculties } =
-    useFacultiesForDropdown({
-      organizationId: currentUser.user.organization._id,
-    });
+  const isInitialTeachersLoading = isTeachersPending && !teachersData;
 
   const modal = searchParams.get("modal");
   const [isBulkImportOpen, setIsBulkImportOpen] = useState(false);
@@ -113,18 +113,22 @@ export default function InstructorDatabase() {
     value: string
   ) => {
     setFilters((prev) => ({ ...prev, [filterType]: value }));
+    setSkipLimit((prev) => ({ ...prev, skip: 0 }));
     setSearchParams((prev) => {
+      const newParams = new URLSearchParams(prev);
       if (value) {
-        prev.set(filterType, value);
+        newParams.set(filterType, value);
       } else {
-        prev.delete(filterType);
+        newParams.delete(filterType);
       }
-      return prev;
+      newParams.set("page", "1");
+      return newParams;
     });
   };
 
   const handleSearchChange = (search: string) => {
     setSearchTerm(search);
+    setSkipLimit((prev) => ({ ...prev, skip: 0 }));
     setSearchParams((prev) => {
       const newParams = new URLSearchParams(prev);
       if (search) {
@@ -132,6 +136,7 @@ export default function InstructorDatabase() {
       } else {
         newParams.delete("search");
       }
+      newParams.set("page", "1");
       return newParams;
     });
   };
@@ -144,6 +149,18 @@ export default function InstructorDatabase() {
     setSearchParams((prev) => {
       prev.set("page", String(newSkip + 1));
       return prev;
+    });
+  };
+
+  const toggleArchiveStatus = () => {
+    const newStatus = archiveStatus === "only" ? "none" : "only";
+    setArchiveStatus(newStatus);
+    setSkipLimit((prev) => ({ ...prev, skip: 0 }));
+    setSearchParams((prev) => {
+      const newParams = new URLSearchParams(prev);
+      newParams.set("archiveStatus", newStatus);
+      newParams.set("page", "1");
+      return newParams;
     });
   };
 
@@ -178,17 +195,6 @@ export default function InstructorDatabase() {
     });
   };
 
-  // Table columns
-  const tableColumns = [
-    { key: "instructorName", header: `${instructorTerm} Name`, width: "30%" },
-    ...(orgType === "school"
-      ? [{ key: "faculty", header: "Faculty", width: "20%" }]
-      : []),
-    { key: "type", header: "Type", width: "20%" },
-    { key: "createdAt", header: "Created At", width: "20%" },
-    { key: "actions", header: "Actions", width: "10%" },
-  ];
-
   // Skeleton configuration based on organization type
   const instructorTableColumns = [
     { width: "30%", hasAvatar: true }, // Instructor name with avatar
@@ -210,358 +216,294 @@ export default function InstructorDatabase() {
     setIsFilterOpen(false);
   };
 
-  const renderTableRows = () => {
-    if (!teachersData?.instructors || teachersData.instructors.length === 0) {
-      const isFiltered = Boolean(
-        searchTerm ||
-          filters.employmentType ||
-          filters.faculty ||
-          archiveStatus !== "none"
-      );
-      return (
-        <TableEmptyState
-          title={`Add Your First ${instructorTerm}`}
-          description={`Start by adding ${instructorsTerm.toLowerCase()} who will teach your courses.`}
-          primaryActionLabel={`Add ${instructorTerm}`}
-          primaryActionPath="?modal=create-instructor"
-          secondaryActionLabel="Bulk Import"
-          onSecondaryAction={() => setIsBulkImportOpen(true)}
-          colSpan={5}
-          type="instructor"
-          isFiltered={isFiltered}
-        />
-      );
-    }
+  const instructorRows = useMemo(
+    () => ((teachersData?.instructors || []) as IInstructor[]),
+    [teachersData?.instructors],
+  );
 
-    return teachersData.instructors.map((instructor: any) => (
-      <tr
-        key={instructor._id}
-        className={` border-gray-200 hover:bg-gray-100 cursor-pointer ${
-          archiveStatus === "only" ? "text-gray-500 line-through" : ""
-        }`}
-        onClick={() => navigate(instructor._id)}
-      >
-        <td className="py-4 px-4">
+  const tableGroups = useMemo(
+    (): GroupedTableGroup<IInstructor>[] => [
+      {
+        key: "instructors",
+        title: instructorsTerm,
+        rows: instructorRows,
+        badgeText: `${instructorRows.length} total`,
+      },
+    ],
+    [instructorRows, instructorsTerm],
+  );
+
+  const tableColumns = useMemo((): GroupedTableColumn<IInstructor>[] => {
+    const columns: GroupedTableColumn<IInstructor>[] = [
+      {
+        key: "instructorName",
+        label: `${instructorTerm} Name`,
+        sortable: true,
+        filterable: true,
+        filterPlaceholder: `Search ${instructorTerm.toLowerCase()}`,
+        filterValue: searchTerm,
+        onFilterChange: handleSearchChange,
+        sortAccessor: (row) => `${row.firstName || ""} ${row.lastName || ""}`.trim(),
+        filterAccessor: (row) =>
+          `${row.firstName || ""} ${row.lastName || ""} ${row.email || ""}`.trim(),
+        className: "min-w-[280px]",
+        render: (row) => (
           <div className="flex items-center gap-3">
-            {instructor.avatar ? (
+            {row.avatar ? (
               <img
-                src={instructor.avatar}
-                alt={`${instructor.firstName} ${instructor.lastName}'s avatar`}
+                src={row.avatar}
+                alt={`${row.firstName} ${row.lastName} avatar`}
                 className="w-10 h-10 rounded-full object-cover"
               />
             ) : (
               <span className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center text-gray-600 font-medium">
-                {`${instructor.firstName?.[0] ?? ""}${
-                  instructor.lastName?.[0] ?? ""
-                }`}
+                {`${row.firstName?.[0] ?? ""}${row.lastName?.[0] ?? ""}`}
               </span>
             )}
             <div>
-              <span>{`${instructor.firstName} ${instructor.lastName}`}</span>
-              <p className="text-sm text-gray-500">{instructor.email}</p>
+              <span className="text-slate-900">{`${row.firstName} ${row.lastName}`}</span>
+              <p className="text-xs text-slate-500">{row.email}</p>
             </div>
           </div>
-        </td>
-        {orgType === "school" && (
-          <td className="py-4 px-4">
-            {instructor.faculty
-              ? typeof instructor.faculty === "string"
-                ? instructor.faculty
-                : instructor.faculty.name
+        ),
+      },
+      ...(orgType === "school"
+        ? [
+            {
+              key: "faculty",
+              label: "Faculty",
+              sortable: true,
+              filterable: true,
+              filterPlaceholder: "Search faculty",
+              sortAccessor: (row: IInstructor) =>
+                row.faculty
+                  ? typeof row.faculty === "string"
+                    ? row.faculty
+                    : row.faculty.name
+                  : "",
+              filterAccessor: (row: IInstructor) =>
+                row.faculty
+                  ? typeof row.faculty === "string"
+                    ? row.faculty
+                    : row.faculty.name
+                  : "",
+              className: "min-w-[180px]",
+              render: (row: IInstructor) => (
+                <span className="text-sm text-slate-600">
+                  {row.faculty
+                    ? typeof row.faculty === "string"
+                      ? row.faculty
+                      : row.faculty.name
+                    : "N/A"}
+                </span>
+              ),
+            } as GroupedTableColumn<IInstructor>,
+          ]
+        : []),
+      {
+        key: "type",
+        label: "Type",
+        sortable: true,
+        filterable: true,
+        filterVariant: "select",
+        filterSelectAllLabel: "All Types",
+        filterValue: filters.employmentType,
+        onFilterChange: (value) => handleFilterChange("employmentType", value),
+        filterOptions: EMPLOYMENT_TYPES.map((type) => ({
+          value: type,
+          label: type
+            .split("_")
+            .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+            .join(" "),
+        })),
+        sortAccessor: (row) => row.employmentType || "",
+        filterAccessor: (row) => row.employmentType || "",
+        className: "min-w-[170px]",
+        render: (row) => (
+          <span
+            className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${
+              row.employmentType === "full_time"
+                ? "bg-blue-100 text-blue-800"
+                : row.employmentType === "part_time"
+                ? "bg-green-100 text-green-800"
+                : "bg-gray-100 text-gray-800"
+            }`}
+          >
+            {row.employmentType
+              ? row.employmentType
+                  .split("_")
+                  .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+                  .join(" ")
               : "N/A"}
-          </td>
-        )}
-        <td className="py-4 px-4">
-          <div className="flex items-center">
-            <span
-              className={`px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm text-center whitespace-normal break-words ${
-                instructor.employmentType === "full_time"
-                  ? "bg-blue-100 text-blue-800"
-                  : instructor.employmentType === "part_time"
-                  ? "bg-green-100 text-green-800"
-                  : "bg-gray-100 text-gray-800"
-              }`}
-            >
-              {instructor.employmentType
-                ? instructor.employmentType
-                    .split("_")
-                    .map(
-                      (word: any) =>
-                        word.charAt(0).toUpperCase() + word.slice(1)
-                    )
-                    .join(" ")
-                : "N/A"}
-            </span>
-          </div>
-        </td>
-        <td className="py-4 px-4">
-          {formatDateMMMDDYYY(instructor.createdAt)}
-        </td>
-        <td className="py-4 px-4">
-          <div className="flex">
-            <button
-              onClick={(e) => {
-                e.stopPropagation(); // Prevent row click
-                setResetUserPassword(instructor);
-              }}
-              className={`p-2 rounded-full ${
-                archiveStatus === "only"
-                  ? "cursor-not-allowed text-gray-700"
-                  : "hover:bg-gray-200"
-              }`}
-              disabled={archiveStatus === "only"}
-            >
-              <MdLockReset className="size-6" />
-            </button>
-            <button
-              onClick={(e) => {
-                e.stopPropagation(); // Prevent row click
-                if (archiveStatus !== "only") {
+          </span>
+        ),
+      },
+      {
+        key: "createdAt",
+        label: "Created At",
+        sortable: true,
+        filterable: true,
+        filterPlaceholder: "Search date",
+        sortAccessor: (row) => new Date(row.createdAt || 0).getTime(),
+        filterAccessor: (row) => formatDateMMMDDYYY(row.createdAt),
+        className: "min-w-[160px]",
+        render: (row) => <span className="text-sm text-slate-600">{formatDateMMMDDYYY(row.createdAt)}</span>,
+      },
+      {
+        key: "actions",
+        label: "Actions",
+        align: "right",
+        className: "min-w-[120px]",
+        render: (row) => (
+          <ActionMenuButton
+            buttonClassName="!px-2 !py-1.5"
+            items={[
+              {
+                key: "view",
+                label: "View",
+                onClick: () => navigate(row._id),
+              },
+              {
+                key: "update",
+                label: "Update",
+                onClick: () =>
                   setSearchParams({
                     modal: "edit-instructor",
-                    id: instructor._id,
-                  });
-                }
-              }}
-              className={`p-2 rounded-full ${
-                archiveStatus === "only"
-                  ? "cursor-not-allowed text-gray-400"
-                  : "hover:bg-gray-200"
-              }`}
-              disabled={archiveStatus === "only"}
-            >
-              <FiEdit2 className="size-4" />
-            </button>
-            <button
-              onClick={(e) => {
-                e.stopPropagation(); // Prevent row click
-                if (archiveStatus !== "only") {
-                  handleDeleteClick(instructor);
-                }
-              }}
-              className={`p-2 rounded-full ${
-                archiveStatus === "only"
-                  ? "cursor-not-allowed text-gray-400"
-                  : "hover:bg-gray-200 text-red-500"
-              }`}
-              disabled={archiveStatus === "only"}
-            >
-              <FiTrash2 className="size-4" />
-            </button>
-          </div>
-        </td>
-      </tr>
-    ));
-  };
+                    id: row._id,
+                  }),
+                disabled: archiveStatus === "only",
+              },
+              {
+                key: "reset-password",
+                label: "Reset Password",
+                icon: <MdLockReset className="size-4" />,
+                onClick: () => setResetUserPassword(row),
+                disabled: archiveStatus === "only",
+              },
+              {
+                key: "import",
+                label: `Import ${instructorsTerm}`,
+                onClick: () => setIsBulkImportOpen(true),
+              },
+              {
+                key: "export",
+                label: "Export CSV",
+                onClick: () => setIsExportModalOpen(true),
+              },
+              {
+                key: "archive-toggle",
+                label: archiveStatus === "only" ? "Show Active" : "Show Archived",
+                icon:
+                  archiveStatus === "only" ? (
+                    <FiToggleLeft className="size-4" />
+                  ) : (
+                    <FiToggleRight className="size-4" />
+                  ),
+                onClick: toggleArchiveStatus,
+              },
+              {
+                key: "delete",
+                label: "Delete",
+                onClick: () => handleDeleteClick(row),
+                disabled: archiveStatus === "only",
+                danger: true,
+              },
+            ]}
+          />
+        ),
+      },
+    ];
+
+    return columns;
+  }, [
+    archiveStatus,
+    filters.employmentType,
+    instructorTerm,
+    instructorsTerm,
+    navigate,
+    orgType,
+    searchTerm,
+    setSearchParams,
+    toggleArchiveStatus,
+  ]);
 
   return (
     <div className="pt-14 pb-6 px-6 lg:p-6">
-      {/* Overview Cards Section */}
-      {orgType === "school" && (
-        <>
-          <div className="flex justify-between mb-2">
-            <h2 className="text-3xl font-bold">Overview</h2>
-            <div className="relative">
-              <Button
-                variant="cancel"
-                onClick={() => setIsFilterOpen(!isFilterOpen)}
-                className="flex items-center gap-2"
-              >
-                <span className="capitalize flex justify-center items-center gap-2">
-                  {selectedPeriod === "week"
-                    ? "This Week"
-                    : selectedPeriod === "month"
-                    ? "This Month"
-                    : selectedPeriod === "year"
-                    ? "This Year"
-                    : selectedPeriod}
-                  <CgChevronDown />
-                </span>
-              </Button>
-              {isFilterOpen && (
-                <div className="absolute right-0 mt-2 w-32 bg-white rounded-md shadow-lg z-10">
-                  <ul className="py-1">
-                    {TIME_PERIODS.map((period) => (
-                      <li
-                        key={period.value}
-                        className={`px-4 py-2 hover:bg-gray-100 cursor-pointer text-sm ${
-                          selectedPeriod === period.value
-                            ? "bg-gray-100 font-medium"
-                            : ""
-                        }`}
-                        onClick={() =>
-                          handleFilterSelect(period.value as dateFilter)
-                        }
-                      >
-                        {period.display}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </div>
-          </div>
-          <Suspense
-            fallback={
-              <div className="mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <StatsCards stats={[]} isLoading={true} />
+      {/* Page Header */}
+      <div className="mb-6">
+        <h1 className="text-2xl md:text-3xl font-bold text-slate-900">
+          {pageTitle}
+        </h1>
+        <p className="mt-1 text-sm md:text-base text-slate-600">
+          {pageDescription}
+        </p>
+      </div>
+
+      {/* Summary Cards Section */}
+      <div className="mb-2">
+        <div className="flex justify-between mb-2">
+          <h2 className="text-xl md:text-2xl font-bold text-slate-900">
+            Instructor Summary
+          </h2>
+          <div className="relative">
+            <Button
+              variant="cancel"
+              onClick={() => setIsFilterOpen(!isFilterOpen)}
+              className="flex items-center gap-2"
+            >
+              <span className="capitalize flex justify-center items-center gap-2">
+                {selectedPeriod === "week"
+                  ? "This Week"
+                  : selectedPeriod === "month"
+                  ? "This Month"
+                  : selectedPeriod === "year"
+                  ? "This Year"
+                  : selectedPeriod}
+                <CgChevronDown />
+              </span>
+            </Button>
+            {isFilterOpen && (
+              <div className="absolute right-0 mt-2 w-32 bg-white rounded-md shadow-lg z-10">
+                <ul className="py-1">
+                  {TIME_PERIODS.map((period) => (
+                    <li
+                      key={period.value}
+                      className={`px-4 py-2 hover:bg-gray-100 cursor-pointer text-sm ${
+                        selectedPeriod === period.value
+                          ? "bg-gray-100 font-medium"
+                          : ""
+                      }`}
+                      onClick={() =>
+                        handleFilterSelect(period.value as dateFilter)
+                      }
+                    >
+                      {period.display}
+                    </li>
+                  ))}
+                </ul>
               </div>
-            }
-          >
-            <div className="mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <StatsCards
-                stats={generateStats(metricsData, "instructor", selectedPeriod)}
-                isLoading={isMetricsDataPending}
-              />
-            </div>
-          </Suspense>
-        </>
-      )}
-
-      {/* Table Section */}
-      <div className="flex flex-col gap-4 py-6 md:flex-row md:items-center md:justify-between">
-        {/* Search and Filter */}
-        <div className="flex flex-col gap-3 md:flex-row md:flex-1 md:items-center md:gap-2 md:min-w-0">
-          {/* Search Input */}
-          <div className="flex gap-2 items-center flex-1 md:min-w-0">
-            <input
-              type="text"
-              placeholder={`Search ${instructorsTerm.toLowerCase()}...`}
-              value={searchTerm}
-              onChange={(e) => handleSearchChange(e.target.value)}
-              className="flex-1 md:max-w-[400px] px-4 py-2.5 h-[42px] border border-gray-200 rounded-lg focus:outline-none focus:border-primary text-base md:text-sm"
-            />
-
-            {/* Mobile Filter Button - Next to search on mobile, hidden on tablet+ */}
-            <div className="md:hidden">
-              <ResponsiveFilterButton
-                activeFiltersCount={
-                  (filters.employmentType ? 1 : 0) + (filters.faculty ? 1 : 0)
-                }
-                filters={[
-                  {
-                    key: "employmentType",
-                    label: "Type",
-                    value: filters.employmentType,
-                    options: EMPLOYMENT_TYPES.map((type) => ({
-                      value: type,
-                      label: type
-                        .split("_")
-                        .map(
-                          (word) => word.charAt(0).toUpperCase() + word.slice(1)
-                        )
-                        .join(" "),
-                    })),
-                    onChange: (value: string) =>
-                      handleFilterChange("employmentType", value),
-                    placeholder: "All Types",
-                  },
-                  ...(orgType === "school"
-                    ? [
-                        {
-                          key: "faculty",
-                          label: "Faculty",
-                          value: filters.faculty,
-                          options:
-                            facultiesData?.map((faculty: any) => ({
-                              value: faculty._id,
-                              label: faculty.name,
-                            })) || [],
-                          onChange: (value: string) =>
-                            handleFilterChange("faculty", value),
-                          loading: isLoadingFaculties,
-                          placeholder: "All Faculties",
-                        },
-                      ]
-                    : []),
-                ]}
-              />
-            </div>
-          </div>
-
-          {/* Desktop Filter Buttons - Hidden on mobile & tablet */}
-          <div className="hidden xl:flex gap-2 items-center flex-shrink-0">
-            {/* Employment Type Filter Button */}
-            <FilterDropdownButton
-              label="Type"
-              value={filters.employmentType}
-              options={EMPLOYMENT_TYPES.map((type) => ({
-                value: type,
-                label: type
-                  .split("_")
-                  .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-                  .join(" "),
-              }))}
-              onChange={(value) => handleFilterChange("employmentType", value)}
-              placeholder="All Types"
-            />
-
-            {/* Faculty Filter Button (only for school organizations) */}
-            {orgType === "school" && (
-              <FilterDropdownButton
-                label="Faculty"
-                value={filters.faculty}
-                options={
-                  facultiesData?.map((faculty: any) => ({
-                    value: faculty._id,
-                    label: faculty.name,
-                  })) || []
-                }
-                onChange={(value) => handleFilterChange("faculty", value)}
-                loading={isLoadingFaculties}
-                placeholder="All Faculties"
-              />
             )}
           </div>
         </div>
-
-        {/* Action Buttons */}
-        <div className="flex gap-2 flex-shrink-0">
-          {/* Tablet Filter Button - Hidden on mobile and desktop */}
-          <div className="hidden md:block xl:hidden">
-            <ResponsiveFilterButton
-              activeFiltersCount={
-                (filters.employmentType ? 1 : 0) + (filters.faculty ? 1 : 0)
-              }
-              filters={[
-                {
-                  key: "employmentType",
-                  label: "Type",
-                  value: filters.employmentType,
-                  options: EMPLOYMENT_TYPES.map((type) => ({
-                    value: type,
-                    label: type
-                      .split("_")
-                      .map(
-                        (word) => word.charAt(0).toUpperCase() + word.slice(1)
-                      )
-                      .join(" "),
-                  })),
-                  onChange: (value: string) =>
-                    handleFilterChange("employmentType", value),
-                  placeholder: "All Types",
-                },
-                ...(orgType === "school"
-                  ? [
-                      {
-                        key: "faculty",
-                        label: "Faculty",
-                        value: filters.faculty,
-                        options:
-                          facultiesData?.map((faculty: any) => ({
-                            value: faculty._id,
-                            label: faculty.name,
-                          })) || [],
-                        onChange: (value: string) =>
-                          handleFilterChange("faculty", value),
-                        loading: isLoadingFaculties,
-                        placeholder: "All Faculties",
-                      },
-                    ]
-                  : []),
-              ]}
+        <Suspense
+          fallback={
+            <div className="mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <StatsCards stats={[]} isLoading={true} />
+            </div>
+          }
+        >
+          <div className="mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <StatsCards
+              stats={generateStats(metricsData, "instructor", selectedPeriod)}
+              isLoading={isMetricsDataPending}
             />
           </div>
+        </Suspense>
+      </div>
+
+      {/* Table Section */}
+      <div className="flex flex-col gap-4 py-6 md:flex-row md:items-center md:justify-end">
+        <div className="flex gap-2 flex-shrink-0">
           <Button
             variant="primary"
             onClick={() => setSearchParams({ modal: "create-instructor" })}
@@ -571,24 +513,10 @@ export default function InstructorDatabase() {
             <span className="hidden sm:inline">Add {instructorTerm}</span>
             <span className="sm:hidden">Add</span>
           </Button>
-          <ActionMenuButton
-            entityTerm={instructorTerm}
-            onBulkImport={() => setIsBulkImportOpen(true)}
-            onExport={() => setIsExportModalOpen(true)}
-          />
           {/* Archive Status Toggle Switch */}
           <div className="flex items-center gap-2">
             <button
-              onClick={() => {
-                const newStatus = archiveStatus === "only" ? "none" : "only";
-                setArchiveStatus(newStatus);
-                setSkipLimit((prev) => ({ ...prev, skip: 0 }));
-                setSearchParams((prev) => {
-                  prev.set("archiveStatus", newStatus);
-                  prev.set("page", "1");
-                  return prev;
-                });
-              }}
+              onClick={toggleArchiveStatus}
               className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-[#3E5B93] focus:ring-offset-2 ${
                 archiveStatus === "only" ? "bg-gray-200" : "bg-primary"
               }`}
@@ -609,15 +537,38 @@ export default function InstructorDatabase() {
         </div>
       </div>
 
-      {isTeachersPending ? (
+      {isInitialTeachersLoading ? (
         <TableSkeletonClean columns={instructorTableColumns} rows={5} />
+      ) : instructorRows.length === 0 &&
+        !(debouncedSearchTerm || filters.employmentType || archiveStatus !== "none") ? (
+        <TableEmptyState
+          title={`Add Your First ${instructorTerm}`}
+          description={`Start by adding ${instructorsTerm.toLowerCase()} who will teach your courses.`}
+          primaryActionLabel={`Add ${instructorTerm}`}
+          primaryActionPath="?modal=create-instructor"
+          secondaryActionLabel="Bulk Import"
+          onSecondaryAction={() => setIsBulkImportOpen(true)}
+          colSpan={orgType === "school" ? 5 : 4}
+          type="instructor"
+          isFiltered={false}
+        />
       ) : (
-        <Table columns={tableColumns} scrollable={true} maxHeight="370px">
-          {renderTableRows()}
-        </Table>
+        <div className={`transition-opacity duration-200 ${isTeachersFetching ? "opacity-70" : "opacity-100"}`}>
+          <GroupedDataTable
+            groups={tableGroups}
+            columns={tableColumns}
+            rowKey={(row) => row._id}
+            tableMinWidthClassName={orgType === "school" ? "min-w-[1080px]" : "min-w-[900px]"}
+            showPagination={false}
+            cardless
+            showGroupHeader={false}
+            onRowClick={(row) => navigate(row._id)}
+            emptyFilteredText={`No matching ${instructorsTerm.toLowerCase()} found.`}
+          />
+        </div>
       )}
 
-      {!isTeachersPending && (
+      {!isInitialTeachersLoading && (
         <div className="flex justify-between items-center mt-4 text-sm text-gray-500">
           <span>
             {teachersData?.pagination?.totalItems || 0} result

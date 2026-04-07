@@ -3,7 +3,6 @@ import TopNavigation from "../components/common/TopNavigation";
 import SideNavigation from "../components/common/SideNavigation";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import Footer from "../components/Footer";
 import { useEffect, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 
@@ -32,9 +31,15 @@ const MainLayout = () => {
   }, [currentUser, navigate, orgCode]);
 
   return (
-    <div className="flex flex-col min-h-screen">
+    <div className="flex h-screen flex-col overflow-hidden">
       {!isAssessmentPage && isTopNav && <TopNavigation />}
-      <div className="flex flex-1">
+      <div
+        className={`flex min-h-0 flex-1 ${
+          isSideNav
+            ? "gap-2 overflow-hidden bg-[radial-gradient(circle_at_0%_0%,#dbeafe_0%,#f1f5f9_40%,#f8fafc_100%)] p-2 sm:gap-3 sm:p-3"
+            : ""
+        }`}
+      >
         {isSideNav && (
           <SideNavigation
             isCollapsed={isCollapsed}
@@ -42,11 +47,19 @@ const MainLayout = () => {
           />
         )}
         <main
-          className={`flex-1 bg-gray-50 overflow-auto transition-all duration-300 ${
-            isSideNav ? (isCollapsed ? "lg:ml-[80px]" : "lg:ml-[250px]") : ""
+          className={`min-h-0 flex-1 transition-all duration-300 ${
+            isSideNav
+              ? `${isCollapsed ? "lg:ml-[104px]" : "lg:ml-[276px]"} overflow-hidden rounded-[28px] border border-white/70 bg-white/70 shadow-[0_24px_60px_-36px_rgba(15,23,42,0.4)] backdrop-blur`
+              : "no-scrollbar overflow-y-auto overflow-x-hidden bg-gray-50"
           }`}
         >
-          <Outlet />
+          {isSideNav ? (
+            <div className="admin-content-compact no-scrollbar h-full overflow-y-auto overscroll-contain">
+              <Outlet />
+            </div>
+          ) : (
+            <Outlet />
+          )}
         </main>
       </div>
 
@@ -57,7 +70,6 @@ const MainLayout = () => {
         closeOnClick
         pauseOnHover
       />
-      <Footer />
     </div>
   );
 };

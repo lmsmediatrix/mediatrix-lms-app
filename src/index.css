@@ -74,6 +74,16 @@ body {
   height: 100vh;
 }
 
+/* Hide scrollbar while preserving scroll behavior */
+.no-scrollbar {
+  -ms-overflow-style: none; /* IE/Edge */
+  scrollbar-width: none; /* Firefox */
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none; /* Chrome/Safari */
+}
+
 .lesson-rich-text {
   color: #374151;
   line-height: 1.7;
@@ -123,4 +133,44 @@ body {
 .lesson-rich-text a {
   color: #2563eb;
   text-decoration: underline;
+}
+
+/* Slightly compact typography for admin/superadmin card content areas */
+.admin-content-compact {
+  font-size: 0.9375rem;
+}
+
+.admin-content-compact .text-3xl {
+  font-size: 1.72rem;
+  line-height: 2.05rem;
+}
+
+.admin-content-compact .text-2xl {
+  font-size: 1.4rem;
+  line-height: 1.85rem;
+}
+
+.admin-content-compact .text-xl {
+  font-size: 1.17rem;
+  line-height: 1.65rem;
+}
+
+.admin-content-compact .text-lg {
+  font-size: 1.06rem;
+  line-height: 1.55rem;
+}
+
+.admin-content-compact .text-base {
+  font-size: 0.95rem;
+  line-height: 1.45rem;
+}
+
+.admin-content-compact .text-sm {
+  font-size: 0.82rem;
+  line-height: 1.32rem;
+}
+
+.admin-content-compact .text-xs {
+  font-size: 0.71rem;
+  line-height: 1.1rem;
 }

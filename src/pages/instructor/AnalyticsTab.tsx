@@ -3,6 +3,8 @@ import GradeChart from "../../components/instructor/GradeChart";
 import { useSectionAnalytics } from "../../hooks/useSection";
 import { FaUser } from "react-icons/fa";
 import AnalyticsTabSkeleton from "../../components/skeleton/AnalyticsTabSkeleton";
+import { useAuth } from "../../context/AuthContext";
+import { getTerm } from "../../lib/utils";
 
 interface IStudentGrade {
   id: string;
@@ -18,6 +20,10 @@ interface IStudentGrade {
 export default function AnalyticsTab() {
   const location = useLocation();
   const sectionCode = location.pathname.split("/")[4];
+  const { currentUser } = useAuth();
+  const orgType = currentUser.user.organization.type;
+  const learnerTerm = getTerm("learner", orgType);
+  const learnersTerm = getTerm("learner", orgType, true);
   const { data, isPending, isError } = useSectionAnalytics(sectionCode);
 
   // Handle loading state
@@ -62,7 +68,7 @@ export default function AnalyticsTab() {
         <div className="flex flex-col gap-4 w-full sm:w-1/3">
           <div className="bg-blue-50 p-4 sm:p-6 rounded-lg space-y-2">
             <div className="text-xs sm:text-sm text-gray-600">
-              Total Students Enrolled
+              Total {learnersTerm} Enrolled
             </div>
             <div className="text-xl sm:text-2xl font-bold text-cyan-500">
               {totalStudentsEnrolled}
@@ -80,7 +86,7 @@ export default function AnalyticsTab() {
 
           <div className="bg-[#F8FBEEFF] p-4 sm:p-6 rounded-lg space-y-2">
             <div className="text-xs sm:text-sm text-gray-600">
-              % of Students with 1 or 1.5
+              % of {learnersTerm} with 1 or 1.5
             </div>
             <div className="text-xl sm:text-2xl font-bold text-[#5F751DFF]">
               {topGradesPercent}
@@ -89,14 +95,14 @@ export default function AnalyticsTab() {
         </div>
 
         <div className="w-full sm:w-2/3">
-          <GradeChart data={gradeData[0]} />
+          <GradeChart data={gradeData[0]} learnersLabel={learnersTerm} />
         </div>
       </div>
 
       <div className="flex gap-4 items-center">
         <div className="w-1.5 h-8 bg-secondary"></div>
         <h1 className="text-xl sm:text-2xl font-bold">
-          Individual Student Grades
+          Individual {learnerTerm} Grades
         </h1>
       </div>
 
@@ -105,7 +111,7 @@ export default function AnalyticsTab() {
           <thead>
             <tr className="border-b border-gray-200">
               <th className="px-4 sm:px-6 py-3 sm:py-4 text-left text-xs sm:text-sm text-gray-500 font-medium bg-[#F9FAFB]">
-                Student Name
+                {learnerTerm} Name
               </th>
               <th className="px-4 sm:px-6 py-3 sm:py-4 text-left text-xs sm:text-sm text-gray-500 font-medium bg-[#F9FAFB]">
                 Final Grade
@@ -192,7 +198,7 @@ export default function AnalyticsTab() {
                   colSpan={5}
                   className="px-4 sm:px-6 py-4 text-center text-xs sm:text-sm text-gray-500"
                 >
-                  No student grades available.
+                  No {learnerTerm.toLowerCase()} grades available.
                 </td>
               </tr>
             )}

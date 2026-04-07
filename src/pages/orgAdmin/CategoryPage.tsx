@@ -1,10 +1,8 @@
 import Button from "../../components/common/Button";
-import Table from "../../components/common/Table";
-import { FaPlus, FaEye } from "react-icons/fa";
+import { FaPlus } from "react-icons/fa";
 import { Navigate, useSearchParams } from "react-router-dom";
-import { FiEdit2, FiTrash2 } from "react-icons/fi";
 import { useCategories } from "../../hooks/useCategory";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useAuth } from "../../context/AuthContext";
 import TableEmptyState from "../../components/common/TableEmptyState";
 import FilterDropdownButton from "../../components/orgAdmin/FilterDropdownButton";
@@ -14,6 +12,12 @@ import ViewCategoryModal from "../../components/orgAdmin/ViewCategoryModal";
 import DeleteCategoryModal from "../../components/orgAdmin/DeleteCategoryModal";
 import TableSkeletonClean from "../../components/skeleton/TableSkeletonClean";
 import { useDebounce } from "../../hooks/useDebounce";
+import {
+  GroupedTableColumn,
+  GroupedTableGroup,
+  default as GroupedDataTable,
+} from "../../components/common/GroupedDataTable";
+import ActionMenuButton from "../../components/orgAdmin/ActionMenuButton";
 
 const CATEGORY_STATUS = [
   { value: "true", label: "Active" },
@@ -24,6 +28,13 @@ interface CategoryToDelete {
   id: string;
   name: string;
 }
+
+type CategoryTableRow = {
+  _id: string;
+  name: string;
+  isActive: boolean;
+  createdAt: string;
+};
 
 export default function CategoryPage() {
   const { currentUser } = useAuth();
@@ -109,13 +120,6 @@ export default function CategoryPage() {
     });
   };
 
-  const columns = [
-    { key: "name", header: "Category Name", width: "40%" },
-    { key: "status", header: "Status", width: "20%" },
-    { key: "createdAt", header: "Created", width: "20%" },
-    { key: "actions", header: "Actions", width: "20%" },
-  ];
-
   // Skeleton configuration for categories
   const categoryTableColumns = [
     { width: "40%" }, // Category Name
@@ -124,112 +128,108 @@ export default function CategoryPage() {
     { width: "20%", alignment: "center" as const }, // Actions
   ];
 
-  const renderTableRows = () => {
-    if (isError) {
-      return (
-        <tr className="border-b border-gray-200">
-          <td colSpan={4} className="py-4 px-4 text-center text-gray-500">
-            Error loading categories
-          </td>
-        </tr>
-      );
-    }
+  const categoryRows = useMemo(
+    () => ((data?.categories || []) as CategoryTableRow[]),
+    [data?.categories],
+  );
 
-    if (!data?.categories || data.categories.length === 0) {
-      const isFiltered = Boolean(
-        searchTerm || selectedStatus || archiveStatus !== "none"
-      );
-      return (
-        <TableEmptyState
-          title="Create Your First Category"
-          description="Start by creating a category. Categories help organize your courses."
-          primaryActionLabel="Add Category"
-          primaryActionPath="?modal=create-category"
-          colSpan={4}
-          type="category"
-          isFiltered={isFiltered}
-        />
-      );
-    }
+  const tableGroups = useMemo(
+    (): GroupedTableGroup<CategoryTableRow>[] => [
+      {
+        key: "categories",
+        title: "Categories",
+        rows: categoryRows,
+        badgeText: `${categoryRows.length} total`,
+      },
+    ],
+    [categoryRows],
+  );
 
-    return data.categories.map((category: any) => (
-      <tr
-        key={category._id}
-        className={`border-b border-gray-200 hover:bg-gray-50 cursor-pointer ${
-          archiveStatus === "only" ? "text-gray-500 line-through" : ""
-        }`}
-        onClick={() => setSearchParams({ modal: "view-category", id: category._id })}
-      >
-        <td className="py-4 px-4">
-          <span className="font-semibold">{category.name}</span>
-        </td>
-        <td className="py-4 px-4">
-          <div className="flex items-center">
-            <span
-              className={`px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm text-center whitespace-normal break-words ${
-                category.isActive
-                  ? "bg-green-100 text-green-800"
-                  : "bg-red-100 text-red-800"
-              }`}
-            >
-              {category.isActive ? "Active" : "Inactive"}
-            </span>
-          </div>
-        </td>
-        <td className="py-4 px-4 text-gray-600">
-          {new Date(category.createdAt).toLocaleDateString()}
-        </td>
-        <td className="py-4 px-4">
-          <div className="flex gap-2">
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setSearchParams({ modal: "view-category", id: category._id })
-              }}
-              className="p-2 rounded-full hover:bg-gray-100 text-primary"
-              title="View Category Details"
-            >
-              <FaEye className="w-4 h-4" />
-            </button>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                if (archiveStatus !== "only") {
-                  setSearchParams({ modal: "edit-category", id: category._id });
-                }
-              }}
-              className={`p-2 rounded-full ${
-                archiveStatus === "only"
-                  ? "cursor-not-allowed text-gray-400"
-                  : "hover:bg-gray-100"
-              }`}
-              disabled={archiveStatus === "only"}
-              title="Edit Category"
-            >
-              <FiEdit2 className="w-4 h-4" />
-            </button>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                if (archiveStatus !== "only") {
-                  handleDeleteClick(category);
-                }
-              }}
-              className={`p-2 rounded-full ${
-                archiveStatus === "only"
-                  ? "cursor-not-allowed text-gray-400"
-                  : "hover:bg-gray-100 text-red-500"
-              }`}
-              disabled={archiveStatus === "only"}
-              title="Delete Category"
-            >
-              <FiTrash2 className="w-4 h-4" />
-            </button>
-          </div>
-        </td>
-      </tr>
-    ));
-  };
+  const tableColumns = useMemo(
+    (): GroupedTableColumn<CategoryTableRow>[] => [
+      {
+        key: "name",
+        label: "Category Name",
+        sortable: true,
+        filterable: true,
+        filterPlaceholder: "Search category",
+        sortAccessor: (row) => row.name || "",
+        filterAccessor: (row) => row.name || "",
+        className: "min-w-[260px]",
+        render: (row) => <span className="font-semibold text-slate-900">{row.name}</span>,
+      },
+      {
+        key: "status",
+        label: "Status",
+        sortable: true,
+        filterable: true,
+        filterPlaceholder: "Search status",
+        sortAccessor: (row) => (row.isActive ? "active" : "inactive"),
+        filterAccessor: (row) => (row.isActive ? "active" : "inactive"),
+        className: "min-w-[180px]",
+        render: (row) => (
+          <span
+            className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${
+              row.isActive
+                ? "bg-green-100 text-green-800"
+                : "bg-red-100 text-red-800"
+            }`}
+          >
+            {row.isActive ? "Active" : "Inactive"}
+          </span>
+        ),
+      },
+      {
+        key: "createdAt",
+        label: "Created",
+        sortable: true,
+        filterable: true,
+        filterPlaceholder: "Search date",
+        sortAccessor: (row) => new Date(row.createdAt || 0).getTime(),
+        filterAccessor: (row) => new Date(row.createdAt || "").toLocaleDateString(),
+        className: "min-w-[170px]",
+        render: (row) => (
+          <span className="text-sm text-slate-600">
+            {new Date(row.createdAt).toLocaleDateString()}
+          </span>
+        ),
+      },
+      {
+        key: "actions",
+        label: "Actions",
+        align: "right",
+        className: "min-w-[120px]",
+        render: (row) => (
+          <ActionMenuButton
+            buttonClassName="!px-2 !py-1.5"
+            items={[
+              {
+                key: "view",
+                label: "View",
+                onClick: () =>
+                  setSearchParams({ modal: "view-category", id: row._id }),
+              },
+              {
+                key: "update",
+                label: "Update",
+                onClick: () =>
+                  setSearchParams({ modal: "edit-category", id: row._id }),
+                disabled: archiveStatus === "only",
+              },
+              {
+                key: "delete",
+                label: "Delete",
+                onClick: () => handleDeleteClick(row),
+                disabled: archiveStatus === "only",
+                danger: true,
+              },
+            ]}
+          />
+        ),
+      },
+    ],
+    [archiveStatus, setSearchParams],
+  );
 
   return (
     <div className="pt-14 pb-6 px-6 lg:p-6">
@@ -342,10 +342,34 @@ export default function CategoryPage() {
       </div>
       {isLoading ? (
         <TableSkeletonClean columns={categoryTableColumns} rows={10} />
+      ) : isError ? (
+        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          Error loading categories
+        </div>
+      ) : categoryRows.length === 0 ? (
+        <TableEmptyState
+          title="Create Your First Category"
+          description="Start by creating a category. Categories help organize your courses."
+          primaryActionLabel="Add Category"
+          primaryActionPath="?modal=create-category"
+          colSpan={4}
+          type="category"
+          isFiltered={Boolean(searchTerm || selectedStatus || archiveStatus !== "none")}
+        />
       ) : (
-        <Table columns={columns} scrollable={true} maxHeight="580px">
-          {renderTableRows()}
-        </Table>
+        <GroupedDataTable
+          groups={tableGroups}
+          columns={tableColumns}
+          rowKey={(row) => row._id}
+          tableMinWidthClassName="min-w-[940px]"
+          showPagination={false}
+          cardless
+          showGroupHeader={false}
+          onRowClick={(row) =>
+            setSearchParams({ modal: "view-category", id: row._id })
+          }
+          emptyFilteredText="No matching categories found."
+        />
       )}
       {/* Pagination */}
       {!isLoading && (

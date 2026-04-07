@@ -59,9 +59,11 @@ function InfoGrid({ items }: InfoGridProps) {
 function SectionsDisplayGeneric({
   userId,
   useSectionsHook,
+  learnerTerm,
 }: {
   userId: string;
   useSectionsHook: any;
+  learnerTerm: string;
 }) {
   const { data: sectionsData, isPending: isSectionsPending } = useSectionsHook({
     studentId: userId,
@@ -80,7 +82,7 @@ function SectionsDisplayGeneric({
           <span>Sections</span>
         </h3>
         <p className="text-gray-600 text-sm">
-          No sections available for this student.
+          No sections available for this {learnerTerm.toLowerCase()}.
         </p>
       </div>
     );
@@ -156,7 +158,7 @@ export default function StudentDetailsPage() {
 
   const infoItems = [
     {
-      label: "Student ID",
+      label: `${learnerTerm} ID`,
       value: userData?.studentId || "",
       icon: <FaHashtag />,
     },
@@ -179,7 +181,7 @@ export default function StudentDetailsPage() {
         <div>
           <h1 className="text-3xl font-bold">{learnerTerm} Details</h1>
           <p className="text-sm text-gray-500">
-            View student account information
+            View {learnerTerm.toLowerCase()} account information
           </p>
         </div>
         <Button
@@ -236,7 +238,7 @@ export default function StudentDetailsPage() {
           <div className="p-6">
             <h3 className="text-base font-medium flex items-center space-x-2 text-gray-800 mb-4">
               <FaRegUser className="text-gray-500 text-lg" />
-              <span>Student Details</span>
+              <span>{learnerTerm} Details</span>
             </h3>
             <InfoGrid items={infoItems} />
           </div>
@@ -279,6 +281,7 @@ export default function StudentDetailsPage() {
       <SectionsDisplayGeneric
         userId={studentId as string}
         useSectionsHook={useStudentSections}
+        learnerTerm={learnerTerm}
       />
     </div>
   );

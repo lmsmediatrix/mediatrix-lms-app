@@ -219,7 +219,9 @@ export default function TopNavigation() {
               (subItem: NavItem) =>
                 subItem.LABEL !== "Department" &&
                 subItem.LABEL !== "Batch" &&
-                subItem.LABEL !== "Training Needs"
+                subItem.LABEL !== "Skill and Role" &&
+                subItem.LABEL !== "Training Needs" &&
+                subItem.LABEL !== "TNA Deployment"
             );
 
             if (schoolSubmenu.length === 0 && !item.PATH) {

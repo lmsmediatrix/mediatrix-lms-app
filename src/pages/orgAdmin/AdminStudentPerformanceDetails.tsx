@@ -8,6 +8,8 @@ import {
 } from "react-icons/fa";
 import { toast } from "react-toastify";
 import Button from "../../components/common/Button";
+import { useAuth } from "../../context/AuthContext";
+import { getTerm } from "../../lib/utils";
 import {
   useCreatePerformanceActionPlan,
   useGetStudentPerformanceDetails,
@@ -43,7 +45,7 @@ type StudentPerformanceDetails = {
 
 const FALLBACK_STUDENT: StudentPerformanceDetails = {
   _id: "",
-  name: "Student",
+  name: "Learner",
   email: "",
   idNumber: "N/A",
   program: "N/A",
@@ -60,6 +62,9 @@ const FALLBACK_STUDENT: StudentPerformanceDetails = {
 export default function AdminStudentPerformanceDetails() {
   const navigate = useNavigate();
   const { studentId = "" } = useParams<{ studentId: string }>();
+  const { currentUser } = useAuth();
+  const orgType = currentUser.user.organization.type;
+  const learnerTerm = getTerm("learner", orgType);
   const {
     data: student,
     isLoading,
@@ -74,13 +79,13 @@ export default function AdminStudentPerformanceDetails() {
   const handleCreateActionPlan = () => {
     if (!isValidStudentId) {
       toast.error(
-        "Invalid student ID. Please open this page from the performance list.",
+        `Invalid ${learnerTerm.toLowerCase()} ID. Please open this page from the performance list.`,
       );
       return;
     }
 
     if (!student) {
-      toast.error("Student details are not ready yet.");
+      toast.error(`${learnerTerm} details are not ready yet.`);
       return;
     }
 
@@ -127,12 +132,12 @@ export default function AdminStudentPerformanceDetails() {
       )}
       {isError && (
         <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-          Failed to load student performance details.
+          Failed to load {learnerTerm.toLowerCase()} performance details.
         </div>
       )}
       {!isLoading && !student && (
         <div className="rounded-xl border border-yellow-200 bg-yellow-50 px-4 py-3 text-sm text-yellow-700">
-          Student not found.
+          {learnerTerm} not found.
         </div>
       )}
 
@@ -161,7 +166,7 @@ export default function AdminStudentPerformanceDetails() {
         </div>
         <div className="flex gap-3">
           <Button variant="outline">
-            <FaEnvelope className="mr-2" /> Message Student
+            <FaEnvelope className="mr-2" /> Message {learnerTerm}
           </Button>
           <Button
             variant="primary"
