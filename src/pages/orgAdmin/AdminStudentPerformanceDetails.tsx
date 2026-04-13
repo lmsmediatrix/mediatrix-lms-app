@@ -23,6 +23,7 @@ type StudentPerformanceDetails = {
   program: string;
   section: string;
   gpa: number;
+  complianceScore?: number;
   riskLevel: string;
   attendance: number;
   missingAssignments: number;
@@ -51,6 +52,7 @@ const FALLBACK_STUDENT: StudentPerformanceDetails = {
   program: "N/A",
   section: "N/A",
   gpa: 0,
+  complianceScore: 0,
   riskLevel: "Low",
   attendance: 0,
   missingAssignments: 0,
@@ -202,6 +204,11 @@ export default function AdminStudentPerformanceDetails() {
                 >
                   {details.riskLevel}
                 </span>
+                {typeof details.complianceScore === "number" && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    Compliance: {details.complianceScore}%
+                  </p>
+                )}
               </div>
               <div>
                 <p className="text-sm text-gray-500">Attendance</p>

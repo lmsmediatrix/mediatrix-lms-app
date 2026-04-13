@@ -254,7 +254,7 @@ export default function TopNavigation() {
             <div ref={logoMenuRef} className="flex-shrink-0 flex items-center relative">
               <button
                 onClick={handleLogoClick}
-                className="focus:outline-none"
+                className="inline-flex items-center gap-1 focus:outline-none"
                 aria-label="Open logo menu"
               >
                 {role === "SUPERADMIN" ? (
@@ -266,6 +266,13 @@ export default function TopNavigation() {
                     src={currentUser.user.organization.branding.logo}
                     alt="Organization Logo"
                     className="h-10 w-10 cursor-pointer hover:scale-105 transition-transform rounded-full"
+                  />
+                )}
+                {performancePath && (
+                  <MdKeyboardArrowDown
+                    className={`text-lg transition-transform duration-200 ${
+                      isLogoMenuOpen ? "rotate-180 text-primary" : "text-gray-500"
+                    }`}
                   />
                 )}
               </button>

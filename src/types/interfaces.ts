@@ -80,6 +80,15 @@ export interface IInstructor extends IBaseUser {
 }
 export interface IStudent extends IBaseUser {
   studentId: string;
+  subrole?: "manager" | string;
+  directTo?:
+    | string
+    | {
+        _id: string;
+        firstName: string;
+        lastName: string;
+        subrole?: "manager" | string;
+      };
   program?: { _id: string; name: string };
   department?: { _id: string; name: string };
   person?: {

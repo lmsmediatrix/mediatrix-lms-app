@@ -18,6 +18,7 @@ type PerformanceStudentRow = {
   section: string;
   gpa: string;
   attendance: number;
+  complianceScore?: number;
   standing: string;
   riskLevel: string;
   avatar?: string;
@@ -110,7 +111,7 @@ export default function AdminPerformancePage() {
           </h1>
           <p className="text-gray-500 mt-1">
             Oversee {learnerTerm.toLowerCase()} compliance indicators and risk levels across the
-            organization.
+            organization using lessons, attendance, and assessment outcomes.
           </p>
         </div>
       </div>
@@ -196,7 +197,7 @@ export default function AdminPerformancePage() {
               <option value="all">All Risk Levels</option>
               <option value="critical">Critical</option>
               <option value="moderate">Moderate</option>
-              <option value="low">Low Risk</option>
+              <option value="low">Low / Good Standing</option>
             </select>
           </div>
         </div>
@@ -315,13 +316,20 @@ export default function AdminPerformancePage() {
                       )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span
-                        className={`text-sm font-medium ${getStandingColor(
-                          student.standing,
-                        )}`}
-                      >
-                        {getStandingLabel(student.standing)}
-                      </span>
+                      <div>
+                        <span
+                          className={`text-sm font-medium ${getStandingColor(
+                            student.standing,
+                          )}`}
+                        >
+                          {getStandingLabel(student.standing)}
+                        </span>
+                        {typeof student.complianceScore === "number" && (
+                          <p className="text-[10px] text-gray-400 mt-0.5">
+                            Compliance score: {student.complianceScore}%
+                          </p>
+                        )}
+                      </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span

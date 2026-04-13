@@ -154,7 +154,14 @@ export default function UpsertProgramModal({
 
   if (isEditMode && isProgramLoading) {
     return (
-      <Dialog isOpen={isOpen} onClose={handleCloseModal} title="Loading...">
+      <Dialog
+        isOpen={isOpen}
+        onClose={handleCloseModal}
+        title="Loading..."
+        backdrop="blur"
+        size="full"
+        contentClassName="w-full md:w-[40vw] md:min-w-[500px] max-w-[760px]"
+      >
         <div className="flex justify-center items-center py-8">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
         </div>
@@ -167,83 +174,98 @@ export default function UpsertProgramModal({
       isOpen={isOpen}
       onClose={handleCloseModal}
       title={isEditMode ? "Edit Program" : "Create New Program"}
+      backdrop="blur"
+      size="full"
+      contentClassName="w-full md:w-[40vw] md:min-w-[500px] max-w-[760px]"
     >
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-        <div>
-          <label
-            htmlFor="name"
-            className={`block text-sm font-medium mb-1 ${
-              errors.name ? "text-red-500" : "text-gray-700"
-            }`}
-          >
-            Program Name *
-          </label>
-          <input
-            type="text"
-            id="name"
-            {...register("name")}
-            className={`w-full px-3 py-2 border rounded-md ${
-              errors.name ? "border-red-500" : "border-gray-300"
-            }`}
-            placeholder="Enter program name"
-          />
-          {errors.name && (
-            <p className="text-red-500 text-sm mt-1">{errors.name.message}</p>
-          )}
-        </div>
-
-        <div>
-          <label
-            htmlFor="code"
-            className={`block text-sm font-medium mb-1 ${
-              errors.code ? "text-red-500" : "text-gray-700"
-            }`}
-          >
-            Program Code *
-          </label>
-          <input
-            type="text"
-            id="code"
-            {...register("code")}
-            className={`w-full px-3 py-2 border rounded-md ${
-              errors.code ? "border-red-500" : "border-gray-300"
-            }`}
-            placeholder="Enter program code"
-          />
-          {errors.code && (
-            <p className="text-red-500 text-sm mt-1">{errors.code.message}</p>
-          )}
-        </div>
-
-        <div>
-          <label
-            htmlFor="description"
-            className={`block text-sm font-medium mb-1 ${
-              errors.description ? "text-red-500" : "text-gray-700"
-            }`}
-          >
-            Description *
-          </label>
-          <textarea
-            id="description"
-            {...register("description")}
-            rows={3}
-            className={`w-full px-3 py-2 border rounded-md ${
-              errors.description ? "border-red-500" : "border-gray-300"
-            }`}
-            placeholder="Enter program description"
-          />
-          {errors.description && (
-            <p className="text-red-500 text-sm mt-1">
-              {errors.description.message}
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 md:p-5 space-y-4">
+          <div>
+            <h3 className="text-base font-semibold text-slate-800">Program Details</h3>
+            <p className="text-sm text-slate-500">
+              Define the program name, code, and a short description.
             </p>
-          )}
+          </div>
+
+          <div>
+            <label
+              htmlFor="name"
+              className={`block text-sm font-medium mb-1 ${
+                errors.name ? "text-red-500" : "text-slate-700"
+              }`}
+            >
+              Program Name *
+            </label>
+            <input
+              type="text"
+              id="name"
+              {...register("name")}
+              className={`w-full px-3.5 py-2.5 border rounded-xl outline-none transition-colors ${
+                errors.name ? "border-red-500" : "border-slate-300 focus:border-primary"
+              }`}
+              placeholder="Enter program name"
+              disabled={isLoading}
+            />
+            {errors.name && (
+              <p className="text-red-500 text-sm mt-1">{errors.name.message}</p>
+            )}
+          </div>
+
+          <div>
+            <label
+              htmlFor="code"
+              className={`block text-sm font-medium mb-1 ${
+                errors.code ? "text-red-500" : "text-slate-700"
+              }`}
+            >
+              Program Code *
+            </label>
+            <input
+              type="text"
+              id="code"
+              {...register("code")}
+              className={`w-full px-3.5 py-2.5 border rounded-xl outline-none transition-colors ${
+                errors.code ? "border-red-500" : "border-slate-300 focus:border-primary"
+              }`}
+              placeholder="Enter program code"
+              disabled={isLoading}
+            />
+            {errors.code && (
+              <p className="text-red-500 text-sm mt-1">{errors.code.message}</p>
+            )}
+          </div>
+
+          <div>
+            <label
+              htmlFor="description"
+              className={`block text-sm font-medium mb-1 ${
+                errors.description ? "text-red-500" : "text-slate-700"
+              }`}
+            >
+              Description
+            </label>
+            <textarea
+              id="description"
+              {...register("description")}
+              rows={4}
+              className={`w-full px-3.5 py-2.5 border rounded-xl outline-none transition-colors ${
+                errors.description ? "border-red-500" : "border-slate-300 focus:border-primary"
+              }`}
+              placeholder="Enter program description"
+              disabled={isLoading}
+            />
+            {errors.description && (
+              <p className="text-red-500 text-sm mt-1">
+                {errors.description.message}
+              </p>
+            )}
+          </div>
         </div>
 
-        <div className="flex justify-end gap-3 pt-4">
+        <div className="flex justify-end gap-3 pt-2">
           <Button
             type="button"
-            variant="outline"
+            variant="cancel"
             onClick={handleCloseModal}
             disabled={isLoading}
           >

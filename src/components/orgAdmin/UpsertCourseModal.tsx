@@ -19,6 +19,7 @@ import { useAuth } from "../../context/AuthContext";
 import { useDebounce } from "../../hooks/useDebounce";
 import { createCourseFormData } from "../../lib/formDataUtils";
 import ImageCropper from "../ImageCropper";
+import { motion } from "framer-motion";
 
 // Update the schema to match API fields
 const courseSchema = z.object({
@@ -88,6 +89,7 @@ const UpsertCourseModal = ({ isOpen, onClose }: UpsertCourseModalProps) => {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [thumbnailChanged, setThumbnailChanged] = useState(false);
   const [showCropper, setShowCropper] = useState(false);
+  const [isDraggingThumbnail, setIsDraggingThumbnail] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Add state for category search
@@ -169,14 +171,46 @@ const UpsertCourseModal = ({ isOpen, onClose }: UpsertCourseModalProps) => {
     }
   }, [courseId, courseData, setValue, isCorporate]);
 
+  const processThumbnailFile = (file: File) => {
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please upload an image file.");
+      return;
+    }
+
+    const imageUrl = URL.createObjectURL(file);
+    setPreviewUrl(imageUrl);
+    setThumbnailFile(file);
+    setThumbnailChanged(true);
+    setShowCropper(true);
+  };
+
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      const imageUrl = URL.createObjectURL(file);
-      setPreviewUrl(imageUrl);
-      setThumbnailFile(file);
-      setThumbnailChanged(true);
-      setShowCropper(true);
+      processThumbnailFile(file);
+    }
+  };
+
+  const handleThumbnailDragOver = (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+  };
+
+  const handleThumbnailDragEnter = (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    setIsDraggingThumbnail(true);
+  };
+
+  const handleThumbnailDragLeave = (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    setIsDraggingThumbnail(false);
+  };
+
+  const handleThumbnailDrop = (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    setIsDraggingThumbnail(false);
+    const file = event.dataTransfer.files?.[0];
+    if (file) {
+      processThumbnailFile(file);
     }
   };
 
@@ -350,8 +384,12 @@ const UpsertCourseModal = ({ isOpen, onClose }: UpsertCourseModalProps) => {
         </div>
       ) : (
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-          {/* Thumbnail Upload */}
-          <div className="flex flex-col items-center justify-center mb-6">
+          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 relative overflow-hidden">
+            <motion.div
+              className="absolute -inset-6 bg-gradient-to-r from-cyan-200/30 via-sky-200/20 to-blue-200/30 blur-2xl pointer-events-none"
+              animate={isDraggingThumbnail ? { opacity: 1, scale: 1.08 } : { opacity: 0.5, scale: 1 }}
+              transition={{ duration: 0.25 }}
+            />
             <div className="relative">
               <input
                 type="file"
@@ -359,45 +397,44 @@ const UpsertCourseModal = ({ isOpen, onClose }: UpsertCourseModalProps) => {
                 className="hidden"
                 ref={fileInputRef}
                 onChange={handleImageUpload}
+                disabled={isPending}
               />
-              <div className="w-120 h-40 relative">
-                <div
-                  className={`w-full h-full bg-gray-200 rounded-xl flex items-center justify-center overflow-hidden
-                    ${
-                      !thumbnailFile && !previewUrl && !isEditMode
-                        ? "border-2 border-dashed"
-                        : ""
-                    }
-                    ${errors.thumbnail ? "border-red-500" : "border-gray-300"}
+              <motion.div
+                className="w-full h-48 relative"
+                onDragOver={handleThumbnailDragOver}
+                onDragEnter={handleThumbnailDragEnter}
+                onDragLeave={handleThumbnailDragLeave}
+                onDrop={handleThumbnailDrop}
+                whileHover={{ scale: 1.005 }}
+              >
+                <motion.div
+                  className={`w-full h-full rounded-xl flex items-center justify-center overflow-hidden
+                    ${!thumbnailFile && !previewUrl && !isEditMode ? "border-2 border-dashed" : "border"}
+                    ${errors.thumbnail ? "border-red-500 bg-red-50" : "border-slate-300 bg-slate-100"}
                   `}
+                  animate={isDraggingThumbnail ? { borderColor: "#38bdf8", backgroundColor: "#f0f9ff" } : {}}
+                  onClick={() => fileInputRef.current?.click()}
                 >
                   {previewUrl ? (
-                    <img
+                    <motion.img
                       src={previewUrl}
                       alt="Thumbnail"
                       className="w-full h-full object-cover"
+                      initial={{ scale: 1.05, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      transition={{ duration: 0.25 }}
                     />
                   ) : (
-                    <div className="flex flex-col items-center">
-                      <span
-                        className={`text-lg ${
-                          errors.thumbnail ? "text-red-500" : "text-gray-500"
-                        }`}
-                      >
-                        Upload Thumbnail
+                    <motion.div className="flex flex-col items-center text-center" animate={isDraggingThumbnail ? { y: -2 } : { y: 0 }}>
+                      <span className={`text-lg ${errors.thumbnail ? "text-red-500" : "text-slate-500"}`}>
+                        {isDraggingThumbnail ? "Drop Thumbnail" : "Upload Thumbnail"}
                       </span>
-                      {!isEditMode && (
-                        <span
-                          className={`text-sm ${
-                            errors.thumbnail ? "text-red-500" : "text-gray-500"
-                          }`}
-                        >
-                          Required
-                        </span>
-                      )}
-                    </div>
+                      <span className={`text-sm ${errors.thumbnail ? "text-red-500" : "text-slate-500"}`}>
+                        {isDraggingThumbnail ? "Release to upload" : isEditMode ? "Optional" : "Required"}
+                      </span>
+                    </motion.div>
                   )}
-                </div>
+                </motion.div>
                 {previewUrl && (
                   <button
                     type="button"
@@ -410,240 +447,175 @@ const UpsertCourseModal = ({ isOpen, onClose }: UpsertCourseModalProps) => {
                     <IoClose size={18} />
                   </button>
                 )}
-                <button
+                <motion.button
                   type="button"
-                  className={`absolute bottom-2 right-2 rounded-lg p-2.5 hover:bg-primary/80 z-40
-                    ${
-                      errors.thumbnail ? "bg-red-500" : "bg-primary"
-                    } text-white shadow-md`}
+                  className={`absolute bottom-2 right-2 rounded-lg p-2.5 hover:bg-primary/80 z-40 ${errors.thumbnail ? "bg-red-500" : "bg-primary"} text-white shadow-md`}
                   onClick={(e) => {
                     e.stopPropagation();
                     fileInputRef.current?.click();
                   }}
+                  whileHover={{ scale: 1.06 }}
+                  whileTap={{ scale: 0.95 }}
                 >
                   <FaPlus size={18} />
-                </button>
-              </div>
+                </motion.button>
+              </motion.div>
             </div>
+            <p className="text-xs text-slate-500 text-center mt-3">
+              Drag and drop an image or click the plus button.
+            </p>
             {errors.thumbnail?.message && (
-              <p className="text-red-500 text-sm mt-2">
+              <p className="text-red-500 text-sm mt-2 text-center">
                 {String(errors.thumbnail.message)}
               </p>
             )}
           </div>
 
-          {/* Title - Full width */}
-          <div>
-            <label
-              className={`block text-sm font-medium mb-1 ${
-                errors.title ? "text-red-500" : "text-gray-700"
-              }`}
-            >
-              Course Title
-            </label>
-            <input
-              {...register("title")}
-              className={`w-full px-3 py-2 border rounded-md ${
-                errors.title ? "border-red-500" : "border-gray-300"
-              }`}
-              placeholder="e.g., Bachelor of Science in Information Technology"
-            />
-            {errors.title && (
-              <p className="text-red-500 text-sm mt-1">
-                {errors.title.message}
-              </p>
-            )}
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 md:p-5 space-y-4">
+            <h3 className="text-base font-semibold text-slate-800">Core Course Information</h3>
+
+            <div>
+              <label className={`block text-sm font-medium mb-1 ${errors.title ? "text-red-500" : "text-slate-700"}`}>
+                Course Title
+              </label>
+              <input
+                {...register("title")}
+                className={`w-full px-3.5 py-2.5 border rounded-xl outline-none transition-colors ${errors.title ? "border-red-500" : "border-slate-300 focus:border-primary"}`}
+                placeholder="e.g., Bachelor of Science in Information Technology"
+                disabled={isPending}
+              />
+              {errors.title && <p className="text-red-500 text-sm mt-1">{errors.title.message}</p>}
+            </div>
+
+            <div>
+              <label className={`block text-sm font-medium mb-1 ${errors.code ? "text-red-500" : "text-slate-700"}`}>
+                Course Code
+              </label>
+              <input
+                {...register("code")}
+                className={`w-full px-3.5 py-2.5 border rounded-xl outline-none transition-colors ${errors.code ? "border-red-500" : "border-slate-300 focus:border-primary"}`}
+                placeholder="e.g., 123C"
+                disabled={isPending}
+              />
+              {errors.code && <p className="text-red-500 text-sm mt-1">{errors.code.message}</p>}
+            </div>
+
+            <div>
+              <label className={`block text-sm font-medium mb-1 ${errors.description ? "text-red-500" : "text-slate-700"}`}>
+                Description
+              </label>
+              <textarea
+                {...register("description")}
+                className={`w-full px-3.5 py-2.5 border rounded-xl outline-none transition-colors ${errors.description ? "border-red-500" : "border-slate-300 focus:border-primary"}`}
+                rows={4}
+                placeholder="Enter course description"
+                disabled={isPending}
+              />
+              {errors.description && <p className="text-red-500 text-sm mt-1">{errors.description.message}</p>}
+            </div>
           </div>
 
-          {/* Course Code - Full width */}
-          <div>
-            <label
-              className={`block text-sm font-medium mb-1 ${
-                errors.code ? "text-red-500" : "text-gray-700"
-              }`}
-            >
-              Course Code
-            </label>
-            <input
-              {...register("code")}
-              className={`w-full px-3 py-2 border rounded-md ${
-                errors.code ? "border-red-500" : "border-gray-300"
-              }`}
-              placeholder="e.g., 123C"
-            />
-            {errors.code && (
-              <p className="text-red-500 text-sm mt-1">{errors.code.message}</p>
-            )}
-          </div>
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 md:p-5 space-y-4">
+            <h3 className="text-base font-semibold text-slate-800">Publishing Details</h3>
 
-          {/* Description - Full width */}
-          <div>
-            <label
-              className={`block text-sm font-medium mb-1 ${
-                errors.description ? "text-red-500" : "text-gray-700"
-              }`}
-            >
-              Description
-            </label>
-            <textarea
-              {...register("description")}
-              className={`w-full px-3 py-2 border rounded-md ${
-                errors.description ? "border-red-500" : "border-gray-300"
-              }`}
-              rows={4}
-              placeholder="Enter course description"
-            />
-            {errors.description && (
-              <p className="text-red-500 text-sm mt-1">
-                {errors.description.message}
-              </p>
-            )}
-          </div>
+            {!isCorporate ? (
+              <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                <div className="md:col-span-3">
+                  <label className={`block text-sm font-medium mb-1 ${errors.category ? "text-red-500" : "text-slate-700"}`}>
+                    Category (Optional)
+                  </label>
+                  <SearchableSelect
+                    options={
+                      categories?.map((category: ICategory) => ({
+                        value: category._id,
+                        label: category.name,
+                      })) || []
+                    }
+                    value={watch("category") || ""}
+                    onChange={(value) => setValue("category", value, { shouldDirty: true })}
+                    onSearch={(term) => setCategorySearchTerm(term)}
+                    placeholder="Select a category"
+                    loading={isLoadingCategories}
+                    emptyMessage="No categories available"
+                    emptyAction={{
+                      label: "Create a new category",
+                      path: `/${currentUser.user.organization.code}/admin/category?modal=create-category`,
+                    }}
+                    hasNextPage={hasNextCategoryPage}
+                    isFetchingNextPage={isFetchingNextCategoryPage}
+                    onLoadMore={fetchNextCategoryPage}
+                    paginationInfo={categoriesPaginationInfo}
+                  />
+                  {errors.category && <p className="text-red-500 text-sm mt-1">{errors.category.message}</p>}
+                </div>
 
-          {/* Category and Level in one row */}
-          {!isCorporate ? (
-            <div className="grid grid-cols-5 gap-4">
-              <div className="col-span-3">
-                <label
-                  className={`block text-sm font-medium mb-1 ${
-                    errors.category ? "text-red-500" : "text-gray-700"
-                  }`}
-                >
-                  Category (Optional)
-                </label>
-                <SearchableSelect
-                  options={
-                    categories?.map((category: ICategory) => ({
-                      value: category._id,
-                      label: category.name,
-                    })) || []
-                  }
-                  value={watch("category") || ""}
-                  onChange={(value) =>
-                    setValue("category", value, { shouldDirty: true })
-                  }
-                  onSearch={(term) => setCategorySearchTerm(term)}
-                  placeholder="Select a category"
-                  loading={isLoadingCategories}
-                  emptyMessage="No categories available"
-                  emptyAction={{
-                    label: "Create a new category",
-                    path: `/${currentUser.user.organization.code}/admin/category?modal=create-category`,
-                  }}
-                  hasNextPage={hasNextCategoryPage}
-                  isFetchingNextPage={isFetchingNextCategoryPage}
-                  onLoadMore={fetchNextCategoryPage}
-                  paginationInfo={categoriesPaginationInfo}
-                />
-                {errors.category && (
-                  <p className="text-red-500 text-sm mt-1">{errors.category.message}</p>
-                )}
+                <div className="md:col-span-2">
+                  <label className={`block text-sm font-medium mb-1 ${errors.level ? "text-red-500" : "text-slate-700"}`}>
+                    Level
+                  </label>
+                  <select
+                    {...register("level")}
+                    className={`w-full px-3.5 py-2.5 border rounded-xl outline-none transition-colors ${errors.level ? "border-red-500" : "border-slate-300 focus:border-primary"}`}
+                    disabled={isPending}
+                  >
+                    <option value="beginner">Beginner</option>
+                    <option value="intermediate">Intermediate</option>
+                    <option value="advanced">Advanced</option>
+                  </select>
+                  {errors.level && <p className="text-red-500 text-sm mt-1">{errors.level.message}</p>}
+                </div>
               </div>
-
-              <div className="col-span-2">
-                <label
-                  className={`block text-sm font-medium mb-1 ${
-                    errors.level ? "text-red-500" : "text-gray-700"
-                  }`}
-                >
+            ) : (
+              <div>
+                <label className={`block text-sm font-medium mb-1 ${errors.level ? "text-red-500" : "text-slate-700"}`}>
                   Level
                 </label>
                 <select
                   {...register("level")}
-                  className={`w-full px-3 py-2 border rounded-md ${
-                    errors.level ? "border-red-500" : "border-gray-300"
-                  }`}
+                  className={`w-full px-3.5 py-2.5 border rounded-xl outline-none transition-colors ${errors.level ? "border-red-500" : "border-slate-300 focus:border-primary"}`}
+                  disabled={isPending}
                 >
                   <option value="beginner">Beginner</option>
                   <option value="intermediate">Intermediate</option>
                   <option value="advanced">Advanced</option>
                 </select>
-                {errors.level && (
-                  <p className="text-red-500 text-sm mt-1">
-                    {errors.level.message}
-                  </p>
-                )}
+                {errors.level && <p className="text-red-500 text-sm mt-1">{errors.level.message}</p>}
               </div>
-            </div>
-          ) : (
-            <div>
-              <label
-                className={`block text-sm font-medium mb-1 ${
-                  errors.level ? "text-red-500" : "text-gray-700"
-                }`}
-              >
-                Level
-              </label>
-              <select
-                {...register("level")}
-                className={`w-full px-3 py-2 border rounded-md ${
-                  errors.level ? "border-red-500" : "border-gray-300"
-                }`}
-              >
-                <option value="beginner">Beginner</option>
-                <option value="intermediate">Intermediate</option>
-                <option value="advanced">Advanced</option>
-              </select>
-              {errors.level && (
-                <p className="text-red-500 text-sm mt-1">
-                  {errors.level.message}
-                </p>
-              )}
-            </div>
-          )}
+            )}
 
-          {/* Language and Status in one row */}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label
-                className={`block text-sm font-medium mb-1 ${
-                  errors.language ? "text-red-500" : "text-gray-700"
-                }`}
-              >
-                Language
-              </label>
-              <input
-                {...register("language")}
-                className={`w-full px-3 py-2 border rounded-md ${
-                  errors.language ? "border-red-500" : "border-gray-300"
-                }`}
-                placeholder="e.g., English"
-              />
-              {errors.language && (
-                <p className="text-red-500 text-sm mt-1">
-                  {errors.language.message}
-                </p>
-              )}
-            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className={`block text-sm font-medium mb-1 ${errors.language ? "text-red-500" : "text-slate-700"}`}>
+                  Language
+                </label>
+                <input
+                  {...register("language")}
+                  className={`w-full px-3.5 py-2.5 border rounded-xl outline-none transition-colors ${errors.language ? "border-red-500" : "border-slate-300 focus:border-primary"}`}
+                  placeholder="e.g., English"
+                  disabled={isPending}
+                />
+                {errors.language && <p className="text-red-500 text-sm mt-1">{errors.language.message}</p>}
+              </div>
 
-            <div>
-              <label
-                className={`block text-sm font-medium mb-1 ${
-                  errors.status ? "text-red-500" : "text-gray-700"
-                }`}
-              >
-                Status
-              </label>
-              <select
-                {...register("status")}
-                className={`w-full px-3 py-2 border rounded-md ${
-                  errors.status ? "border-red-500" : "border-gray-300"
-                }`}
-              >
-                <option value="draft">Draft</option>
-                <option value="published">Published</option>
-                <option value="archived">Archived</option>
-              </select>
-              {errors.status && (
-                <p className="text-red-500 text-sm mt-1">
-                  {errors.status.message}
-                </p>
-              )}
+              <div>
+                <label className={`block text-sm font-medium mb-1 ${errors.status ? "text-red-500" : "text-slate-700"}`}>
+                  Status
+                </label>
+                <select
+                  {...register("status")}
+                  className={`w-full px-3.5 py-2.5 border rounded-xl outline-none transition-colors ${errors.status ? "border-red-500" : "border-slate-300 focus:border-primary"}`}
+                  disabled={isPending}
+                >
+                  <option value="draft">Draft</option>
+                  <option value="published">Published</option>
+                  <option value="archived">Archived</option>
+                </select>
+                {errors.status && <p className="text-red-500 text-sm mt-1">{errors.status.message}</p>}
+              </div>
             </div>
           </div>
 
-          {/* Form Buttons */}
-          <div className="flex gap-2 justify-end mt-6">
+          <div className="flex gap-2 justify-end pt-2">
             <Button
               type="button"
               variant="cancel"
