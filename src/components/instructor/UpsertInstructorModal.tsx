@@ -21,6 +21,7 @@ import { useInfiniteFacultiesForDropdown } from "../../hooks/useFaculty";
 import { useDebounce } from "../../hooks/useDebounce";
 import { IFaculty } from "../../types/interfaces";
 import ImageCropper from "../ImageCropper";
+import { motion } from "framer-motion";
 
 // Define the schema for the instructor form using Zod
 const instructorSchema = (orgType: string) =>
@@ -93,6 +94,7 @@ export default function UpsertInstructorModal({
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarChanged, setAvatarChanged] = useState(false);
   const [showCropper, setShowCropper] = useState(false);
+  const [isDraggingAvatar, setIsDraggingAvatar] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Add state for faculty search
@@ -169,15 +171,47 @@ export default function UpsertInstructorModal({
     }
   }, [isEditMode, instructorData, setValue]);
 
+  const processAvatarFile = (file: File) => {
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please upload an image file.");
+      return;
+    }
+
+    const imageUrl = URL.createObjectURL(file);
+    setPreviewUrl(imageUrl);
+    setAvatarFile(file);
+    setAvatarChanged(true);
+    setShowCropper(true);
+  };
+
   // Handle avatar image upload
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      const imageUrl = URL.createObjectURL(file);
-      setPreviewUrl(imageUrl);
-      setAvatarFile(file);
-      setAvatarChanged(true);
-      setShowCropper(true);
+      processAvatarFile(file);
+    }
+  };
+
+  const handleAvatarDragOver = (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+  };
+
+  const handleAvatarDragEnter = (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    setIsDraggingAvatar(true);
+  };
+
+  const handleAvatarDragLeave = (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    setIsDraggingAvatar(false);
+  };
+
+  const handleAvatarDrop = (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    setIsDraggingAvatar(false);
+    const file = event.dataTransfer.files?.[0];
+    if (file) {
+      processAvatarFile(file);
     }
   };
 
@@ -351,238 +385,218 @@ export default function UpsertInstructorModal({
           </div>
         ) : (
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-            {/* Avatar Upload */}
-            <div className="flex flex-col items-center justify-center mb-6">
-              <div className="relative">
-                <input
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  ref={fileInputRef}
-                  onChange={handleImageUpload}
+            <div className="grid grid-cols-1 md:grid-cols-[220px_minmax(0,1fr)] gap-5">
+              <motion.div
+                className="rounded-2xl border border-slate-200 bg-slate-50 p-4 relative overflow-hidden"
+                animate={isDraggingAvatar ? { scale: 1.02 } : { scale: 1 }}
+                transition={{ type: "spring", stiffness: 220, damping: 18 }}
+              >
+                <motion.div
+                  className="absolute -inset-6 bg-gradient-to-r from-cyan-200/30 via-sky-200/20 to-blue-200/30 blur-2xl pointer-events-none"
+                  animate={isDraggingAvatar ? { opacity: 1, scale: 1.08 } : { opacity: 0.5, scale: 1 }}
+                  transition={{ duration: 0.25 }}
                 />
-                <div className="w-48 h-48 relative">
-                  <div
-                    className={`w-full h-full bg-gray-200 rounded-xl flex items-center justify-center overflow-hidden
-                    ${
-                      !avatarFile && !isEditMode ? "border-2 border-dashed" : ""
-                    }
-                    ${errors.avatar ? "border-red-500" : "border-gray-300"}
-                  `}
+
+                <div className="relative mx-auto w-40">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    ref={fileInputRef}
+                    onChange={handleImageUpload}
+                    disabled={isPending}
+                  />
+                  <motion.div
+                    className="w-40 h-40 relative"
+                    onDragOver={handleAvatarDragOver}
+                    onDragEnter={handleAvatarDragEnter}
+                    onDragLeave={handleAvatarDragLeave}
+                    onDrop={handleAvatarDrop}
+                    whileHover={{ scale: 1.01 }}
                   >
-                    {previewUrl ? (
-                      <img
-                        src={previewUrl}
-                        alt="Avatar"
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <div className="flex flex-col items-center">
-                        <span
-                          className={`text-lg ${
-                            errors.avatar ? "text-red-500" : "text-gray-500"
-                          }`}
+                    <motion.div
+                      className={`w-full h-full rounded-xl flex items-center justify-center overflow-hidden
+                      ${!avatarFile && !isEditMode ? "border-2 border-dashed" : "border"}
+                      ${errors.avatar ? "border-red-500 bg-red-50" : "border-slate-300 bg-slate-100"}`}
+                      animate={isDraggingAvatar ? { borderColor: "#38bdf8", backgroundColor: "#f0f9ff" } : {}}
+                      onClick={() => fileInputRef.current?.click()}
+                    >
+                      {previewUrl ? (
+                        <motion.img
+                          src={previewUrl}
+                          alt="Avatar"
+                          className="w-full h-full object-cover"
+                          initial={{ scale: 1.05, opacity: 0 }}
+                          animate={{ scale: 1, opacity: 1 }}
+                          transition={{ duration: 0.25 }}
+                        />
+                      ) : (
+                        <motion.div
+                          className="flex flex-col items-center px-3 text-center"
+                          animate={isDraggingAvatar ? { y: -2 } : { y: 0 }}
                         >
-                          Upload Photo
-                        </span>
-                        {!isEditMode && (
-                          <span
-                            className={`text-sm ${
-                              errors.avatar ? "text-red-500" : "text-gray-500"
-                            }`}
-                          >
-                            Required
+                          <span className={`text-lg ${errors.avatar ? "text-red-500" : "text-slate-500"}`}>
+                            {isDraggingAvatar ? "Drop Image" : "Upload Photo"}
                           </span>
-                        )}
-                      </div>
+                          <span className={`text-sm ${errors.avatar ? "text-red-500" : "text-slate-500"}`}>
+                            {isDraggingAvatar ? "Release to upload" : isEditMode ? "Optional" : "Required"}
+                          </span>
+                        </motion.div>
+                      )}
+                    </motion.div>
+                    {previewUrl && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleRemoveImage();
+                        }}
+                        className="absolute -top-2 -right-2 bg-red-500 text-white rounded-lg p-1.5 hover:bg-red-600 transition-colors z-50 shadow-md"
+                      >
+                        <IoClose size={18} />
+                      </button>
                     )}
-                  </div>
-                  {previewUrl && (
-                    <button
+                    <motion.button
                       type="button"
+                      className={`absolute bottom-2 right-2 rounded-lg p-2.5 hover:bg-primary/80 z-40 ${errors.avatar ? "bg-red-500" : "bg-primary"} text-white shadow-md`}
                       onClick={(e) => {
                         e.stopPropagation();
-                        handleRemoveImage();
+                        fileInputRef.current?.click();
                       }}
-                      className="absolute -top-2 -right-2 bg-red-500 text-white rounded-lg p-1.5 hover:bg-red-600 transition-colors z-50 shadow-md"
+                      whileHover={{ scale: 1.06 }}
+                      whileTap={{ scale: 0.95 }}
                     >
-                      <IoClose size={18} />
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    className={`absolute bottom-2 right-2 rounded-lg p-2.5 hover:bg-primary/80 z-40
-                    ${
-                      errors.avatar ? "bg-red-500" : "bg-primary"
-                    } text-white shadow-md`}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      fileInputRef.current?.click();
-                    }}
-                  >
-                    <FaPlus size={18} />
-                  </button>
+                      <FaPlus size={18} />
+                    </motion.button>
+                  </motion.div>
+                </div>
+
+                <p className="text-xs text-slate-500 text-center mt-3">
+                  Drag and drop an image or click the plus button.
+                </p>
+                {errors.avatar?.message && (
+                  <p className="text-red-500 text-sm mt-2 text-center">
+                    {String(errors.avatar.message)}
+                  </p>
+                )}
+              </motion.div>
+
+              <div className="rounded-2xl border border-slate-200 bg-white p-4 md:p-5 space-y-4">
+                <div>
+                  <h3 className="text-base font-semibold text-slate-800">Basic Details</h3>
+                  <p className="text-sm text-slate-500">
+                    Enter the {instructorTerm.toLowerCase()} identity and contact information.
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className={`block text-sm font-medium mb-1 ${errors.firstName ? "text-red-500" : "text-slate-700"}`}>
+                      First Name
+                    </label>
+                    <input
+                      {...register("firstName")}
+                      className={`w-full px-3.5 py-2.5 border rounded-xl outline-none transition-colors ${errors.firstName ? "border-red-500" : "border-slate-300 focus:border-primary"}`}
+                      placeholder="Elizabeth"
+                      disabled={isPending}
+                    />
+                    {errors.firstName && <p className="text-red-500 text-sm mt-1">{errors.firstName.message}</p>}
+                  </div>
+
+                  <div>
+                    <label className={`block text-sm font-medium mb-1 ${errors.lastName ? "text-red-500" : "text-slate-700"}`}>
+                      Last Name
+                    </label>
+                    <input
+                      {...register("lastName")}
+                      className={`w-full px-3.5 py-2.5 border rounded-xl outline-none transition-colors ${errors.lastName ? "border-red-500" : "border-slate-300 focus:border-primary"}`}
+                      placeholder="Lee"
+                      disabled={isPending}
+                    />
+                    {errors.lastName && <p className="text-red-500 text-sm mt-1">{errors.lastName.message}</p>}
+                  </div>
+                </div>
+
+                <div>
+                  <label className={`block text-sm font-medium mb-1 ${errors.email ? "text-red-500" : "text-slate-700"}`}>
+                    Email
+                  </label>
+                  <input
+                    {...register("email")}
+                    maxLength={50}
+                    className={`w-full px-3.5 py-2.5 border rounded-xl outline-none transition-colors ${errors.email ? "border-red-500" : "border-slate-300 focus:border-primary"}`}
+                    placeholder="elizabeth.lee@university.edu"
+                    disabled={isPending}
+                  />
+                  {errors.email && <p className="text-red-500 text-sm mt-1">{errors.email.message}</p>}
                 </div>
               </div>
-              {errors.avatar?.message && (
-                <p className="text-red-500 text-sm mt-2">
-                  {String(errors.avatar.message)}
-                </p>
-              )}
             </div>
 
-            {/* First Name and Last Name */}
-            <div className="grid grid-cols-2 gap-4">
+            <div className="rounded-2xl border border-slate-200 bg-white p-4 md:p-5 space-y-4">
+              <h3 className="text-base font-semibold text-slate-800">Role Details</h3>
+
+              {orgType === "school" && (
+                <div>
+                  <label className={`block text-sm font-medium mb-1 ${errors.faculty ? "text-red-500" : "text-slate-700"}`}>
+                    Faculty
+                  </label>
+                  <SearchableSelect
+                    options={
+                      faculties?.map((faculty: IFaculty) => ({
+                        value: faculty._id,
+                        label: faculty.name,
+                      })) || []
+                    }
+                    value={watch("faculty")}
+                    onChange={(value) => {
+                      setValue("faculty", value, { shouldValidate: true });
+                      clearErrors("faculty");
+                    }}
+                    onSearch={(term) => setFacultySearchTerm(term)}
+                    placeholder="Select a faculty"
+                    loading={isLoadingFaculties}
+                    emptyMessage="No faculties available"
+                    emptyAction={{
+                      label: "Create a new faculty",
+                      path: `/${currentUser.user.organization.code}/admin/faculty?modal=create-faculty`,
+                    }}
+                    hasNextPage={hasNextFacultyPage}
+                    isFetchingNextPage={isFetchingNextFacultyPage}
+                    onLoadMore={fetchNextFacultyPage}
+                    paginationInfo={facultiesPaginationInfo}
+                    error={!!errors.faculty}
+                  />
+                  {errors.faculty && <p className="text-red-500 text-sm mt-1">{errors.faculty.message}</p>}
+                </div>
+              )}
+
               <div>
-                <label
-                  className={`block text-sm font-medium mb-2 ${
-                    errors.firstName ? "text-red-500" : "text-gray-700"
-                  }`}
-                >
-                  First Name
+                <label className={`block text-sm font-medium mb-1 ${errors.employmentType ? "text-red-500" : "text-slate-700"}`}>
+                  Employment Type
                 </label>
-                <input
-                  {...register("firstName")}
-                  className={`w-full px-3 py-2 border rounded-md ${
-                    errors.firstName ? "border-red-500" : "border-gray-300"
-                  }`}
-                  placeholder="Elizabeth"
+                <select
+                  {...register("employmentType")}
+                  className={`w-full px-3.5 py-2.5 border rounded-xl outline-none transition-colors ${errors.employmentType ? "border-red-500" : "border-slate-300 focus:border-primary"}`}
                   disabled={isPending}
-                />
-                {errors.firstName && (
-                  <p className="text-red-500 text-sm mt-1">
-                    {errors.firstName.message}
-                  </p>
-                )}
-              </div>
-
-              <div>
-                <label
-                  className={`block text-sm font-medium mb-2 ${
-                    errors.lastName ? "text-red-500" : "text-gray-700"
-                  }`}
                 >
-                  Last Name
-                </label>
-                <input
-                  {...register("lastName")}
-                  className={`w-full px-3 py-2 border rounded-md ${
-                    errors.lastName ? "border-red-500" : "border-gray-300"
-                  }`}
-                  placeholder="Lee"
-                  disabled={isPending}
-                />
-                {errors.lastName && (
-                  <p className="text-red-500 text-sm mt-1">
-                    {errors.lastName.message}
-                  </p>
+                  <option value="">Select employment type</option>
+                  <option value="full_time">Full Time</option>
+                  <option value="part_time">Part Time</option>
+                  <option value="probationary">Probationary</option>
+                  <option value="internship">Internship</option>
+                  <option value="freelance">Freelance</option>
+                  <option value="temporary">Temporary</option>
+                  <option value="volunteer">Volunteer</option>
+                  <option value="retired">Retired</option>
+                </select>
+                {errors.employmentType && (
+                  <p className="text-red-500 text-sm mt-1">Please select an employment type</p>
                 )}
               </div>
             </div>
 
-            {/* Email */}
-            <div>
-              <label
-                className={`block text-sm font-medium mb-2 ${
-                  errors.email ? "text-red-500" : "text-gray-700"
-                }`}
-              >
-                Email
-              </label>
-              <input
-                {...register("email")}
-                className={`w-full px-3 py-2 border rounded-md ${
-                  errors.email ? "border-red-500" : "border-gray-300"
-                }`}
-                maxLength={50}
-                placeholder="elizabeth.lee@university.edu"
-                disabled={isPending}
-              />
-              {errors.email && (
-                <p className="text-red-500 text-sm mt-1">
-                  {errors.email.message}
-                </p>
-              )}
-            </div>
-
-            {/* Faculty */}
-            {orgType === "school" && (
-              <div>
-                <label
-                  className={`block text-sm font-medium mb-2 ${
-                    errors.faculty ? "text-red-500" : "text-gray-700"
-                  }`}
-                >
-                  Faculty
-                </label>
-                <SearchableSelect
-                  options={
-                    faculties?.map((faculty: IFaculty) => ({
-                      value: faculty._id,
-                      label: faculty.name,
-                    })) || []
-                  }
-                  value={watch("faculty")}
-                  onChange={(value) => {
-                    setValue("faculty", value, { shouldValidate: true });
-                    clearErrors("faculty");
-                  }}
-                  onSearch={(term) => setFacultySearchTerm(term)}
-                  placeholder="Select a faculty"
-                  loading={isLoadingFaculties}
-                  emptyMessage="No faculties available"
-                  emptyAction={{
-                    label: "Create a new faculty",
-                    path: `/${currentUser.user.organization.code}/admin/faculty?modal=create-faculty`,
-                  }}
-                  hasNextPage={hasNextFacultyPage}
-                  isFetchingNextPage={isFetchingNextFacultyPage}
-                  onLoadMore={fetchNextFacultyPage}
-                  paginationInfo={facultiesPaginationInfo}
-                  error={!!errors.faculty}
-                />
-                {errors.faculty && (
-                  <p className="text-red-500 text-sm mt-1">
-                    {errors.faculty.message}
-                  </p>
-                )}
-              </div>
-            )}
-
-            {/* Employment Type */}
-            <div>
-              <label
-                className={`block text-sm font-medium mb-2 ${
-                  errors.employmentType ? "text-red-500" : "text-gray-700"
-                }`}
-              >
-                Employment Type
-              </label>
-              <select
-                {...register("employmentType")}
-                className={`w-full px-3 py-2 border rounded-md ${
-                  errors.employmentType ? "border-red-500" : "border-gray-300"
-                }`}
-              >
-                <option value="">Select employment type</option>
-                <option value="full_time">Full Time</option>
-                <option value="part_time">Part Time</option>
-                <option value="probationary">Probationary</option>
-                <option value="internship">Internship</option>
-                <option value="freelance">Freelance</option>
-                <option value="temporary">Temporary</option>
-                <option value="volunteer">Volunteer</option>
-                <option value="retired">Retired</option>
-              </select>
-              {errors.employmentType && (
-                <p className="text-red-500 text-sm mt-1">
-                  Please select an employment type
-                </p>
-              )}
-            </div>
-
-            {/* Form Buttons */}
-            <div className="flex gap-2 justify-end mt-6">
+            <div className="flex gap-2 justify-end pt-2">
               <Button
                 type="button"
                 variant="cancel"
@@ -595,16 +609,10 @@ export default function UpsertInstructorModal({
                 type="submit"
                 variant="primary"
                 isLoading={isPending}
-                isLoadingText={
-                  isEditMode
-                    ? `Updating ${instructorTerm}...`
-                    : `Creating ${instructorTerm}...`
-                }
+                isLoadingText={isEditMode ? `Updating ${instructorTerm}...` : `Creating ${instructorTerm}...`}
                 disabled={isPending || (!isDirty && !avatarChanged)}
               >
-                {isEditMode
-                  ? `Update ${instructorTerm}`
-                  : `Create ${instructorTerm}`}
+                {isEditMode ? `Update ${instructorTerm}` : `Create ${instructorTerm}`}
               </Button>
             </div>
           </form>

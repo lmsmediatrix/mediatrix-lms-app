@@ -11,11 +11,13 @@ import {
   useCreateStudent,
   useUpdateStudent,
   useGetStudentById,
+  useSearchStudents,
 } from "../../hooks/useStudent";
 import { useSearchParams } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { getTerm } from "../../lib/utils";
 import { SearchableSelect } from "../SearchableSelect";
+import { motion } from "framer-motion";
 import { useInfiniteProgramsForDropdown } from "../../hooks/useProgram";
 import { useInfiniteDepartmentsForDropdown } from "../../hooks/useDepartment";
 import { useDebounce } from "../../hooks/useDebounce";
@@ -52,6 +54,11 @@ const studentSchema = (orgType: string) =>
             .min(1, "Program is required")
             .max(50, "Program cannot exceed 50 characters")
         : z.string().optional(),
+    subrole:
+      orgType === "corporate"
+        ? z.union([z.literal(""), z.enum(["manager"])]).optional()
+        : z.string().optional(),
+    directTo: z.string().optional(),
     personDepartment: z.string().optional(),
     avatar: z.any().refine((val) => {
       return val !== null;
@@ -69,6 +76,8 @@ interface StudentData {
   role: string;
   status: string;
   studentId: string;
+  subrole?: string;
+  directTo?: string;
   createdAt: string;
   updatedAt: string;
   program?: { _id: string; name: string };
@@ -108,6 +117,7 @@ export default function UpsertStudentModal({
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarChanged, setAvatarChanged] = useState(false);
   const [showCropper, setShowCropper] = useState(false);
+  const [isDraggingAvatar, setIsDraggingAvatar] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Add state for program search
@@ -115,6 +125,8 @@ export default function UpsertStudentModal({
   const debouncedProgramSearchTerm = useDebounce(programSearchTerm, 300);
   const [departmentSearchTerm, setDepartmentSearchTerm] = useState("");
   const debouncedDepartmentSearchTerm = useDebounce(departmentSearchTerm, 300);
+  const [managerSearchTerm, setManagerSearchTerm] = useState("");
+  const debouncedManagerSearchTerm = useDebounce(managerSearchTerm, 300);
 
   // Programs dropdown hook with infinite scrolling
   const {
@@ -152,6 +164,35 @@ export default function UpsertStudentModal({
   const departmentsPaginationInfo =
     departmentsData?.pages[departmentsData.pages.length - 1]?.pagination;
 
+  const { data: managersData, isLoading: isLoadingManagers } = useSearchStudents({
+    organizationId: currentUser.user.organization._id,
+    searchTerm: debouncedManagerSearchTerm,
+    filter: { key: "subrole", value: "manager" },
+    limit: 20,
+    enabled: orgType === "corporate",
+  });
+  const managerOptions = [
+    {
+      value: "",
+      label: "None",
+      description: "No direct manager",
+    },
+    ...((managersData?.students || [])
+      .filter((manager: { _id: string }) => manager._id !== studentId)
+      .map(
+        (manager: {
+          _id: string;
+          firstName: string;
+          lastName: string;
+          email: string;
+        }) => ({
+          value: manager._id,
+          label: `${manager.firstName} ${manager.lastName}`,
+          description: manager.email,
+        })
+      ) || []),
+  ];
+
   const schema = studentSchema(orgType);
   const {
     register,
@@ -170,6 +211,8 @@ export default function UpsertStudentModal({
       email: "",
       studentId: "",
       program: "",
+      subrole: "",
+      directTo: "",
       personDepartment: "",
       avatar: null,
     },
@@ -182,6 +225,8 @@ export default function UpsertStudentModal({
       setValue("lastName", studentData.lastName);
       setValue("email", studentData.email);
       setValue("studentId", studentData.studentId);
+      setValue("subrole", studentData.subrole || "");
+      setValue("directTo", studentData.directTo || "");
 
       // Handle program - it could be a string (ID) or an object with _id
       const programId = studentData.program?._id;
@@ -200,15 +245,47 @@ export default function UpsertStudentModal({
     }
   }, [isEditMode, studentData, setValue]);
 
+  const processAvatarFile = (file: File) => {
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please upload an image file.");
+      return;
+    }
+
+    const imageUrl = URL.createObjectURL(file);
+    setPreviewUrl(imageUrl);
+    setAvatarFile(file);
+    setAvatarChanged(true);
+    setShowCropper(true);
+  };
+
   // Handle avatar image upload
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      const imageUrl = URL.createObjectURL(file);
-      setPreviewUrl(imageUrl);
-      setAvatarFile(file);
-      setAvatarChanged(true);
-      setShowCropper(true);
+      processAvatarFile(file);
+    }
+  };
+
+  const handleAvatarDragOver = (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+  };
+
+  const handleAvatarDragEnter = (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    setIsDraggingAvatar(true);
+  };
+
+  const handleAvatarDragLeave = (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    setIsDraggingAvatar(false);
+  };
+
+  const handleAvatarDrop = (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    setIsDraggingAvatar(false);
+    const file = event.dataTransfer.files?.[0];
+    if (file) {
+      processAvatarFile(file);
     }
   };
 
@@ -233,6 +310,9 @@ export default function UpsertStudentModal({
     const formData = createStudentFormData({
       ...data,
       avatar: avatarFile || undefined,
+      ...(orgType === "corporate"
+        ? { subrole: data.subrole ?? "", directTo: data.directTo ?? "" }
+        : {}),
       person:
         orgType === "corporate" && data.personDepartment
           ? { department: data.personDepartment }
@@ -313,6 +393,8 @@ export default function UpsertStudentModal({
     setValue("avatar", null);
   };
 
+  const isManager = watch("subrole") === "manager";
+
   return (
     <>
       <Dialog
@@ -377,264 +459,386 @@ export default function UpsertStudentModal({
             </div>
           </div>
         ) : (
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-            {/* Avatar Upload */}
-            <div className="flex flex-col items-center justify-center mb-6">
-              <div className="relative">
-                <input
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  ref={fileInputRef}
-                  onChange={handleImageUpload}
-                  disabled={isPending}
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-[220px_minmax(0,1fr)] gap-5">
+              {/* Avatar Upload */}
+              <motion.div
+                className="rounded-2xl border border-slate-200 bg-slate-50 p-4 relative overflow-hidden"
+                animate={isDraggingAvatar ? { scale: 1.02 } : { scale: 1 }}
+                transition={{ type: "spring", stiffness: 220, damping: 18 }}
+              >
+                <motion.div
+                  className="absolute -inset-6 bg-gradient-to-r from-cyan-200/30 via-sky-200/20 to-blue-200/30 blur-2xl pointer-events-none"
+                  animate={
+                    isDraggingAvatar
+                      ? { opacity: 1, scale: 1.08 }
+                      : { opacity: 0.5, scale: 1 }
+                  }
+                  transition={{ duration: 0.25 }}
                 />
-                <div className="w-40 h-40 relative">
-                  <div
-                    className={`w-full h-full bg-gray-200 rounded-xl flex items-center justify-center overflow-hidden
-                    ${
-                      !avatarFile && !isEditMode ? "border-2 border-dashed" : ""
-                    }
-                    ${errors.avatar ? "border-red-500" : "border-gray-300"}
-                  `}
+
+                <div className="relative mx-auto w-40">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    ref={fileInputRef}
+                    onChange={handleImageUpload}
+                    disabled={isPending}
+                  />
+                  <motion.div
+                    className="w-40 h-40 relative"
+                    onDragOver={handleAvatarDragOver}
+                    onDragEnter={handleAvatarDragEnter}
+                    onDragLeave={handleAvatarDragLeave}
+                    onDrop={handleAvatarDrop}
+                    whileHover={{ scale: 1.01 }}
+                    transition={{ duration: 0.2 }}
                   >
-                    {previewUrl ? (
-                      <img
-                        src={previewUrl}
-                        alt="Avatar"
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <div className="flex flex-col items-center">
-                        <span
-                          className={`text-lg ${
-                            errors.avatar ? "text-red-500" : "text-gray-500"
-                          }`}
+                    <motion.div
+                      className={`w-full h-full rounded-xl flex items-center justify-center overflow-hidden
+                      ${!avatarFile && !isEditMode ? "border-2 border-dashed" : "border"}
+                      ${errors.avatar ? "border-red-500 bg-red-50" : "border-slate-300 bg-slate-100"}
+                    `}
+                      animate={
+                        isDraggingAvatar
+                          ? { borderColor: "#38bdf8", backgroundColor: "#f0f9ff" }
+                          : {}
+                      }
+                      onClick={() => fileInputRef.current?.click()}
+                    >
+                      {previewUrl ? (
+                        <motion.img
+                          src={previewUrl}
+                          alt="Avatar"
+                          className="w-full h-full object-cover"
+                          initial={{ scale: 1.05, opacity: 0 }}
+                          animate={{ scale: 1, opacity: 1 }}
+                          transition={{ duration: 0.25 }}
+                        />
+                      ) : (
+                        <motion.div
+                          className="flex flex-col items-center px-3 text-center"
+                          animate={isDraggingAvatar ? { y: -2 } : { y: 0 }}
                         >
-                          Upload Photo
-                        </span>
-                        <span
-                          className={`text-sm ${
-                            errors.avatar ? "text-red-500" : "text-gray-500"
-                          }`}
-                        >
-                          Required
-                        </span>
-                      </div>
+                          <span
+                            className={`text-lg ${
+                              errors.avatar ? "text-red-500" : "text-slate-500"
+                            }`}
+                          >
+                            {isDraggingAvatar ? "Drop Image" : "Upload Photo"}
+                          </span>
+                          <span
+                            className={`text-sm ${
+                              errors.avatar ? "text-red-500" : "text-slate-500"
+                            }`}
+                          >
+                            {isDraggingAvatar ? "Release to upload" : "Required"}
+                          </span>
+                        </motion.div>
+                      )}
+                    </motion.div>
+                    {previewUrl && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleRemoveImage();
+                        }}
+                        className="absolute -top-2 -right-2 bg-red-500 text-white rounded-lg p-1.5 hover:bg-red-600 transition-colors z-50 shadow-md"
+                      >
+                        <IoClose size={18} />
+                      </button>
                     )}
-                  </div>
-                  {previewUrl && (
-                    <button
+                    <motion.button
                       type="button"
+                      className={`absolute bottom-2 right-2 rounded-lg p-2.5 hover:bg-primary/80 z-40
+                      ${errors.avatar ? "bg-red-500" : "bg-primary"} text-white shadow-md`}
                       onClick={(e) => {
                         e.stopPropagation();
-                        handleRemoveImage();
+                        fileInputRef.current?.click();
                       }}
-                      className="absolute -top-2 -right-2 bg-red-500 text-white rounded-lg p-1.5 hover:bg-red-600 transition-colors z-50 shadow-md"
+                      whileHover={{ scale: 1.06 }}
+                      whileTap={{ scale: 0.95 }}
                     >
-                      <IoClose size={18} />
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    className={`absolute bottom-2 right-2 rounded-lg p-2.5 hover:bg-primary/80 z-40
-                    ${
-                      errors.avatar ? "bg-red-500" : "bg-primary"
-                    } text-white shadow-md`}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      fileInputRef.current?.click();
-                    }}
+                      <FaPlus size={18} />
+                    </motion.button>
+                  </motion.div>
+                </div>
+                <p className="text-xs text-slate-500 text-center mt-3">
+                  Drag and drop an image or click the plus button.
+                </p>
+                {errors.avatar?.message && (
+                  <p className="text-red-500 text-sm mt-2 text-center">
+                    {String(errors.avatar.message)}
+                  </p>
+                )}
+              </motion.div>
+
+              {/* Basic Details */}
+              <div className="rounded-2xl border border-slate-200 bg-white p-4 md:p-5 space-y-4">
+                <div>
+                  <h3 className="text-base font-semibold text-slate-800">
+                    Basic Details
+                  </h3>
+                  <p className="text-sm text-slate-500">
+                    Enter the employee identity and contact information.
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label
+                      className={`block text-sm font-medium mb-1 ${
+                        errors.firstName ? "text-red-500" : "text-slate-700"
+                      }`}
+                    >
+                      First Name
+                    </label>
+                    <input
+                      {...register("firstName")}
+                      className={`w-full px-3.5 py-2.5 border rounded-xl outline-none transition-colors ${
+                        errors.firstName
+                          ? "border-red-500"
+                          : "border-slate-300 focus:border-primary"
+                      }`}
+                      placeholder="John"
+                      disabled={isPending}
+                    />
+                    {errors.firstName && (
+                      <p className="text-red-500 text-sm mt-1">
+                        {errors.firstName.message}
+                      </p>
+                    )}
+                  </div>
+
+                  <div>
+                    <label
+                      className={`block text-sm font-medium mb-1 ${
+                        errors.lastName ? "text-red-500" : "text-slate-700"
+                      }`}
+                    >
+                      Last Name
+                    </label>
+                    <input
+                      {...register("lastName")}
+                      className={`w-full px-3.5 py-2.5 border rounded-xl outline-none transition-colors ${
+                        errors.lastName
+                          ? "border-red-500"
+                          : "border-slate-300 focus:border-primary"
+                      }`}
+                      placeholder="Doe"
+                      disabled={isPending}
+                    />
+                    {errors.lastName && (
+                      <p className="text-red-500 text-sm mt-1">
+                        {errors.lastName.message}
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                <div>
+                  <label
+                    className={`block text-sm font-medium mb-1 ${
+                      errors.email ? "text-red-500" : "text-slate-700"
+                    }`}
                   >
-                    <FaPlus size={18} />
-                  </button>
+                    Email
+                  </label>
+                  <input
+                    {...register("email")}
+                    maxLength={100}
+                    className={`w-full px-3.5 py-2.5 border rounded-xl outline-none transition-colors ${
+                      errors.email
+                        ? "border-red-500"
+                        : "border-slate-300 focus:border-primary"
+                    }`}
+                    placeholder="john.doe@university.edu"
+                    disabled={isPending}
+                  />
+                  {errors.email && (
+                    <p className="text-red-500 text-sm mt-1">
+                      {errors.email.message}
+                    </p>
+                  )}
                 </div>
               </div>
-              {errors.avatar?.message && (
-                <p className="text-red-500 text-sm mt-2">
-                  {String(errors.avatar.message)}
-                </p>
-              )}
             </div>
 
-            {/* First Name and Last Name */}
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label
-                  className={`block text-sm font-medium mb-1 ${
-                    errors.firstName ? "text-red-500" : "text-gray-700"
-                  }`}
-                >
-                  First Name
-                </label>
-                <input
-                  {...register("firstName")}
-                  className={`w-full px-3 py-2 border rounded-md ${
-                    errors.firstName ? "border-red-500" : "border-gray-300"
-                  }`}
-                  placeholder="John"
-                  disabled={isPending}
-                />
-                {errors.firstName && (
-                  <p className="text-red-500 text-sm mt-1">
-                    {errors.firstName.message}
-                  </p>
-                )}
-              </div>
-
-              <div>
-                <label
-                  className={`block text-sm font-medium mb-1 ${
-                    errors.lastName ? "text-red-500" : "text-gray-700"
-                  }`}
-                >
-                  Last Name
-                </label>
-                <input
-                  {...register("lastName")}
-                  className={`w-full px-3 py-2 border rounded-md ${
-                    errors.lastName ? "border-red-500" : "border-gray-300"
-                  }`}
-                  placeholder="Doe"
-                  disabled={isPending}
-                />
-                {errors.lastName && (
-                  <p className="text-red-500 text-sm mt-1">
-                    {errors.lastName.message}
-                  </p>
-                )}
-              </div>
-            </div>
-
-            {/* Email */}
-            <div>
-              <label
-                className={`block text-sm font-medium mb-1 ${
-                  errors.email ? "text-red-500" : "text-gray-700"
-                }`}
-              >
-                Email
-              </label>
-              <input
-                {...register("email")}
-                maxLength={100}
-                className={`w-full px-3 py-2 border rounded-md ${
-                  errors.email ? "border-red-500" : "border-gray-300"
-                }`}
-                placeholder="john.doe@university.edu"
-                disabled={isPending}
-              />
-              {errors.email && (
-                <p className="text-red-500 text-sm mt-1">
-                  {errors.email.message}
-                </p>
-              )}
-            </div>
-
-            {/* ID field */}
+            {/* School Details */}
             {orgType === "school" && (
-              <div>
-                <label
-                  className={`block text-sm font-medium mb-1 ${
-                    errors.studentId ? "text-red-500" : "text-gray-700"
-                  }`}
-                >
-                  {learnerTerm} ID
-                </label>
-                <input
-                  {...register("studentId")}
-                  maxLength={50}
-                  className={`w-full px-3 py-2 border rounded-md ${
-                    errors.studentId ? "border-red-500" : "border-gray-300"
-                  }`}
-                  placeholder={`e.g., ${learnerTerm.toLowerCase()}123`}
-                  disabled={isPending}
-                />
-                {errors.studentId && (
-                  <p className="text-red-500 text-sm mt-1">
-                    {errors.studentId.message}
-                  </p>
-                )}
+              <div className="rounded-2xl border border-slate-200 bg-white p-4 md:p-5 space-y-4">
+                <h3 className="text-base font-semibold text-slate-800">
+                  Academic Details
+                </h3>
+
+                <div>
+                  <label
+                    className={`block text-sm font-medium mb-1 ${
+                      errors.studentId ? "text-red-500" : "text-slate-700"
+                    }`}
+                  >
+                    {learnerTerm} ID
+                  </label>
+                  <input
+                    {...register("studentId")}
+                    maxLength={50}
+                    className={`w-full px-3.5 py-2.5 border rounded-xl outline-none transition-colors ${
+                      errors.studentId
+                        ? "border-red-500"
+                        : "border-slate-300 focus:border-primary"
+                    }`}
+                    placeholder={`e.g., ${learnerTerm.toLowerCase()}123`}
+                    disabled={isPending}
+                  />
+                  {errors.studentId && (
+                    <p className="text-red-500 text-sm mt-1">
+                      {errors.studentId.message}
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <label
+                    className={`block text-sm font-medium mb-1 ${
+                      errors.program ? "text-red-500" : "text-slate-700"
+                    }`}
+                  >
+                    Program
+                  </label>
+                  <SearchableSelect
+                    options={
+                      programs?.map((program: IProgram) => ({
+                        value: program._id,
+                        label: program.name,
+                      })) || []
+                    }
+                    value={watch("program")}
+                    onChange={(value) =>
+                      setValue("program", value, { shouldDirty: true })
+                    }
+                    onSearch={(term) => setProgramSearchTerm(term)}
+                    placeholder="Select a program"
+                    loading={isLoadingPrograms}
+                    emptyMessage="No programs available"
+                    emptyAction={{
+                      label: "Create a new program",
+                      path: `/${currentUser.user.organization.code}/admin/program?modal=create-program`,
+                    }}
+                    hasNextPage={hasNextProgramPage}
+                    isFetchingNextPage={isFetchingNextProgramPage}
+                    onLoadMore={fetchNextProgramPage}
+                    paginationInfo={programsPaginationInfo}
+                  />
+                  {errors.program && (
+                    <p className="text-red-500 text-sm mt-1">
+                      {errors.program.message}
+                    </p>
+                  )}
+                </div>
               </div>
             )}
 
-            {/* Program field */}
-            {orgType === "school" && (
-              <div>
-                <label
-                  className={`block text-sm font-medium mb-1 ${
-                    errors.program ? "text-red-500" : "text-gray-700"
-                  }`}
-                >
-                  Program
-                </label>
-                <SearchableSelect
-                  options={
-                    programs?.map((program: IProgram) => ({
-                      value: program._id,
-                      label: program.name,
-                    })) || []
-                  }
-                  value={watch("program")}
-                  onChange={(value) =>
-                    setValue("program", value, { shouldDirty: true })
-                  }
-                  onSearch={(term) => setProgramSearchTerm(term)}
-                  placeholder="Select a program"
-                  loading={isLoadingPrograms}
-                  emptyMessage="No programs available"
-                  emptyAction={{
-                    label: "Create a new program",
-                    path: `/${currentUser.user.organization.code}/admin/program?modal=create-program`,
-                  }}
-                  hasNextPage={hasNextProgramPage}
-                  isFetchingNextPage={isFetchingNextProgramPage}
-                  onLoadMore={fetchNextProgramPage}
-                  paginationInfo={programsPaginationInfo}
-                />
-                {errors.program && (
-                  <p className="text-red-500 text-sm mt-1">
-                    {errors.program.message}
-                  </p>
-                )}
-              </div>
-            )}
-
-            {/* Department field (Corporate only) */}
+            {/* Corporate Details */}
             {orgType === "corporate" && (
-              <div>
-                <label className="block text-sm font-medium mb-1 text-gray-700">
-                  Department (Optional)
-                </label>
-                <SearchableSelect
-                  options={
-                    departments?.map((department: IDepartment) => ({
-                      value: department._id,
-                      label: department.name,
-                    })) || []
-                  }
-                  value={watch("personDepartment")}
-                  onChange={(value) =>
-                    setValue("personDepartment", value, { shouldDirty: true })
-                  }
-                  onSearch={(term) => setDepartmentSearchTerm(term)}
-                  placeholder="Select a department"
-                  loading={isLoadingDepartments}
-                  emptyMessage="No departments available"
-                  emptyAction={{
-                    label: "Create a new department",
-                    path: `/${currentUser.user.organization.code}/admin/department?modal=create-department`,
-                  }}
-                  hasNextPage={hasNextDepartmentPage}
-                  isFetchingNextPage={isFetchingNextDepartmentPage}
-                  onLoadMore={fetchNextDepartmentPage}
-                  paginationInfo={departmentsPaginationInfo}
-                />
+              <div className="rounded-2xl border border-slate-200 bg-white p-4 md:p-5 space-y-4">
+                <div>
+                  <h3 className="text-base font-semibold text-slate-800">
+                    Work Details
+                  </h3>
+                  <p className="text-sm text-slate-500">
+                    Add manager status, reporting line, and department assignment.
+                  </p>
+                </div>
+
+                <div>
+                  <input type="hidden" {...register("subrole")} />
+                  <label
+                    className={`flex items-start gap-3 rounded-xl border p-3 transition-colors cursor-pointer ${
+                      isManager
+                        ? "border-primary bg-primary/5"
+                        : "border-slate-200 bg-slate-50"
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={isManager}
+                      onChange={(event) =>
+                        setValue("subrole", event.target.checked ? "manager" : "", {
+                          shouldDirty: true,
+                          shouldValidate: true,
+                        })
+                      }
+                      disabled={isPending}
+                      className="h-4 w-4 mt-0.5 rounded border-slate-300"
+                    />
+                    <span className="text-sm text-slate-700">
+                      <span className="block font-medium">Manager</span>
+                      <span className="text-slate-500">
+                        Enable this if the employee has managerial responsibility.
+                      </span>
+                    </span>
+                  </label>
+                  {errors.subrole && (
+                    <p className="text-red-500 text-sm mt-1">
+                      {String(errors.subrole.message)}
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <input type="hidden" {...register("directTo")} />
+                  <label className="block text-sm font-medium mb-1 text-slate-700">
+                    Direct Manager (Optional)
+                  </label>
+                  <SearchableSelect
+                    options={managerOptions}
+                    value={watch("directTo")}
+                    onChange={(value) =>
+                      setValue("directTo", value, { shouldDirty: true })
+                    }
+                    onSearch={(term) => setManagerSearchTerm(term)}
+                    placeholder="Select direct manager"
+                    loading={isLoadingManagers}
+                    emptyMessage="No manager found"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-1 text-slate-700">
+                    Department (Optional)
+                  </label>
+                  <SearchableSelect
+                    options={
+                      departments?.map((department: IDepartment) => ({
+                        value: department._id,
+                        label: department.name,
+                      })) || []
+                    }
+                    value={watch("personDepartment")}
+                    onChange={(value) =>
+                      setValue("personDepartment", value, { shouldDirty: true })
+                    }
+                    onSearch={(term) => setDepartmentSearchTerm(term)}
+                    placeholder="Select a department"
+                    loading={isLoadingDepartments}
+                    emptyMessage="No departments available"
+                    emptyAction={{
+                      label: "Create a new department",
+                      path: `/${currentUser.user.organization.code}/admin/department?modal=create-department`,
+                    }}
+                    hasNextPage={hasNextDepartmentPage}
+                    isFetchingNextPage={isFetchingNextDepartmentPage}
+                    onLoadMore={fetchNextDepartmentPage}
+                    paginationInfo={departmentsPaginationInfo}
+                  />
+                </div>
               </div>
             )}
 
             {/* Form Buttons */}
-            <div className="flex gap-2 justify-end mt-6">
+            <div className="flex gap-2 justify-end pt-2">
               <Button
                 type="button"
                 variant="cancel"

@@ -249,18 +249,6 @@ export default function InstructorLateMissingPage() {
       : filterParam === "missing"
         ? "bg-red-100"
         : "bg-orange-100";
-  const filterTabs =
-    filterParam === "missing"
-      ? [
-          { label: "All", value: null },
-          { label: "Missing", value: "missing" },
-        ]
-      : [
-          { label: "All", value: null },
-          { label: "Late", value: "late" },
-          { label: "Missing", value: "missing" },
-        ];
-
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-5xl mx-auto px-4 py-8">
@@ -271,32 +259,6 @@ export default function InstructorLateMissingPage() {
           title={title}
           subtitle={subtitle}
         />
-
-        <div className="flex gap-2 mb-6">
-          {filterTabs.map(({ label, value }) => {
-            const isActive = filterParam === value;
-            return (
-              <button
-                key={label}
-                onClick={() => {
-                  const path = `/${orgCode}/instructor/late-missing`;
-                  navigate(value ? `${path}?filter=${value}` : path);
-                }}
-                className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all border ${
-                  isActive
-                    ? value === "late"
-                      ? "bg-amber-500 text-white border-amber-500"
-                      : value === "missing"
-                        ? "bg-red-500 text-white border-red-500"
-                        : "bg-orange-500 text-white border-orange-500"
-                    : "bg-white text-gray-600 border-gray-200 hover:border-gray-300"
-                }`}
-              >
-                {label}
-              </button>
-            );
-          })}
-        </div>
 
         {isPending ? (
           <div className="space-y-4">

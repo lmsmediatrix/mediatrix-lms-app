@@ -174,6 +174,7 @@ export default function StudentDatabase() {
     { width: "30%", hasAvatar: true }, // Student name with avatar
     ...(orgType === "school" ? [{ width: "15%" }] : []), // Student ID (school only)
     ...(orgType === "school" ? [{ width: "20%" }] : []), // Program (school only)
+    ...(orgType === "corporate" ? [{ width: "18%" }, { width: "12%" }, { width: "20%" }] : []), // Department, tag, direct manager
     { width: "10%" }, // Status
     { width: "10%", alignment: "center" as const }, // Actions
   ];
@@ -297,6 +298,32 @@ export default function StudentDatabase() {
   );
 
   const tableColumns = useMemo((): GroupedTableColumn<IStudent>[] => {
+    const getDepartmentName = (row: IStudent): string => {
+      const department = row.person?.department;
+      if (!department) {
+        return "Unassigned";
+      }
+
+      if (typeof department === "string") {
+        return /^[a-fA-F0-9]{24}$/.test(department) ? "Unassigned" : department;
+      }
+
+      return department.name || "Unassigned";
+    };
+
+    const getDirectManagerName = (row: IStudent): string => {
+      if (!row.directTo) {
+        return "None";
+      }
+
+      if (typeof row.directTo === "string") {
+        return "Assigned";
+      }
+
+      const fullName = `${row.directTo.firstName || ""} ${row.directTo.lastName || ""}`.trim();
+      return fullName || "Assigned";
+    };
+
     const columns: GroupedTableColumn<IStudent>[] = [
       {
         key: "studentName",
@@ -308,7 +335,7 @@ export default function StudentDatabase() {
         onFilterChange: handleSearchChange,
         sortAccessor: (row) => `${row.firstName || ""} ${row.lastName || ""}`.trim(),
         filterAccessor: (row) =>
-          `${row.firstName || ""} ${row.lastName || ""} ${row.email || ""}`.trim(),
+          `${row.firstName || ""} ${row.lastName || ""} ${row.email || ""} ${getDepartmentName(row)} ${getDirectManagerName(row)}`.trim(),
         className: "min-w-[280px]",
         render: (row) => (
           <div className="flex items-center gap-3">
@@ -368,6 +395,48 @@ export default function StudentDatabase() {
                 <span className="text-sm text-slate-600">
                   {(row as any).program?.code || row.program?.name || "N/A"}
                 </span>
+              ),
+            } as GroupedTableColumn<IStudent>,
+          ]
+        : []),
+      ...(orgType === "corporate"
+        ? [
+            {
+              key: "department",
+              label: "Department",
+              sortable: true,
+              sortAccessor: (row: IStudent) => getDepartmentName(row),
+              className: "min-w-[170px]",
+              render: (row: IStudent) => (
+                <span className="text-sm text-slate-700">{getDepartmentName(row)}</span>
+              ),
+            } as GroupedTableColumn<IStudent>,
+            {
+              key: "subrole",
+              label: "Tag",
+              sortable: true,
+              sortAccessor: (row: IStudent) => row.subrole || "",
+              className: "min-w-[130px]",
+              render: (row: IStudent) => (
+                <span
+                  className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${
+                    row.subrole === "manager"
+                      ? "bg-indigo-100 text-indigo-800"
+                      : "bg-slate-100 text-slate-700"
+                  }`}
+                >
+                  {row.subrole === "manager" ? "Manager" : "Employee"}
+                </span>
+              ),
+            } as GroupedTableColumn<IStudent>,
+            {
+              key: "directTo",
+              label: "Direct To",
+              sortable: true,
+              sortAccessor: (row: IStudent) => getDirectManagerName(row),
+              className: "min-w-[180px]",
+              render: (row: IStudent) => (
+                <span className="text-sm text-slate-700">{getDirectManagerName(row)}</span>
               ),
             } as GroupedTableColumn<IStudent>,
           ]
@@ -620,7 +689,7 @@ export default function StudentDatabase() {
           primaryActionPath="?modal=create-student"
           secondaryActionLabel="Bulk Import"
           onSecondaryAction={() => setIsBulkImportOpen(true)}
-          colSpan={orgType === "school" ? 5 : 3}
+          colSpan={orgType === "school" ? 5 : 6}
           type="student"
           isFiltered={false}
         />
@@ -630,7 +699,7 @@ export default function StudentDatabase() {
             groups={tableGroups}
             columns={tableColumns}
             rowKey={(row) => row._id}
-            tableMinWidthClassName={orgType === "school" ? "min-w-[1100px]" : "min-w-[860px]"}
+            tableMinWidthClassName={orgType === "school" ? "min-w-[1100px]" : "min-w-[1120px]"}
             showPagination={false}
             cardless
             showGroupHeader={false}

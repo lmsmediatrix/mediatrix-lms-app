@@ -82,6 +82,8 @@ export const useGetStudentById = (studentId: string) => {
       return studentService
         .select([
           "studentId",
+          "subrole",
+          "directTo",
           "program",
           "firstName",
           "lastName",
@@ -105,11 +107,12 @@ export const useGetStudentById = (studentId: string) => {
 };
 
 export const useSearchStudents = (
-  apiParams?: Partial<ApiParams> & { organizationId?: string }
+  apiParams?: Partial<ApiParams> & { organizationId?: string; enabled?: boolean }
 ) => {
   return useQuery({
     queryKey: ["search-students", apiParams],
     placeholderData: keepPreviousData,
+    enabled: apiParams?.enabled ?? true,
     queryFn: async () => {
       studentService.resetQuery();
       return studentService
@@ -119,6 +122,9 @@ export const useSearchStudents = (
           "lastName",
           "email",
           "studentId",
+          "subrole",
+          "person",
+          "directTo",
           "status",
           "program",
           "createdAt",
@@ -148,6 +154,14 @@ export const useSearchStudents = (
           {
             path: "program",
             select: "code",
+          },
+          {
+            path: "person.department",
+            select: "name",
+          },
+          {
+            path: "directTo",
+            select: "firstName lastName subrole",
           },
         ])
         .withPagination(true)
