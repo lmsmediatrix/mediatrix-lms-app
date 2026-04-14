@@ -1,14 +1,19 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { FaArrowLeft } from "react-icons/fa";
 import { toast } from "react-toastify";
 import Button from "../../components/common/Button";
 import { useAuth } from "../../context/AuthContext";
-import { useGetTnaRecommendations, useUpsertTnaRecommendationExecution } from "../../hooks/useTna";
+import {
+  useAutoDeployTnaRecommendations,
+  useGetTnaRecommendations,
+} from "../../hooks/useTna";
 import { getTerm } from "../../lib/utils";
 
 type RecommendationStatus = "pending" | "assigned" | "completed";
 type TrainingProgressStatus = "pending" | "in_progress" | "completed";
+type TrainingFilterStatus = "all" | TrainingProgressStatus;
+type TrainingPriority = "high" | "medium" | "low";
 
 type TnaRecommendation = {
   _id: string;
@@ -25,6 +30,31 @@ type TnaRecommendation = {
   }>;
 };
 
+type AutoDeploySummary = {
+  noOp?: boolean;
+  totalGroups: number;
+  programsCreated: number;
+  programsReused: number;
+  coursesCreated: number;
+  coursesReused: number;
+  batchesCreated: number;
+  batchesUpdated: number;
+  enrollmentsAdded: number;
+  recommendationsUpdated: number;
+  groups?: Array<{
+    trainingTitle?: string;
+    employeeCount?: number;
+    recommendationCount?: number;
+    program?: { name?: string; code?: string };
+    course?: { title?: string; code?: string };
+    batch?: { name?: string; code?: string };
+    enrollmentsAdded?: number;
+    reusedProgram?: boolean;
+    reusedCourse?: boolean;
+    reusedBatch?: boolean;
+  }>;
+};
+
 const normalizeStatus = (value?: string): RecommendationStatus => {
   if (value === "assigned" || value === "completed") return value;
   return "pending";
@@ -35,10 +65,33 @@ const normalizeTrainingProgressStatus = (value?: string): TrainingProgressStatus
   return "pending";
 };
 
+const normalizeTrainingPriority = (value?: string): TrainingPriority => {
+  if (value === "high" || value === "low") return value;
+  return "medium";
+};
+
 const trainingStatusLabelMap: Record<TrainingProgressStatus, string> = {
   pending: "Pending",
   in_progress: "In Progress",
   completed: "Completed",
+};
+
+const trainingStatusBadgeClassMap: Record<TrainingProgressStatus, string> = {
+  pending: "border-amber-200 bg-amber-50 text-amber-700",
+  in_progress: "border-cyan-200 bg-cyan-50 text-cyan-700",
+  completed: "border-emerald-200 bg-emerald-50 text-emerald-700",
+};
+
+const trainingPriorityLabelMap: Record<TrainingPriority, string> = {
+  high: "High",
+  medium: "Medium",
+  low: "Low",
+};
+
+const trainingPriorityBadgeClassMap: Record<TrainingPriority, string> = {
+  high: "border-rose-200 bg-rose-50 text-rose-700",
+  medium: "border-violet-200 bg-violet-50 text-violet-700",
+  low: "border-emerald-200 bg-emerald-50 text-emerald-700",
 };
 
 const getEmployeeName = (recommendation: TnaRecommendation): string => {
@@ -62,6 +115,26 @@ const toLocaleDateTime = (value?: string): string => {
   return date.toLocaleString();
 };
 
+const getErrorMessage = (error: unknown): string => {
+  if (typeof error === "string" && error.trim()) return error;
+  if (error && typeof error === "object") {
+    const typed = error as {
+      response?: { data?: { message?: unknown; error?: unknown } };
+      message?: unknown;
+    };
+
+    const candidateMessages = [typed.response?.data?.error, typed.response?.data?.message, typed.message];
+    for (const candidate of candidateMessages) {
+      if (typeof candidate === "string" && candidate.trim()) return candidate;
+      if (candidate && typeof candidate === "object") {
+        const nestedMessage = (candidate as { message?: unknown }).message;
+        if (typeof nestedMessage === "string" && nestedMessage.trim()) return nestedMessage;
+      }
+    }
+  }
+  return "Failed to complete auto deployment";
+};
+
 export default function TnaExecutionPipelinePage() {
   const { currentUser } = useAuth();
   const navigate = useNavigate();
@@ -70,7 +143,7 @@ export default function TnaExecutionPipelinePage() {
   const employeeTerm = getTerm("learner", orgType);
 
   const recommendationsQuery = useGetTnaRecommendations({ limit: 500, skip: 0 });
-  const upsertExecutionMutation = useUpsertTnaRecommendationExecution();
+  const autoDeployMutation = useAutoDeployTnaRecommendations();
 
   const recommendations = useMemo(() => {
     const response = recommendationsQuery.data as { data?: TnaRecommendation[] } | undefined;
@@ -79,9 +152,9 @@ export default function TnaExecutionPipelinePage() {
 
   const [selectedRecommendationId, setSelectedRecommendationId] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
-  const [trainingStatusDrafts, setTrainingStatusDrafts] = useState<
-    Record<string, TrainingProgressStatus>
-  >({});
+  const [trainingSearchTerm, setTrainingSearchTerm] = useState("");
+  const [trainingStatusFilter, setTrainingStatusFilter] = useState<TrainingFilterStatus>("all");
+  const [autoDeploySummary, setAutoDeploySummary] = useState<AutoDeploySummary | null>(null);
 
   const filteredRecommendations = useMemo(() => {
     const query = searchTerm.trim().toLowerCase();
@@ -112,21 +185,6 @@ export default function TnaExecutionPipelinePage() {
     [recommendations, filteredRecommendations, selectedRecommendationId]
   );
 
-  useEffect(() => {
-    if (!selectedRecommendation || !Array.isArray(selectedRecommendation.recommendedTrainings)) {
-      setTrainingStatusDrafts({});
-      return;
-    }
-
-    const nextDrafts: Record<string, TrainingProgressStatus> = {};
-    for (const training of selectedRecommendation.recommendedTrainings) {
-      const trainingId = String(training?._id || "");
-      if (!trainingId) continue;
-      nextDrafts[trainingId] = normalizeTrainingProgressStatus(training.progressStatus);
-    }
-    setTrainingStatusDrafts(nextDrafts);
-  }, [selectedRecommendation?._id, selectedRecommendation?.recommendedTrainings]);
-
   const totalRecommendations = recommendations.length;
   const withTrainingRecommendations = useMemo(
     () =>
@@ -137,6 +195,19 @@ export default function TnaExecutionPipelinePage() {
   );
   const pendingRecommendations = useMemo(
     () => recommendations.filter((item) => normalizeStatus(item.status) === "pending").length,
+    [recommendations]
+  );
+  const pendingTrainingItemsCount = useMemo(
+    () =>
+      recommendations.reduce((count, recommendation) => {
+        const trainings = Array.isArray(recommendation.recommendedTrainings)
+          ? recommendation.recommendedTrainings
+          : [];
+        const pendingItems = trainings.filter(
+          (training) => normalizeTrainingProgressStatus(training.progressStatus) === "pending"
+        ).length;
+        return count + pendingItems;
+      }, 0),
     [recommendations]
   );
 
@@ -150,16 +221,39 @@ export default function TnaExecutionPipelinePage() {
       .filter(Boolean);
   }, [selectedRecommendation]);
 
+  const selectedTrainingRows = useMemo(() => {
+    if (!selectedRecommendation || !Array.isArray(selectedRecommendation.recommendedTrainings)) return [];
+    return selectedRecommendation.recommendedTrainings.map((item, index) => {
+      const rowId = String(item?._id || `training-${index}`);
+      return {
+        id: rowId,
+        title: String(item?.title || "").trim() || "Untitled training",
+        priority: normalizeTrainingPriority(String(item?.priority || "").trim().toLowerCase()),
+        mandatory: Boolean(item?.mandatory),
+        status: normalizeTrainingProgressStatus(item?.progressStatus),
+      };
+    });
+  }, [selectedRecommendation]);
+
+  const filteredTrainingRows = useMemo(() => {
+    const keyword = trainingSearchTerm.trim().toLowerCase();
+    return selectedTrainingRows.filter((row) => {
+      const matchesFilter = trainingStatusFilter === "all" || row.status === trainingStatusFilter;
+      if (!matchesFilter) return false;
+      if (!keyword) return true;
+      return `${row.title} ${row.priority} ${row.mandatory ? "mandatory" : "optional"}`
+        .toLowerCase()
+        .includes(keyword);
+    });
+  }, [selectedTrainingRows, trainingSearchTerm, trainingStatusFilter]);
+
   const trainingProgressSummary = useMemo(() => {
     const trainings = selectedRecommendation?.recommendedTrainings || [];
     let completed = 0;
     let inProgress = 0;
 
     for (const training of trainings) {
-      const trainingId = String(training?._id || "");
-      const status = trainingId
-        ? trainingStatusDrafts[trainingId] || normalizeTrainingProgressStatus(training?.progressStatus)
-        : normalizeTrainingProgressStatus(training?.progressStatus);
+      const status = normalizeTrainingProgressStatus(training?.progressStatus);
       if (status === "completed") completed += 1;
       if (status === "in_progress") inProgress += 1;
     }
@@ -170,38 +264,33 @@ export default function TnaExecutionPipelinePage() {
       inProgress,
       pending: Math.max(trainings.length - completed - inProgress, 0),
     };
-  }, [selectedRecommendation, trainingStatusDrafts]);
+  }, [selectedRecommendation]);
 
-  const saveTrainingProgress = async () => {
-    if (!selectedRecommendation) return;
-    const trainings = selectedRecommendation.recommendedTrainings || [];
-    const trainingStatuses = trainings
-      .map((training) => {
-        const trainingId = String(training?._id || "");
-        if (!trainingId) return null;
-        return {
-          trainingId,
-          status:
-            trainingStatusDrafts[trainingId] ||
-            normalizeTrainingProgressStatus(training.progressStatus),
-        };
-      })
-      .filter((item): item is { trainingId: string; status: TrainingProgressStatus } => Boolean(item));
-
+  const runAutoDeployFromTna = async () => {
     try {
-      await toast.promise(
-        upsertExecutionMutation.mutateAsync({
-          recommendationId: selectedRecommendation._id,
-          trainingStatuses,
-        }),
+      const response = await toast.promise(
+        autoDeployMutation.mutateAsync({}),
         {
-          pending: "Saving training progress...",
-          success: "Training progress updated",
-          error: "Failed to save training progress",
+          pending: "Auto deploying TNA recommendations...",
+          success: {
+            render: ({ data }) => {
+              const responseMessage = (data as { message?: unknown } | undefined)?.message;
+              if (typeof responseMessage === "string" && responseMessage.trim()) return responseMessage;
+              return "Program, course, and batch deployment completed";
+            },
+          },
+          error: {
+            render: ({ data }) => getErrorMessage(data),
+          },
         }
       );
+
+      const summary = (response as { data?: AutoDeploySummary } | undefined)?.data;
+      if (summary) {
+        setAutoDeploySummary(summary);
+      }
     } catch {
-      // Error toast is already handled by toast.promise.
+      // Error toast is already handled above.
     }
   };
 
@@ -282,9 +371,6 @@ export default function TnaExecutionPipelinePage() {
         <aside className={`${cardClassName} h-fit xl:sticky xl:top-20 space-y-3`}>
           <div>
             <p className={labelClassName}>TNA Recommendations</p>
-            <p className="text-xs text-slate-500 mt-1">
-              Select a recommendation to continue deployment.
-            </p>
           </div>
           <input
             value={searchTerm}
@@ -370,24 +456,7 @@ export default function TnaExecutionPipelinePage() {
               <section className="rounded-xl border border-slate-200 bg-white p-3">
                 <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
                   <div>
-                    <p className={labelClassName}>Recommended Trainings From TNA</p>
-                    <p className="text-xs text-slate-500 mt-1">
-                      Update each training item. Recommendation is marked completed only when all items are completed.
-                    </p>
-                  </div>
-                  <div className="flex flex-wrap gap-1.5 text-xs">
-                    <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-slate-700">
-                      Total: {trainingProgressSummary.total}
-                    </span>
-                    <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-emerald-700">
-                      Completed: {trainingProgressSummary.completed}
-                    </span>
-                    <span className="rounded-full border border-cyan-200 bg-cyan-50 px-2.5 py-1 text-cyan-700">
-                      In Progress: {trainingProgressSummary.inProgress}
-                    </span>
-                    <span className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-amber-700">
-                      Pending: {trainingProgressSummary.pending}
-                    </span>
+                    <p className={labelClassName}>Recommended Trainings</p>
                   </div>
                 </div>
 
@@ -395,69 +464,119 @@ export default function TnaExecutionPipelinePage() {
                   <p className="text-sm text-slate-500 mt-2">No generated training recommendations.</p>
                 ) : (
                   <>
-                    <div className="mt-3 space-y-2">
-                      {selectedRecommendation.recommendedTrainings?.map((item, index) => {
-                        const trainingId = String(item?._id || "");
-                        const trainingStatus = trainingId
-                          ? trainingStatusDrafts[trainingId] || normalizeTrainingProgressStatus(item.progressStatus)
-                          : normalizeTrainingProgressStatus(item.progressStatus);
-
-                        return (
-                          <div
-                            key={`${selectedRecommendation._id}-training-${trainingId || index}`}
-                            className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5"
-                          >
-                            <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-                              <div>
-                                <p className="text-sm font-medium text-slate-900">
-                                  {item.title || "Untitled training"}
-                                </p>
-                                <p className="text-xs text-slate-500 mt-0.5">
-                                  Priority: {item.priority || "medium"} |{" "}
-                                  {item.mandatory ? "mandatory" : "optional"}
-                                </p>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <span className="text-xs text-slate-500">Progress</span>
-                                <select
-                                  value={trainingStatus}
-                                  disabled={!trainingId || upsertExecutionMutation.isPending}
-                                  onChange={(event) => {
-                                    if (!trainingId) return;
-                                    setTrainingStatusDrafts((previous) => ({
-                                      ...previous,
-                                      [trainingId]: event.target.value as TrainingProgressStatus,
-                                    }));
-                                  }}
-                                  className="h-9 rounded-lg border border-slate-200 bg-white px-2.5 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-primary/20"
+                    <div className="mt-3 rounded-xl border border-slate-200 bg-white">
+                      <div className="flex flex-col gap-2 border-b border-slate-200 px-3 py-2.5">
+                        <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
+                          <input
+                            value={trainingSearchTerm}
+                            onChange={(event) => setTrainingSearchTerm(event.target.value)}
+                            className={`${inputClassName} h-9 max-w-xl py-2`}
+                            placeholder="Search training title, priority, or type"
+                          />
+                          <div className="flex flex-wrap gap-1.5">
+                            {(
+                              [
+                                {
+                                  key: "all",
+                                  label: "All",
+                                  count: trainingProgressSummary.total,
+                                },
+                                {
+                                  key: "completed",
+                                  label: "Completed",
+                                  count: trainingProgressSummary.completed,
+                                },
+                                {
+                                  key: "in_progress",
+                                  label: "In Progress",
+                                  count: trainingProgressSummary.inProgress,
+                                },
+                                {
+                                  key: "pending",
+                                  label: "Pending",
+                                  count: trainingProgressSummary.pending,
+                                },
+                              ] as Array<{
+                                key: TrainingFilterStatus;
+                                label: string;
+                                count: number;
+                              }>
+                            ).map((filterItem) => {
+                              const isActive = trainingStatusFilter === filterItem.key;
+                              return (
+                                <button
+                                  key={filterItem.key}
+                                  type="button"
+                                  onClick={() => setTrainingStatusFilter(filterItem.key)}
+                                  className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold transition-colors ${
+                                    isActive
+                                      ? "border-primary bg-primary/10 text-primary"
+                                      : "border-slate-200 bg-slate-50 text-slate-600 hover:border-slate-300 hover:bg-white"
+                                  }`}
                                 >
-                                  <option value="pending">{trainingStatusLabelMap.pending}</option>
-                                  <option value="in_progress">{trainingStatusLabelMap.in_progress}</option>
-                                  <option value="completed">{trainingStatusLabelMap.completed}</option>
-                                </select>
-                              </div>
-                            </div>
+                                  {filterItem.label}: {filterItem.count}
+                                </button>
+                              );
+                            })}
                           </div>
-                        );
-                      })}
+                        </div>
+                      </div>
+
+                      {filteredTrainingRows.length === 0 ? (
+                        <p className="px-3 py-4 text-sm text-slate-500">
+                          No training records match the current filter.
+                        </p>
+                      ) : (
+                        <div className="overflow-auto max-h-[460px]">
+                          <table className="min-w-[680px] w-full">
+                            <thead className="sticky top-0 z-10 bg-slate-50/95 backdrop-blur">
+                              <tr className="border-b border-slate-200 text-left text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                                <th className="px-3 py-2.5">Training</th>
+                                <th className="px-3 py-2.5">Priority</th>
+                                <th className="px-3 py-2.5">Type</th>
+                                <th className="px-3 py-2.5">Status</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {filteredTrainingRows.map((row) => (
+                                <tr key={row.id} className="border-b border-slate-100 last:border-b-0">
+                                  <td className="px-3 py-2.5 text-sm font-medium text-slate-900">{row.title}</td>
+                                  <td className="px-3 py-2.5">
+                                    <span
+                                      className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold ${trainingPriorityBadgeClassMap[row.priority]}`}
+                                    >
+                                      {trainingPriorityLabelMap[row.priority]}
+                                    </span>
+                                  </td>
+                                  <td className="px-3 py-2.5">
+                                    <span className="text-xs font-medium text-slate-600">
+                                      {row.mandatory ? "Mandatory" : "Optional"}
+                                    </span>
+                                  </td>
+                                  <td className="px-3 py-2.5">
+                                    <span
+                                      className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold ${trainingStatusBadgeClassMap[row.status]}`}
+                                    >
+                                      {trainingStatusLabelMap[row.status]}
+                                    </span>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
                     </div>
 
-                    <div className="mt-3 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                    <div className="mt-3">
                       <p className="text-xs text-slate-600">
                         {trainingProgressSummary.total > 0 &&
                         trainingProgressSummary.completed === trainingProgressSummary.total
                           ? "All recommendation items are completed. Next: update employee skills and rerun TNA."
                           : trainingProgressSummary.completed > 0
                           ? "Partial completion recorded. Keep recommendation status as Assigned until all items are completed."
-                          : "No completed items yet. Start the first training and mark it In Progress."}
+                          : "No completed items yet. Auto deploy will move pending items to In Progress."}
                       </p>
-                      <Button
-                        variant="primary"
-                        onClick={saveTrainingProgress}
-                        isLoading={upsertExecutionMutation.isPending}
-                      >
-                        Save Training Progress
-                      </Button>
                     </div>
                   </>
                 )}
@@ -474,7 +593,86 @@ export default function TnaExecutionPipelinePage() {
               </section>
 
               <section className="rounded-xl border border-slate-200 bg-slate-50/80 p-4">
-                <p className={labelClassName}>Deployment Flow In LMS</p>
+                <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                  <div>
+                    <p className={labelClassName}>Deployment Flow In LMS</p>
+                    <p className="text-xs text-slate-600 mt-1">
+                      Auto deploy runs only for training items still in <span className="font-semibold">Pending</span>.
+                      Deployed items are moved to <span className="font-semibold">In Progress</span>.
+                    </p>
+                    <p className="text-xs text-slate-500 mt-1">
+                      Pending training items ready for auto deploy:{" "}
+                      <span className="font-semibold text-slate-700">{pendingTrainingItemsCount}</span>
+                    </p>
+                  </div>
+                  <Button
+                    variant="primary"
+                    onClick={runAutoDeployFromTna}
+                    isLoading={autoDeployMutation.isPending}
+                    disabled={pendingTrainingItemsCount === 0}
+                    className="h-10"
+                  >
+                    Auto Deploy From TNA
+                  </Button>
+                </div>
+
+                <div className="mt-3 rounded-lg border border-slate-200 bg-white p-3 text-xs text-slate-700 space-y-1.5">
+                  <p className="font-semibold text-slate-900">How this works</p>
+                  <p>1. Groups employees by the same pending training title.</p>
+                  <p>2. Creates or reuses program, course, and batch (no duplicate enrollments).</p>
+                  <p>3. Sets deployed training items from Pending to In Progress automatically.</p>
+                  <p>4. Re-clicking auto deploy only processes new pending items.</p>
+                </div>
+
+                {autoDeploySummary && (
+                  <div
+                    className={`mt-3 rounded-lg p-3 space-y-2 ${
+                      autoDeploySummary.noOp
+                        ? "border border-slate-200 bg-slate-50"
+                        : "border border-emerald-200 bg-emerald-50"
+                    }`}
+                  >
+                    <p
+                      className={`text-sm font-semibold ${
+                        autoDeploySummary.noOp ? "text-slate-800" : "text-emerald-900"
+                      }`}
+                    >
+                      Auto Deployment Summary
+                    </p>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
+                      <div className="rounded-md border border-emerald-200 bg-white px-2.5 py-1.5">
+                        Groups: <span className="font-semibold">{autoDeploySummary.totalGroups || 0}</span>
+                      </div>
+                      <div className="rounded-md border border-emerald-200 bg-white px-2.5 py-1.5">
+                        Programs Created:{" "}
+                        <span className="font-semibold">{autoDeploySummary.programsCreated || 0}</span>
+                      </div>
+                      <div className="rounded-md border border-emerald-200 bg-white px-2.5 py-1.5">
+                        Courses Created:{" "}
+                        <span className="font-semibold">{autoDeploySummary.coursesCreated || 0}</span>
+                      </div>
+                      <div className="rounded-md border border-emerald-200 bg-white px-2.5 py-1.5">
+                        Batches Created:{" "}
+                        <span className="font-semibold">{autoDeploySummary.batchesCreated || 0}</span>
+                      </div>
+                      <div className="rounded-md border border-emerald-200 bg-white px-2.5 py-1.5">
+                        Batches Updated:{" "}
+                        <span className="font-semibold">{autoDeploySummary.batchesUpdated || 0}</span>
+                      </div>
+                      <div className="rounded-md border border-emerald-200 bg-white px-2.5 py-1.5">
+                        Enrollments Added:{" "}
+                        <span className="font-semibold">{autoDeploySummary.enrollmentsAdded || 0}</span>
+                      </div>
+                      <div className="rounded-md border border-emerald-200 bg-white px-2.5 py-1.5">
+                        Recommendations Updated:{" "}
+                        <span className="font-semibold">
+                          {autoDeploySummary.recommendationsUpdated || 0}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 <div className="mt-3 space-y-3">
                   <div className="rounded-lg border border-slate-200 bg-white p-3 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                     <div>

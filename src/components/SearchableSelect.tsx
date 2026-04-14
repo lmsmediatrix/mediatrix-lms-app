@@ -39,6 +39,7 @@ interface SearchableSelectProps {
   onLoadMore?: () => void;
   // Pagination info
   paginationInfo?: PaginationInfo;
+  disabled?: boolean;
 }
 
 export function SearchableSelect({
@@ -56,6 +57,7 @@ export function SearchableSelect({
   isFetchingNextPage = false,
   onLoadMore,
   paginationInfo,
+  disabled = false,
 }: SearchableSelectProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -116,10 +118,14 @@ export function SearchableSelect({
   return (
     <div ref={wrapperRef} className={`relative ${isOpen ? "z-[80]" : "z-0"} ${className}`}>
       <div
-        className={`flex items-center justify-between border rounded-lg px-3 py-2 cursor-pointer bg-white ${
-          error ? "border-red-500" : "border-gray-300"
+        className={`flex items-center justify-between border rounded-lg px-3 py-2 bg-white ${
+          disabled ? "cursor-not-allowed opacity-70" : "cursor-pointer"
+        } ${error ? "border-red-500" : "border-gray-300"}
         }`}
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={() => {
+          if (disabled) return;
+          setIsOpen(!isOpen);
+        }}
       >
         <div className="flex-1">
           {selectedOption ? (
@@ -133,7 +139,7 @@ export function SearchableSelect({
         />
       </div>
 
-      {isOpen && (
+      {isOpen && !disabled && (
         <div className="absolute z-[90] w-full mt-1 bg-white border rounded-lg shadow-lg">
           <div className="border-b">
             {/* Search Bar with integrated pagination info */}

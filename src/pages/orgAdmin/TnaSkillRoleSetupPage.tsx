@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { FaEdit, FaLightbulb, FaTrash } from "react-icons/fa";
+import { FaBriefcase, FaEdit, FaLightbulb, FaListUl, FaTrash } from "react-icons/fa";
 import { Navigate, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import { SearchableSelect } from "../../components/SearchableSelect";
@@ -24,17 +24,14 @@ type DeleteTarget =
 const SETUP_TABS: Array<{
   key: StepKey;
   title: string;
-  description: string;
 }> = [
   {
     key: "skill-library",
     title: "Skills",
-    description: "Create reusable skills that can be used by every role profile.",
   },
   {
     key: "role-requirements",
     title: "Role",
-    description: "Set required skill levels and passing thresholds per role.",
   },
 ];
 
@@ -138,7 +135,13 @@ export default function TnaSkillRoleSetupPage() {
   const fieldLabelClassName = "text-xs font-semibold uppercase tracking-wider text-slate-500";
   const fieldHintClassName = "mt-1 text-xs text-slate-500";
   const sectionSurfaceClassName = "rounded-xl border border-slate-200 bg-white p-3.5";
-  const activeTabMeta = SETUP_TABS.find((tab) => tab.key === activeStep);
+  const primaryIconButtonClassName =
+    "inline-flex h-7 w-7 items-center justify-center rounded-full border border-[color:color-mix(in_srgb,var(--color-primary,#2563eb)_30%,white)] bg-[color:color-mix(in_srgb,var(--color-primary,#2563eb)_10%,white)] text-[color:var(--color-primary,#2563eb)] transition-colors hover:bg-[color:color-mix(in_srgb,var(--color-primary,#2563eb)_18%,white)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:color-mix(in_srgb,var(--color-primary,#2563eb)_28%,transparent)]";
+  const secondaryIconButtonClassName =
+    "inline-flex h-7 w-7 items-center justify-center rounded-full border border-[color:color-mix(in_srgb,var(--color-secondary,#0ea5e9)_30%,white)] bg-[color:color-mix(in_srgb,var(--color-secondary,#0ea5e9)_10%,white)] text-[color:var(--color-secondary,#0ea5e9)] transition-colors hover:bg-[color:color-mix(in_srgb,var(--color-secondary,#0ea5e9)_18%,white)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:color-mix(in_srgb,var(--color-secondary,#0ea5e9)_28%,transparent)]";
+  const dangerIconButtonClassName =
+    "inline-flex h-7 w-7 items-center justify-center rounded-full border border-rose-200 bg-rose-50 text-rose-600 transition-colors hover:bg-rose-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-300";
+  const tabPillHighlightTransform = activeStep === "skill-library" ? "translateX(0%)" : "translateX(100%)";
   const canSaveSkill = Boolean(skillName.trim());
   const hasRoleName = Boolean(jobRole.trim());
   const hasRequiredSkill = requiredSkills.some((item) => Boolean(String(item.skillId || "").trim()));
@@ -343,9 +346,13 @@ export default function TnaSkillRoleSetupPage() {
         </div>
       </section>
 
-      <section className="rounded-2xl border border-slate-200 bg-white p-4 md:p-5 shadow-[0_12px_36px_-24px_rgba(15,23,42,0.3)]">
-        <div className="border-b border-slate-200 pb-2">
-          <div className="flex flex-wrap gap-2 md:gap-3">
+      <section>
+        <div className="rounded-xl border border-slate-200 bg-slate-50/90 p-1.5 md:p-2">
+          <div className="relative grid grid-cols-1 gap-1.5 sm:grid-cols-2">
+            <div
+              className="pointer-events-none absolute left-0 top-0 hidden h-full w-1/2 rounded-lg border border-primary/20 bg-white shadow-[0_10px_20px_-16px_rgba(37,99,235,0.7)] transition-transform duration-300 sm:block"
+              style={{ transform: tabPillHighlightTransform }}
+            />
             {SETUP_TABS.map((step) => {
               const isActive = activeStep === step.key;
 
@@ -354,21 +361,18 @@ export default function TnaSkillRoleSetupPage() {
                   key={step.key}
                   type="button"
                   onClick={() => setActiveStep(step.key)}
-                  className={`rounded-lg border px-3 py-2 text-left transition-colors ${
+                  className={`relative rounded-lg border px-3 py-2.5 text-left transition-all duration-200 ${
                     isActive
-                      ? "border-primary bg-primary/10"
-                      : "border-slate-200 bg-slate-50/70 hover:border-slate-300"
+                      ? "border-primary/30 bg-white text-slate-900 shadow-[0_8px_18px_-16px_rgba(37,99,235,0.8)]"
+                      : "border-transparent text-slate-500 hover:border-slate-200 hover:bg-white/70 hover:text-slate-700"
                   }`}
                 >
-                  <p className="text-sm font-medium text-slate-900">{step.title}</p>
+                  <p className="text-sm font-semibold">{step.title}</p>
                 </button>
               );
             })}
           </div>
         </div>
-        <p className="mt-3 text-sm text-slate-600">
-          {activeTabMeta?.description || "Configure skills and role standards."}
-        </p>
       </section>
 
       <div className="space-y-6">
@@ -453,114 +457,137 @@ export default function TnaSkillRoleSetupPage() {
 
         {activeStep === "role-requirements" && (
           <section id="role-requirements" className={`${panelClassName} space-y-4`}>
-            <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-3">
-              <div>
-                <h2 className="text-xl font-semibold text-slate-900">Role and Skills Configuration</h2>
-                <p className="text-sm text-slate-600 mt-1">
-                  Set job role expectations with required skill levels and pre-assessment threshold.
-                </p>
-              </div>
-            </div>
-
-            <div className={`${sectionSurfaceClassName} space-y-3`}>
-              <p className={fieldLabelClassName}>Role Metadata</p>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="rounded-xl border border-slate-200 bg-[linear-gradient(140deg,#ffffff,color-mix(in_srgb,var(--color-primary,#2563eb)_6%,#ffffff))] p-4 md:p-5">
+              <div className="flex items-start gap-3">
+                <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[color:color-mix(in_srgb,var(--color-primary,#2563eb)_26%,white)] bg-[color:color-mix(in_srgb,var(--color-primary,#2563eb)_10%,white)] text-[color:var(--color-primary,#2563eb)]">
+                  <FaBriefcase className="h-4 w-4" />
+                </span>
                 <div>
-                  <label className={fieldLabelClassName}>Job Role</label>
-                  <input
-                    value={jobRole}
-                    onChange={(event) => setJobRole(event.target.value)}
-                    disabled={isEditingRoleRequirement}
-                    className={`${inputClassName} mt-1`}
-                    placeholder="Job role (e.g., Nurse, HR Officer)"
-                  />
-                  <p className={fieldHintClassName}>
-                    {isEditingRoleRequirement
-                      ? "Role name is locked while editing. Cancel edit to create a new role name."
-                      : "Use a role name that matches your organization chart."}
+                  <h2 className="text-xl font-semibold text-slate-900">Role and Skills Configuration</h2>
+                  <p className="mt-1 text-sm text-slate-600">
+                    Set role expectations with required skills and passing threshold.
                   </p>
                 </div>
-                <div>
-                  <label className={fieldLabelClassName}>Passing Threshold (%)</label>
-                  <input
-                    type="number"
-                    min={0}
-                    max={100}
-                    value={threshold}
-                    onChange={(event) => setThreshold(Number(event.target.value || 70))}
-                    className={`${inputClassName} mt-1`}
-                    placeholder="70"
-                  />
-                  <p className={fieldHintClassName}>Employees below this score will be flagged for support.</p>
-                </div>
               </div>
-            </div>
 
-            <div className="rounded-xl border border-slate-200 bg-white p-3 space-y-2">
-              <p className={fieldLabelClassName}>Required Skills And Levels</p>
-              <div className="hidden md:grid grid-cols-12 gap-2 px-1">
-                <p className={`col-span-8 ${fieldLabelClassName}`}>Skill</p>
-                <p className={`col-span-2 ${fieldLabelClassName}`}>Level</p>
-                <p className={`col-span-2 ${fieldLabelClassName}`}>Action</p>
-              </div>
-              {requiredSkills.map((item, index) => (
-                <div key={`required-${index}`} className="grid grid-cols-12 gap-2">
-                  <div className="col-span-12 md:col-span-8">
-                    <SearchableSelect
-                      options={skillSelectOptions}
-                      value={item.skillId}
-                      onChange={(value) => {
-                        const next = [...requiredSkills];
-                        next[index] = { ...next[index], skillId: value };
-                        setRequiredSkills(next);
-                      }}
-                      placeholder="Select skill"
-                      loading={skillsQuery.isLoading}
-                      emptyMessage="No skills yet. Add skills in the Skills tab."
-                      className="w-full"
-                    />
+              <div className="mt-4 space-y-3">
+                <div className="rounded-xl border border-slate-200 bg-white/90 p-4 md:p-5 space-y-3">
+                  <p className={fieldLabelClassName}>Role Metadata</p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className={fieldLabelClassName}>Job Role</label>
+                      <input
+                        value={jobRole}
+                        onChange={(event) => setJobRole(event.target.value)}
+                        disabled={isEditingRoleRequirement}
+                        className={`${inputClassName} mt-1`}
+                        placeholder="Job role (e.g., Nurse, HR Officer)"
+                      />
+                      <p className={fieldHintClassName}>
+                        {isEditingRoleRequirement
+                          ? "Role name is locked while editing. Cancel edit to create a new role name."
+                          : "Use a role name that matches your organization chart."}
+                      </p>
+                    </div>
+                    <div>
+                      <label className={fieldLabelClassName}>Passing Threshold (%)</label>
+                      <input
+                        type="number"
+                        min={0}
+                        max={100}
+                        value={threshold}
+                        onChange={(event) => setThreshold(Number(event.target.value || 70))}
+                        className={`${inputClassName} mt-1`}
+                        placeholder="70"
+                      />
+                      <p className={fieldHintClassName}>Employees below this score will be flagged for support.</p>
+                    </div>
                   </div>
-                  <input
-                    type="number"
-                    min={0}
-                    max={5}
-                    value={item.level}
-                    onChange={(event) => {
-                      const next = [...requiredSkills];
-                      next[index] = { ...next[index], level: Number(event.target.value || 0) };
-                      setRequiredSkills(next);
-                    }}
-                    className={`col-span-7 md:col-span-2 ${inputClassName}`}
-                  />
-                  <button
-                    type="button"
-                    className="col-span-5 md:col-span-2 rounded-lg border border-red-200 text-red-600 text-sm hover:bg-red-50"
-                    onClick={() => {
-                      if (requiredSkills.length === 1) return;
-                      setRequiredSkills(requiredSkills.filter((_, rowIndex) => rowIndex !== index));
-                    }}
-                  >
-                    Remove
-                  </button>
                 </div>
-              ))}
-              <p className={fieldHintClassName}>Use levels 1 to 5, where 5 is expert capability.</p>
+
+                <div className="rounded-xl border border-slate-200 bg-white/90 p-4 md:p-5 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <span className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-[color:color-mix(in_srgb,var(--color-primary,#2563eb)_26%,white)] bg-[color:color-mix(in_srgb,var(--color-primary,#2563eb)_8%,white)] text-[color:var(--color-primary,#2563eb)]">
+                      <FaListUl className="h-3.5 w-3.5" />
+                    </span>
+                    <p className={fieldLabelClassName}>Required Skills And Levels</p>
+                  </div>
+                  <div className="hidden md:grid grid-cols-12 gap-2 px-1">
+                    <p className={`col-span-8 ${fieldLabelClassName}`}>Skill</p>
+                    <p className={`col-span-2 ${fieldLabelClassName}`}>Level</p>
+                    <p className={`col-span-2 ${fieldLabelClassName}`}>Action</p>
+                  </div>
+                  {requiredSkills.map((item, index) => (
+                    <div
+                      key={`required-${index}`}
+                      className="grid grid-cols-12 gap-2 rounded-lg border border-slate-200 bg-slate-50/70 p-2"
+                    >
+                      <div className="col-span-12 md:col-span-8">
+                        <SearchableSelect
+                          options={skillSelectOptions}
+                          value={item.skillId}
+                          onChange={(value) => {
+                            const next = [...requiredSkills];
+                            next[index] = { ...next[index], skillId: value };
+                            setRequiredSkills(next);
+                          }}
+                          placeholder="Select skill"
+                          loading={skillsQuery.isLoading}
+                          emptyMessage="No skills yet. Add skills in the Skills tab."
+                          className="w-full"
+                        />
+                      </div>
+                      <input
+                        type="number"
+                        min={0}
+                        max={5}
+                        value={item.level}
+                        onChange={(event) => {
+                          const next = [...requiredSkills];
+                          next[index] = { ...next[index], level: Number(event.target.value || 0) };
+                          setRequiredSkills(next);
+                        }}
+                        className={`col-span-7 md:col-span-2 ${inputClassName}`}
+                      />
+                      <button
+                        type="button"
+                        className="col-span-5 md:col-span-2 inline-flex items-center justify-center gap-1.5 rounded-lg border border-rose-200 bg-white text-sm font-medium text-rose-600 transition-colors hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-50"
+                        onClick={() => {
+                          if (requiredSkills.length === 1) return;
+                          setRequiredSkills(requiredSkills.filter((_, rowIndex) => rowIndex !== index));
+                        }}
+                        disabled={requiredSkills.length === 1}
+                      >
+                        <FaTrash className="h-3 w-3" />
+                        <span>Remove</span>
+                      </button>
+                    </div>
+                  ))}
+                  <p className={fieldHintClassName}>Use levels 1 to 5, where 5 is expert capability.</p>
+                </div>
+              </div>
             </div>
 
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <Button
                 variant="outline"
+                className="h-10 rounded-lg px-4 font-medium"
                 onClick={() => setRequiredSkills([...requiredSkills, { skillId: "", level: 1 }])}
               >
                 Add Skill Requirement
               </Button>
               {isEditingRoleRequirement && (
-                <Button variant="outline" onClick={resetRoleRequirementForm}>
+                <Button
+                  variant="outline"
+                  className="h-10 rounded-lg px-4 font-medium"
+                  onClick={resetRoleRequirementForm}
+                >
                   Cancel Edit
                 </Button>
               )}
               <Button
                 variant="primary"
+                className="h-10 rounded-lg px-4 font-medium shadow-[0_14px_24px_-18px_rgba(37,99,235,0.65)]"
                 onClick={saveRoleRequirements}
                 isLoading={upsertRoleRequirementMutation.isPending}
                 disabled={!canSaveRoleRequirements}
@@ -569,8 +596,8 @@ export default function TnaSkillRoleSetupPage() {
               </Button>
             </div>
 
-            <div className="rounded-xl bg-slate-50 border border-slate-200 p-3 min-h-[66px]">
-              <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">
+            <div className="rounded-xl border border-slate-200 bg-white p-3.5 min-h-[66px]">
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-500">
                 Existing Role Standards
               </p>
               {roleRequirementsQuery.isLoading ? (
@@ -588,13 +615,13 @@ export default function TnaSkillRoleSetupPage() {
                       <div
                         key={String(roleRequirement._id || roleRequirement.jobRole)}
                         tabIndex={0}
-                        className="relative rounded-lg border border-slate-200 bg-white px-3 py-2 pr-28 outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                        className="relative rounded-xl border border-slate-200 bg-slate-50/60 px-3.5 py-3 pr-32 outline-none transition-colors focus-visible:bg-white focus-visible:ring-2 focus-visible:ring-[color:color-mix(in_srgb,var(--color-primary,#2563eb)_28%,transparent)]"
                       >
                         <div className="absolute right-2 top-2 flex items-center gap-1">
                           <button
                             type="button"
                             aria-label="Edit role standard"
-                            className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-blue-200 bg-blue-50 text-blue-500 transition-colors hover:bg-blue-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300"
+                            className={primaryIconButtonClassName}
                             onClick={() => startEditRoleRequirement(roleRequirement)}
                           >
                             <FaEdit className="h-3 w-3" />
@@ -603,7 +630,7 @@ export default function TnaSkillRoleSetupPage() {
                           <button
                             type="button"
                             aria-label="Delete role standard"
-                            className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-red-200 bg-red-50 text-red-500 transition-colors hover:bg-red-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-300"
+                            className={dangerIconButtonClassName}
                             onClick={() => {
                               setDeleteTarget({
                                 type: "role",
@@ -619,12 +646,12 @@ export default function TnaSkillRoleSetupPage() {
                           <button
                             type="button"
                             aria-label="View required skills"
-                            className="peer group inline-flex h-6 w-6 items-center justify-center rounded-full border border-amber-200 bg-amber-50 text-amber-500 shadow-[0_0_0_rgba(245,158,11,0)] transition-all duration-300 hover:bg-amber-100 hover:shadow-[0_0_12px_rgba(245,158,11,0.35)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300"
+                            className={`peer group ${secondaryIconButtonClassName}`}
                           >
-                            <FaLightbulb className="h-3.5 w-3.5 motion-safe:animate-pulse transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-6" />
+                            <FaLightbulb className="h-3.5 w-3.5 transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-3" />
                           </button>
 
-                          <div className="pointer-events-none absolute bottom-full right-0 z-40 mb-2 hidden w-72 max-w-[calc(100vw-2rem)] rounded-lg border border-slate-200 bg-white p-3 shadow-xl peer-hover:block peer-focus-visible:block">
+                          <div className="pointer-events-none absolute bottom-full right-0 z-40 mb-2 hidden w-72 max-w-[calc(100vw-2rem)] rounded-lg border border-slate-200 bg-white/95 p-3 shadow-xl peer-hover:block peer-focus-visible:block">
                             <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
                               Required Skills
                             </p>
@@ -654,7 +681,7 @@ export default function TnaSkillRoleSetupPage() {
                         <p className="text-sm font-semibold text-slate-900">
                           {String(roleRequirement.jobRole || "Unnamed role")}
                         </p>
-                        <p className="text-xs text-slate-500 mt-1">
+                        <p className="mt-1 text-xs text-slate-500">
                           Threshold: {Number(roleRequirement.preAssessmentThreshold) || 70}% | Skills:{" "}
                           {roleRequiredSkills.length}
                         </p>

@@ -66,11 +66,24 @@ export const useDeleteTnaRoleRequirement = () => {
 };
 
 export const useUpsertEmployeeSkill = () => {
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (payload: {
       employeeId: string;
+      jobRole: string;
+      allowRoleChange?: boolean;
       skills: Array<{ skillId?: string; skillName?: string; currentLevel: number }>;
     }) => TnaService.upsertEmployeeSkill(payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["tna-employee-skills"] });
+    },
+  });
+};
+
+export const useGetTnaEmployeeSkills = (params?: { limit?: number; skip?: number; employeeId?: string }) => {
+  return useQuery({
+    queryKey: ["tna-employee-skills", params],
+    queryFn: () => TnaService.getEmployeeSkills(params),
   });
 };
 
@@ -174,6 +187,18 @@ export const useUpsertTnaRecommendationExecution = () => {
       }>;
       status?: "pending" | "assigned" | "completed";
     }) => TnaService.upsertRecommendationExecution(payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["tna-recommendations"] });
+      queryClient.invalidateQueries({ queryKey: ["employee-tna-recommendations"] });
+    },
+  });
+};
+
+export const useAutoDeployTnaRecommendations = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload?: { recommendationIds?: string[] }) =>
+      TnaService.autoDeployRecommendations(payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["tna-recommendations"] });
       queryClient.invalidateQueries({ queryKey: ["employee-tna-recommendations"] });

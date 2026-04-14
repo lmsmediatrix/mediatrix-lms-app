@@ -337,10 +337,14 @@ export default function GroupedDataTable<T extends object>({
         });
 
         const requestedPage = pageByGroup[group.key] || 1;
-        const totalPages = Math.max(1, Math.ceil(sortedRows.length / pageSize));
-        const currentPage = Math.min(requestedPage, totalPages);
-        const pageStartIndex = (currentPage - 1) * pageSize;
-        const pagedRows = sortedRows.slice(pageStartIndex, pageStartIndex + pageSize);
+        const totalPages = showPagination
+          ? Math.max(1, Math.ceil(sortedRows.length / pageSize))
+          : 1;
+        const currentPage = showPagination ? Math.min(requestedPage, totalPages) : 1;
+        const pageStartIndex = showPagination ? (currentPage - 1) * pageSize : 0;
+        const pagedRows = showPagination
+          ? sortedRows.slice(pageStartIndex, pageStartIndex + pageSize)
+          : sortedRows;
 
         return (
           <div
