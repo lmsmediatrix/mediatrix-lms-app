@@ -292,6 +292,7 @@ export const API_ENDPOINTS = {
     ROLE_REQUIREMENT_GET_ALL: "/tna/role-requirement/get/all",
     ROLE_REQUIREMENT_UPSERT: "/tna/role-requirement/upsert",
     ROLE_REQUIREMENT_REMOVE: "/tna/role-requirement/remove/:id",
+    EMPLOYEE_SKILL_GET_ALL: "/tna/employee-skill/get/all",
     EMPLOYEE_SKILL_UPSERT: "/tna/employee-skill/upsert",
     ANALYZE: "/tna/analyze",
     RECOMMENDATION_GET_ALL: "/tna/recommendation/get/all",
@@ -299,6 +300,7 @@ export const API_ENDPOINTS = {
     RECOMMENDATION_REMOVE: "/tna/recommendation/remove/:id",
     RECOMMENDATION_UPDATE_STATUS: "/tna/recommendation/status/update",
     RECOMMENDATION_EXECUTION_UPSERT: "/tna/recommendation/execution/upsert",
+    RECOMMENDATION_AUTO_DEPLOY: "/tna/recommendation/deploy/auto",
   },
 
   //... Add more API endpoints here

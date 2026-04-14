@@ -68,10 +68,20 @@ class TnaService extends APIService {
 
   upsertEmployeeSkill = async (body: {
     employeeId: string;
+    jobRole: string;
+    allowRoleChange?: boolean;
     skills: Array<{ skillId?: string; skillName?: string; currentLevel: number }>;
   }) => {
     const response = await apiClient.put(`${BASE_URL}${TNA.EMPLOYEE_SKILL_UPSERT}`, body, {
       withCredentials: true,
+    });
+    return response.data;
+  };
+
+  getEmployeeSkills = async (params?: { limit?: number; skip?: number; employeeId?: string }) => {
+    const response = await apiClient.get(`${BASE_URL}${TNA.EMPLOYEE_SKILL_GET_ALL}`, {
+      withCredentials: true,
+      params,
     });
     return response.data;
   };
@@ -167,6 +177,17 @@ class TnaService extends APIService {
     const response = await apiClient.put(
       `${BASE_URL}${TNA.RECOMMENDATION_EXECUTION_UPSERT}`,
       body,
+      {
+        withCredentials: true,
+      }
+    );
+    return response.data;
+  };
+
+  autoDeployRecommendations = async (body?: { recommendationIds?: string[] }) => {
+    const response = await apiClient.post(
+      `${BASE_URL}${TNA.RECOMMENDATION_AUTO_DEPLOY}`,
+      body || {},
       {
         withCredentials: true,
       }

@@ -4,7 +4,11 @@ import { FaArrowLeft } from "react-icons/fa";
 import { toast } from "react-toastify";
 import Button from "../../components/common/Button";
 import { useAuth } from "../../context/AuthContext";
-import { useGetTnaRecommendations, useUpsertTnaRecommendationExecution } from "../../hooks/useTna";
+import {
+  useAutoDeployTnaRecommendations,
+  useGetTnaRecommendations,
+  useUpsertTnaRecommendationExecution,
+} from "../../hooks/useTna";
 import { getTerm } from "../../lib/utils";
 
 type RecommendationStatus = "pending" | "assigned" | "completed";
@@ -22,6 +26,31 @@ type TnaRecommendation = {
     priority?: string;
     mandatory?: boolean;
     progressStatus?: TrainingProgressStatus;
+  }>;
+};
+
+type AutoDeploySummary = {
+  noOp?: boolean;
+  totalGroups: number;
+  programsCreated: number;
+  programsReused: number;
+  coursesCreated: number;
+  coursesReused: number;
+  batchesCreated: number;
+  batchesUpdated: number;
+  enrollmentsAdded: number;
+  recommendationsUpdated: number;
+  groups?: Array<{
+    trainingTitle?: string;
+    employeeCount?: number;
+    recommendationCount?: number;
+    program?: { name?: string; code?: string };
+    course?: { title?: string; code?: string };
+    batch?: { name?: string; code?: string };
+    enrollmentsAdded?: number;
+    reusedProgram?: boolean;
+    reusedCourse?: boolean;
+    reusedBatch?: boolean;
   }>;
 };
 
@@ -62,6 +91,26 @@ const toLocaleDateTime = (value?: string): string => {
   return date.toLocaleString();
 };
 
+const getErrorMessage = (error: unknown): string => {
+  if (typeof error === "string" && error.trim()) return error;
+  if (error && typeof error === "object") {
+    const typed = error as {
+      response?: { data?: { message?: unknown; error?: unknown } };
+      message?: unknown;
+    };
+
+    const candidateMessages = [typed.response?.data?.error, typed.response?.data?.message, typed.message];
+    for (const candidate of candidateMessages) {
+      if (typeof candidate === "string" && candidate.trim()) return candidate;
+      if (candidate && typeof candidate === "object") {
+        const nestedMessage = (candidate as { message?: unknown }).message;
+        if (typeof nestedMessage === "string" && nestedMessage.trim()) return nestedMessage;
+      }
+    }
+  }
+  return "Failed to complete auto deployment";
+};
+
 export default function TnaExecutionPipelinePage() {
   const { currentUser } = useAuth();
   const navigate = useNavigate();
@@ -71,6 +120,7 @@ export default function TnaExecutionPipelinePage() {
 
   const recommendationsQuery = useGetTnaRecommendations({ limit: 500, skip: 0 });
   const upsertExecutionMutation = useUpsertTnaRecommendationExecution();
+  const autoDeployMutation = useAutoDeployTnaRecommendations();
 
   const recommendations = useMemo(() => {
     const response = recommendationsQuery.data as { data?: TnaRecommendation[] } | undefined;
@@ -82,6 +132,7 @@ export default function TnaExecutionPipelinePage() {
   const [trainingStatusDrafts, setTrainingStatusDrafts] = useState<
     Record<string, TrainingProgressStatus>
   >({});
+  const [autoDeploySummary, setAutoDeploySummary] = useState<AutoDeploySummary | null>(null);
 
   const filteredRecommendations = useMemo(() => {
     const query = searchTerm.trim().toLowerCase();
@@ -137,6 +188,19 @@ export default function TnaExecutionPipelinePage() {
   );
   const pendingRecommendations = useMemo(
     () => recommendations.filter((item) => normalizeStatus(item.status) === "pending").length,
+    [recommendations]
+  );
+  const pendingTrainingItemsCount = useMemo(
+    () =>
+      recommendations.reduce((count, recommendation) => {
+        const trainings = Array.isArray(recommendation.recommendedTrainings)
+          ? recommendation.recommendedTrainings
+          : [];
+        const pendingItems = trainings.filter(
+          (training) => normalizeTrainingProgressStatus(training.progressStatus) === "pending"
+        ).length;
+        return count + pendingItems;
+      }, 0),
     [recommendations]
   );
 
@@ -202,6 +266,34 @@ export default function TnaExecutionPipelinePage() {
       );
     } catch {
       // Error toast is already handled by toast.promise.
+    }
+  };
+
+  const runAutoDeployFromTna = async () => {
+    try {
+      const response = await toast.promise(
+        autoDeployMutation.mutateAsync({}),
+        {
+          pending: "Auto deploying TNA recommendations...",
+          success: {
+            render: ({ data }) => {
+              const responseMessage = (data as { message?: unknown } | undefined)?.message;
+              if (typeof responseMessage === "string" && responseMessage.trim()) return responseMessage;
+              return "Program, course, and batch deployment completed";
+            },
+          },
+          error: {
+            render: ({ data }) => getErrorMessage(data),
+          },
+        }
+      );
+
+      const summary = (response as { data?: AutoDeploySummary } | undefined)?.data;
+      if (summary) {
+        setAutoDeploySummary(summary);
+      }
+    } catch {
+      // Error toast is already handled above.
     }
   };
 
@@ -474,7 +566,86 @@ export default function TnaExecutionPipelinePage() {
               </section>
 
               <section className="rounded-xl border border-slate-200 bg-slate-50/80 p-4">
-                <p className={labelClassName}>Deployment Flow In LMS</p>
+                <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                  <div>
+                    <p className={labelClassName}>Deployment Flow In LMS</p>
+                    <p className="text-xs text-slate-600 mt-1">
+                      Auto deploy runs only for training items still in <span className="font-semibold">Pending</span>.
+                      Deployed items are moved to <span className="font-semibold">In Progress</span>.
+                    </p>
+                    <p className="text-xs text-slate-500 mt-1">
+                      Pending training items ready for auto deploy:{" "}
+                      <span className="font-semibold text-slate-700">{pendingTrainingItemsCount}</span>
+                    </p>
+                  </div>
+                  <Button
+                    variant="primary"
+                    onClick={runAutoDeployFromTna}
+                    isLoading={autoDeployMutation.isPending}
+                    disabled={pendingTrainingItemsCount === 0}
+                    className="h-10"
+                  >
+                    Auto Deploy From TNA
+                  </Button>
+                </div>
+
+                <div className="mt-3 rounded-lg border border-slate-200 bg-white p-3 text-xs text-slate-700 space-y-1.5">
+                  <p className="font-semibold text-slate-900">How this works</p>
+                  <p>1. Groups employees by the same pending training title.</p>
+                  <p>2. Creates or reuses program, course, and batch (no duplicate enrollments).</p>
+                  <p>3. Sets deployed training items from Pending to In Progress automatically.</p>
+                  <p>4. Re-clicking auto deploy only processes new pending items.</p>
+                </div>
+
+                {autoDeploySummary && (
+                  <div
+                    className={`mt-3 rounded-lg p-3 space-y-2 ${
+                      autoDeploySummary.noOp
+                        ? "border border-slate-200 bg-slate-50"
+                        : "border border-emerald-200 bg-emerald-50"
+                    }`}
+                  >
+                    <p
+                      className={`text-sm font-semibold ${
+                        autoDeploySummary.noOp ? "text-slate-800" : "text-emerald-900"
+                      }`}
+                    >
+                      Auto Deployment Summary
+                    </p>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
+                      <div className="rounded-md border border-emerald-200 bg-white px-2.5 py-1.5">
+                        Groups: <span className="font-semibold">{autoDeploySummary.totalGroups || 0}</span>
+                      </div>
+                      <div className="rounded-md border border-emerald-200 bg-white px-2.5 py-1.5">
+                        Programs Created:{" "}
+                        <span className="font-semibold">{autoDeploySummary.programsCreated || 0}</span>
+                      </div>
+                      <div className="rounded-md border border-emerald-200 bg-white px-2.5 py-1.5">
+                        Courses Created:{" "}
+                        <span className="font-semibold">{autoDeploySummary.coursesCreated || 0}</span>
+                      </div>
+                      <div className="rounded-md border border-emerald-200 bg-white px-2.5 py-1.5">
+                        Batches Created:{" "}
+                        <span className="font-semibold">{autoDeploySummary.batchesCreated || 0}</span>
+                      </div>
+                      <div className="rounded-md border border-emerald-200 bg-white px-2.5 py-1.5">
+                        Batches Updated:{" "}
+                        <span className="font-semibold">{autoDeploySummary.batchesUpdated || 0}</span>
+                      </div>
+                      <div className="rounded-md border border-emerald-200 bg-white px-2.5 py-1.5">
+                        Enrollments Added:{" "}
+                        <span className="font-semibold">{autoDeploySummary.enrollmentsAdded || 0}</span>
+                      </div>
+                      <div className="rounded-md border border-emerald-200 bg-white px-2.5 py-1.5">
+                        Recommendations Updated:{" "}
+                        <span className="font-semibold">
+                          {autoDeploySummary.recommendationsUpdated || 0}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 <div className="mt-3 space-y-3">
                   <div className="rounded-lg border border-slate-200 bg-white p-3 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                     <div>

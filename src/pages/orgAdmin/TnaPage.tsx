@@ -12,10 +12,10 @@ import { useCourses } from "../../hooks/useCourse";
 import { useSearchStudents } from "../../hooks/useStudent";
 import {
   useAnalyzeTna,
+  useGetTnaEmployeeSkills,
   useGetTnaRecommendations,
   useGetTnaRoleRequirements,
   useGetTnaSkills,
-  useUpdateTnaRecommendationStatus,
   useUpsertEmployeeSkill,
 } from "../../hooks/useTna";
 import { getTerm } from "../../lib/utils";
@@ -27,9 +27,10 @@ type StepKey = "employee-skills" | "analyze" | "recommendations";
 type PrefillEmployeeSkill = { skillId?: string; skillName?: string; level?: number };
 type RecommendationRow = {
   _id: string;
-  employee?: { firstName?: string; lastName?: string; email?: string };
+  employee?: { _id?: string; firstName?: string; lastName?: string; email?: string };
   jobRole?: string;
   createdAt?: string;
+  updatedAt?: string;
   status?: string;
   skillGaps?: Array<unknown>;
   recommendedTrainings?: Array<unknown>;
@@ -85,7 +86,7 @@ const STEP_GUIDANCE: Record<
     goal: "Track and manage generated recommendations through completion.",
     checklist: [
       "Review skill gap and recommendation counts per employee.",
-      "Update status from pending to assigned or completed.",
+      "Status updates automatically when downstream workflow events are triggered.",
       "Open employee details for full recommendation breakdown.",
     ],
   },
@@ -119,18 +120,36 @@ const parsePrefillEmployeeSkills = (value: string): PrefillEmployeeSkill[] => {
 };
 
 const getErrorMessage = (error: unknown): string => {
+  if (typeof error === "string" && error.trim()) return error;
   if (error && typeof error === "object") {
     const err = error as {
-      response?: { data?: { message?: string; error?: { message?: string } | string } };
-      message?: string;
+      response?: {
+        data?: {
+          message?: unknown;
+          error?: unknown;
+          errors?: unknown;
+        };
+      };
+      data?: { message?: unknown; error?: unknown };
+      message?: unknown;
     };
-    const nestedError = err.response?.data?.error;
-    if (typeof nestedError === "string") return nestedError;
-    if (nestedError && typeof nestedError === "object" && typeof nestedError.message === "string") {
-      return nestedError.message;
+
+    const messageCandidates = [
+      err.response?.data?.error,
+      err.response?.data?.message,
+      err.response?.data?.errors,
+      err.data?.error,
+      err.data?.message,
+      err.message,
+    ];
+
+    for (const candidate of messageCandidates) {
+      if (typeof candidate === "string" && candidate.trim()) return candidate;
+      if (candidate && typeof candidate === "object") {
+        const nestedMessage = (candidate as { message?: unknown }).message;
+        if (typeof nestedMessage === "string" && nestedMessage.trim()) return nestedMessage;
+      }
     }
-    if (typeof err.response?.data?.message === "string") return err.response.data.message;
-    if (typeof err.message === "string") return err.message;
   }
   return "Something went wrong";
 };
@@ -139,6 +158,27 @@ const normalizeStatus = (status?: string): RecommendationStatus => {
   if (status === "assigned" || status === "completed") return status;
   return "pending";
 };
+
+const getRecommendationStatusMeta = (status: RecommendationStatus) => {
+  if (status === "completed") {
+    return {
+      label: "Completed",
+      className: "border-emerald-200 bg-emerald-50 text-emerald-700",
+    };
+  }
+  if (status === "assigned") {
+    return {
+      label: "Assigned",
+      className: "border-sky-200 bg-sky-50 text-sky-700",
+    };
+  }
+  return {
+    label: "Pending",
+    className: "border-amber-200 bg-amber-50 text-amber-700",
+  };
+};
+
+const normalizeRoleValue = (value: string): string => value.trim().toLowerCase();
 
 export default function TnaPage() {
   const { currentUser } = useAuth();
@@ -160,10 +200,10 @@ export default function TnaPage() {
   });
   const coursesQuery = useCourses({ organizationId, limit: 200, skip: 0, archiveStatus: "none" });
   const recommendationsQuery = useGetTnaRecommendations({ limit: 50, skip: 0 });
+  const employeeSkillsQuery = useGetTnaEmployeeSkills({ limit: 500, skip: 0 });
 
   const upsertEmployeeSkillMutation = useUpsertEmployeeSkill();
   const analyzeTnaMutation = useAnalyzeTna();
-  const updateRecommendationStatusMutation = useUpdateTnaRecommendationStatus();
 
   const skills = useMemo(() => {
     const response = skillsQuery.data as { data?: any[] } | undefined;
@@ -199,6 +239,11 @@ export default function TnaPage() {
     return Array.isArray(response?.data) ? response.data : [];
   }, [recommendationsQuery.data]);
 
+  const employeeSkillAssignments = useMemo(() => {
+    const response = employeeSkillsQuery.data as { data?: any[] } | undefined;
+    return Array.isArray(response?.data) ? response.data : [];
+  }, [employeeSkillsQuery.data]);
+
   const prefillEmployeeId = (searchParams.get("employeeId") || "").trim();
   const prefillStepParam = (searchParams.get("step") || "").trim();
   const prefillJobRole = (searchParams.get("jobRole") || "").trim();
@@ -217,8 +262,153 @@ export default function TnaPage() {
   const [compliance, setCompliance] = useState<ComplianceRow[]>([
     { title: "", courseId: "", mandatory: true },
   ]);
-  const [statusDrafts, setStatusDrafts] = useState<Record<string, RecommendationStatus>>({});
   const [didApplyPrefillSkills, setDidApplyPrefillSkills] = useState(false);
+  const [isRoleEditMode, setIsRoleEditMode] = useState(false);
+
+  const resolveRoleSkillRows = (jobRole: string, currentRows: LevelRow[] = []): LevelRow[] => {
+    const normalizedRole = jobRole.trim().toLowerCase();
+    if (!normalizedRole) return [{ skillId: "", level: 1 }];
+
+    const matchedRoleRequirement = roleRequirements.find(
+      (roleRequirement) =>
+        String(roleRequirement?.jobRole || "").trim().toLowerCase() === normalizedRole
+    );
+
+    const requiredSkills = Array.isArray(matchedRoleRequirement?.requiredSkills)
+      ? matchedRoleRequirement.requiredSkills
+      : [];
+    if (requiredSkills.length === 0) return [{ skillId: "", level: 1 }];
+
+    const existingLevelBySkillId = new Map<string, number>();
+    for (const row of currentRows) {
+      const rowSkillId = String(row?.skillId || "").trim();
+      if (!rowSkillId) continue;
+      const rowLevel = Number(row?.level);
+      const normalizedLevel = Number.isFinite(rowLevel) ? Math.max(0, Math.min(5, rowLevel)) : 1;
+      existingLevelBySkillId.set(rowSkillId, normalizedLevel);
+    }
+
+    const roleRows: LevelRow[] = [];
+    const seenSkillIds = new Set<string>();
+
+    for (const requiredSkill of requiredSkills) {
+      const rawSkillId = requiredSkill?.skill ?? requiredSkill?.skillId;
+      let resolvedSkillId =
+        typeof rawSkillId === "string"
+          ? rawSkillId.trim()
+          : String(rawSkillId?._id || "").trim();
+
+      if (!resolvedSkillId) {
+        const skillName =
+          String(requiredSkill?.skillName || requiredSkill?.skill?.name || rawSkillId?.name || "")
+            .trim()
+            .toLowerCase();
+        if (skillName) {
+          const matchedSkill = skills.find(
+            (skill) => String(skill?.name || "").trim().toLowerCase() === skillName
+          );
+          resolvedSkillId = String(matchedSkill?._id || "").trim();
+        }
+      }
+
+      if (!resolvedSkillId || seenSkillIds.has(resolvedSkillId)) continue;
+      seenSkillIds.add(resolvedSkillId);
+
+      roleRows.push({
+        skillId: resolvedSkillId,
+        level: existingLevelBySkillId.get(resolvedSkillId) ?? 1,
+      });
+    }
+
+    return roleRows.length > 0 ? roleRows : [{ skillId: "", level: 1 }];
+  };
+
+  const applyRoleSkillsToEmployee = (jobRole: string) => {
+    setAnalyzeJobRole(jobRole);
+    setEmployeeSkills((previous) => {
+      const next = resolveRoleSkillRows(jobRole, previous);
+      const previousSignature = JSON.stringify(previous);
+      const nextSignature = JSON.stringify(next);
+      return previousSignature === nextSignature ? previous : next;
+    });
+  };
+
+  const resolveRoleOption = (roleName: string): string => {
+    const normalizedRoleName = normalizeRoleValue(roleName);
+    if (!normalizedRoleName) return "";
+    const matchedRoleOption = roleOptions.find(
+      (roleOption) => normalizeRoleValue(roleOption) === normalizedRoleName
+    );
+    return matchedRoleOption || "";
+  };
+
+  const resolveSuggestedRoleForEmployee = (selectedEmployeeId: string): string => {
+    const normalizedEmployeeId = String(selectedEmployeeId || "").trim();
+    if (!normalizedEmployeeId) return "";
+
+    const savedEmployeeSkillRole = employeeSkillAssignments.find((employeeSkillItem) => {
+      const employeeSkillEmployeeId = String(employeeSkillItem?.employee?._id || employeeSkillItem?.employee || "")
+        .trim();
+      return employeeSkillEmployeeId === normalizedEmployeeId;
+    });
+    const savedRole = resolveRoleOption(String(savedEmployeeSkillRole?.jobRole || ""));
+    if (savedRole) return savedRole;
+
+    const matchedEmployee = employees.find(
+      (employee) => String(employee?._id || "").trim() === normalizedEmployeeId
+    );
+    const subroleBasedRole = resolveRoleOption(String(matchedEmployee?.subrole || ""));
+    if (subroleBasedRole) return subroleBasedRole;
+
+    return "";
+  };
+
+  const applyEmployeeSelection = (selectedEmployeeId: string) => {
+    setEmployeeId(selectedEmployeeId);
+    setAnalyzeEmployeeId(selectedEmployeeId);
+    setIsRoleEditMode(false);
+
+    const suggestedRole = resolveSuggestedRoleForEmployee(selectedEmployeeId);
+    if (suggestedRole) {
+      applyRoleSkillsToEmployee(suggestedRole);
+      return;
+    }
+
+    setAnalyzeJobRole("");
+    setEmployeeSkills([{ skillId: "", level: 1 }]);
+  };
+
+  const selectedEmployeeAssignment = useMemo(() => {
+    const normalizedSelectedEmployeeId = String(employeeId || "").trim();
+    if (!normalizedSelectedEmployeeId) return null;
+    return (
+      employeeSkillAssignments.find((employeeSkillItem) => {
+        const employeeSkillEmployeeId = String(
+          employeeSkillItem?.employee?._id || employeeSkillItem?.employee || ""
+        ).trim();
+        return employeeSkillEmployeeId === normalizedSelectedEmployeeId;
+      }) || null
+    );
+  }, [employeeId, employeeSkillAssignments]);
+
+  const selectedEmployeeAssignedRole = String(selectedEmployeeAssignment?.jobRole || "").trim();
+  const hasAssignedRole = Boolean(selectedEmployeeAssignedRole);
+  const isChangingAssignedRole =
+    hasAssignedRole &&
+    Boolean(analyzeJobRole.trim()) &&
+    normalizeRoleValue(selectedEmployeeAssignedRole) !== normalizeRoleValue(analyzeJobRole);
+
+  const cancelRoleEditMode = () => {
+    if (!employeeId) {
+      setIsRoleEditMode(false);
+      return;
+    }
+    const suggestedRole = resolveSuggestedRoleForEmployee(employeeId);
+    if (suggestedRole) {
+      applyRoleSkillsToEmployee(suggestedRole);
+    }
+    setIsRoleEditMode(false);
+  };
 
   const selectedAnalyzeRoleRequirement = useMemo(() => {
     const normalizedRole = analyzeJobRole.trim().toLowerCase();
@@ -263,12 +453,6 @@ export default function TnaPage() {
   }, [prefillEmployeeId, employees]);
 
   useEffect(() => {
-    if (!analyzeJobRole && roleOptions.length > 0) {
-      setAnalyzeJobRole(roleOptions[0]);
-    }
-  }, [analyzeJobRole, roleOptions]);
-
-  useEffect(() => {
     if (!prefillStepParam) return;
     const validSteps = new Set<StepKey>(["employee-skills", "analyze", "recommendations"]);
     if (validSteps.has(prefillStepParam as StepKey)) {
@@ -278,8 +462,20 @@ export default function TnaPage() {
 
   useEffect(() => {
     if (!prefillJobRole) return;
-    setAnalyzeJobRole(prefillJobRole);
+    applyRoleSkillsToEmployee(prefillJobRole);
   }, [prefillJobRole]);
+
+  useEffect(() => {
+    if (!analyzeJobRole.trim()) return;
+    if (employeeSkills.length !== 1) return;
+    if (String(employeeSkills[0]?.skillId || "").trim()) return;
+    setEmployeeSkills((previous) => {
+      const next = resolveRoleSkillRows(analyzeJobRole, previous);
+      const previousSignature = JSON.stringify(previous);
+      const nextSignature = JSON.stringify(next);
+      return previousSignature === nextSignature ? previous : next;
+    });
+  }, [analyzeJobRole, employeeSkills, roleRequirements, skills]);
 
   useEffect(() => {
     if (didApplyPrefillSkills) return;
@@ -326,14 +522,6 @@ export default function TnaPage() {
     setDidApplyPrefillSkills(true);
   }, [didApplyPrefillSkills, prefillEmployeeSkillsParam, skills]);
 
-  useEffect(() => {
-    const nextDrafts: Record<string, RecommendationStatus> = {};
-    for (const recommendation of recommendations) {
-      nextDrafts[recommendation._id] = normalizeStatus(recommendation.status);
-    }
-    setStatusDrafts(nextDrafts);
-  }, [recommendations]);
-
   const completionByStep = useMemo<Record<StepKey, boolean>>(
     () => ({
       "employee-skills":
@@ -353,30 +541,6 @@ export default function TnaPage() {
       ).length,
     [recommendations]
   );
-
-  const activeStepIndex = useMemo(
-    () => FLOW_STEPS.findIndex((step) => step.key === activeStep),
-    [activeStep]
-  );
-
-  const completedStepCount = useMemo(
-    () => FLOW_STEPS.filter((step) => completionByStep[step.key]).length,
-    [completionByStep]
-  );
-
-  const flowProgressPercent = useMemo(
-    () =>
-      Math.max(
-        5,
-        Math.round((((activeStepIndex < 0 ? 0 : activeStepIndex) + 1) / FLOW_STEPS.length) * 100)
-      ),
-    [activeStepIndex]
-  );
-
-  const nextStepTitle = useMemo(() => {
-    if (activeStepIndex < 0 || activeStepIndex >= FLOW_STEPS.length - 1) return "Final step";
-    return FLOW_STEPS[activeStepIndex + 1].title;
-  }, [activeStepIndex]);
 
   const skillSelectOptions = useMemo(
     () =>
@@ -420,18 +584,13 @@ export default function TnaPage() {
     [courses]
   );
 
-  const recommendationStatusOptions = useMemo(
+  const recommendationStatusFilterOptions = useMemo(
     () => [
       { value: "pending", label: "Pending" },
       { value: "assigned", label: "Assigned" },
       { value: "completed", label: "Completed" },
     ],
     []
-  );
-
-  const recommendationStatusFilterOptions = useMemo(
-    () => recommendationStatusOptions.map((option) => ({ value: option.value, label: option.label })),
-    [recommendationStatusOptions]
   );
 
   const recommendationTableGroups = useMemo(
@@ -549,32 +708,23 @@ export default function TnaPage() {
         filterOptions: recommendationStatusFilterOptions,
         sortAccessor: (row) => normalizeStatus(row.status),
         filterAccessor: (row) => normalizeStatus(row.status),
-        className: "min-w-[220px]",
+        className: "min-w-[140px]",
         render: (row) => {
           const currentStatus = normalizeStatus(row.status);
-          const currentDraft = statusDrafts[row._id] || currentStatus;
+          const statusMeta = getRecommendationStatusMeta(currentStatus);
           return (
-            <div className="w-[190px]" data-row-click-stop="true">
-              <SearchableSelect
-                options={recommendationStatusOptions}
-                value={currentDraft}
-                onChange={(value) => {
-                  const nextStatus = value as RecommendationStatus;
-                  setStatusDrafts((previous) => ({
-                    ...previous,
-                    [row._id]: nextStatus,
-                  }));
-                  void updateStatus(row._id, nextStatus, currentStatus);
-                }}
-                placeholder="Select status"
-                className="w-full"
-              />
+            <div className="w-[120px]" data-row-click-stop="true">
+              <span
+                className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold ${statusMeta.className}`}
+              >
+                {statusMeta.label}
+              </span>
             </div>
           );
         },
       },
     ],
-    [recommendationStatusFilterOptions, recommendationStatusOptions, statusDrafts]
+    [recommendationStatusFilterOptions]
   );
 
   const getStepStatusMeta = (stepKey: StepKey) => {
@@ -618,6 +768,9 @@ export default function TnaPage() {
     if (!analyzeJobRole.trim()) {
       return toast.error("Job role is required. Configure role standards in Skill and Role.");
     }
+    if (hasAssignedRole && isChangingAssignedRole && !isRoleEditMode) {
+      return toast.error("Click 'Edit Assigned Role' first before changing this employee role.");
+    }
     const payloadSkills = employeeSkills.filter((item) => item.skillId).map((item) => ({
       skillId: item.skillId,
       currentLevel: Number(item.level),
@@ -625,14 +778,24 @@ export default function TnaPage() {
     if (payloadSkills.length === 0) return toast.error("Add at least one skill");
     try {
       await toast.promise(
-        upsertEmployeeSkillMutation.mutateAsync({ employeeId, skills: payloadSkills }),
-        { pending: "Saving employee skills...", success: "Saved", error: "Failed to save" }
+        upsertEmployeeSkillMutation.mutateAsync({
+          employeeId,
+          jobRole: analyzeJobRole.trim(),
+          allowRoleChange: isRoleEditMode && isChangingAssignedRole,
+          skills: payloadSkills,
+        }),
+        {
+          pending: "Saving employee skills...",
+          success: "Saved",
+          error: {
+            render: ({ data }) => getErrorMessage(data),
+          },
+        }
       );
       setAnalyzeEmployeeId(employeeId);
+      setIsRoleEditMode(false);
       setActiveStep("analyze");
-    } catch (error) {
-      toast.error(getErrorMessage(error));
-    }
+    } catch {}
   };
 
   const runAnalysis = async () => {
@@ -657,28 +820,16 @@ export default function TnaPage() {
               mandatory: item.mandatory,
             })),
         }),
-        { pending: "Running TNA analysis...", success: "Analysis complete", error: "Analysis failed" }
+        {
+          pending: "Running TNA analysis...",
+          success: "Analysis complete",
+          error: {
+            render: ({ data }) => getErrorMessage(data),
+          },
+        }
       );
       setActiveStep("recommendations");
-    } catch (error) {
-      toast.error(getErrorMessage(error));
-    }
-  };
-
-  const updateStatus = async (
-    recommendationId: string,
-    nextStatus: RecommendationStatus,
-    currentStatus?: RecommendationStatus
-  ) => {
-    if (currentStatus && nextStatus === currentStatus) return;
-    try {
-      await toast.promise(
-        updateRecommendationStatusMutation.mutateAsync({ recommendationId, status: nextStatus }),
-        { pending: "Updating status...", success: "Status updated", error: "Failed to update status" }
-      );
-    } catch (error) {
-      toast.error(getErrorMessage(error));
-    }
+    } catch {}
   };
 
   return (
@@ -734,41 +885,10 @@ export default function TnaPage() {
         </div>
       </section>
 
-      <section className="rounded-2xl border border-slate-200 bg-white p-4 md:p-5 shadow-[0_12px_36px_-24px_rgba(15,23,42,0.3)]">
-        <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Workflow Progress</p>
-            <p className="text-sm text-slate-700 mt-1">
-              Step {Math.max(activeStepIndex + 1, 1)} of {FLOW_STEPS.length}:{" "}
-              <span className="font-semibold text-slate-900">
-                {FLOW_STEPS[Math.max(activeStepIndex, 0)]?.title}
-              </span>
-            </p>
-            <p className="text-xs text-slate-500 mt-1">Next: {nextStepTitle}</p>
-          </div>
-          <div className="text-sm text-slate-600">
-            Completed{" "}
-            <span className="font-semibold text-slate-900">{completedStepCount}</span> /{" "}
-            {FLOW_STEPS.length}
-          </div>
-        </div>
-
-        <div className="mt-3 h-2 rounded-full bg-slate-100 overflow-hidden">
-          <div
-            className="h-full rounded-full transition-all duration-300"
-            style={{
-              width: `${flowProgressPercent}%`,
-              background:
-                "linear-gradient(90deg, var(--color-primary, #2563eb) 0%, color-mix(in srgb, var(--color-primary, #2563eb) 55%, #22c55e 45%) 100%)",
-            }}
-          />
-        </div>
-
-        <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2">
+      <section className="rounded-2xl border border-slate-200 bg-white p-3 md:p-4 shadow-[0_12px_36px_-24px_rgba(15,23,42,0.3)]">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2">
   {FLOW_STEPS.map((step, index) => {
     const isActive = activeStep === step.key;
-    const isComplete = completionByStep[step.key];
-    const statusMeta = getStepStatusMeta(step.key);
     const stepGuide = STEP_GUIDANCE[step.key] || STEP_GUIDANCE["employee-skills"];
     const hoverAlignClass = index >= FLOW_STEPS.length - 2 ? "right-0" : "left-0";
 
@@ -779,10 +899,8 @@ export default function TnaPage() {
           onClick={() => setActiveStep(step.key)}
           className={`w-full rounded-xl border px-3 py-2 text-left transition-colors ${
             isActive
-              ? "border-primary bg-primary/10"
-              : isComplete
-              ? "border-emerald-200 bg-emerald-50/70"
-              : "border-slate-200 bg-slate-50/70 hover:border-slate-300"
+              ? "border-primary bg-primary/10 shadow-[0_10px_24px_-20px_rgba(37,99,235,0.9)]"
+              : "border-slate-200 bg-slate-50/70 hover:border-slate-300 hover:bg-white"
           }`}
         >
           <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
@@ -792,11 +910,6 @@ export default function TnaPage() {
             <span className="h-1.5 w-1.5 rounded-full bg-slate-500" />
             <span>{step.title}</span>
           </p>
-          <span
-            className={`mt-1 inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-semibold ${statusMeta.className}`}
-          >
-            {statusMeta.label}
-          </span>
         </button>
 
         <div
@@ -842,7 +955,7 @@ export default function TnaPage() {
                 </div>
                 <h2 className="text-xl font-semibold text-slate-900">Capture {employeeTerm} Role and Skills</h2>
                 <p className="text-sm text-slate-600 mt-1">
-                  Select an employee, pick the role, then save current competency levels.
+                  Assign role for new {employeeTerm.toLowerCase()} profiles, or edit existing role assignment.
                 </p>
               </div>
               <Button variant="outline" onClick={() => setActiveStep("analyze")} className="h-fit">
@@ -850,7 +963,70 @@ export default function TnaPage() {
               </Button>
             </div>
 
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div
+                className={`rounded-xl border p-3.5 ${
+                  hasAssignedRole
+                    ? "border-slate-200 bg-slate-50/70"
+                    : "border-primary/30 bg-[color:color-mix(in_srgb,var(--color-primary,#2563eb)_8%,white)]"
+                }`}
+              >
+                <p className={fieldLabelClassName}>Flow A</p>
+                <p className="mt-1 text-sm font-semibold text-slate-900">Assign Role (New Profile)</p>
+                <p className="mt-1 text-xs text-slate-600">
+                  Select employee, choose role, auto-fill skills, then save levels.
+                </p>
+              </div>
+              <div
+                className={`rounded-xl border p-3.5 ${
+                  hasAssignedRole
+                    ? "border-primary/30 bg-[color:color-mix(in_srgb,var(--color-primary,#2563eb)_8%,white)]"
+                    : "border-slate-200 bg-slate-50/70"
+                }`}
+              >
+                <p className={fieldLabelClassName}>Flow B</p>
+                <p className="mt-1 text-sm font-semibold text-slate-900">Update Assigned Role</p>
+                <p className="mt-1 text-xs text-slate-600">
+                  For existing profiles, click edit role, change role, then save updated levels.
+                </p>
+              </div>
+            </div>
+
             <div className={`${sectionSurfaceClassName} space-y-3`}>
+              <div className="rounded-lg border border-slate-200 bg-white/80 p-3">
+                <p className={fieldLabelClassName}>Assignment Status</p>
+                {hasAssignedRole ? (
+                  <div className="mt-1 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <p className="text-sm text-slate-700">
+                      Current assigned role:{" "}
+                      <span className="font-semibold text-slate-900">{selectedEmployeeAssignedRole}</span>
+                    </p>
+                    {!isRoleEditMode ? (
+                      <Button
+                        variant="outline"
+                        className="h-9 px-3 text-sm"
+                        onClick={() => setIsRoleEditMode(true)}
+                      >
+                        Edit Assigned Role
+                      </Button>
+                    ) : (
+                      <Button variant="cancel" className="h-9 px-3 text-sm" onClick={cancelRoleEditMode}>
+                        Cancel Role Edit
+                      </Button>
+                    )}
+                  </div>
+                ) : (
+                  <p className="mt-1 text-sm text-slate-700">
+                    No role assigned yet. You are in new assignment flow.
+                  </p>
+                )}
+                {hasAssignedRole && isRoleEditMode && (
+                  <p className="mt-2 text-xs font-medium text-amber-700">
+                    Role edit mode is active. Saving will update this employee role assignment.
+                  </p>
+                )}
+              </div>
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div>
                   <label className={fieldLabelClassName}>Select {employeeTerm}</label>
@@ -858,7 +1034,7 @@ export default function TnaPage() {
                     <SearchableSelect
                       options={employeeSelectOptions}
                       value={employeeId}
-                      onChange={(value) => setEmployeeId(value)}
+                      onChange={applyEmployeeSelection}
                       placeholder={`Select ${employeeTerm.toLowerCase()}`}
                       loading={studentsQuery.isLoading}
                       emptyMessage={`No ${employeeTermPlural.toLowerCase()} found.`}
@@ -872,7 +1048,8 @@ export default function TnaPage() {
                     <SearchableSelect
                       options={roleSelectOptions}
                       value={analyzeJobRole}
-                      onChange={(value) => setAnalyzeJobRole(value)}
+                      onChange={applyRoleSkillsToEmployee}
+                      disabled={hasAssignedRole && !isRoleEditMode}
                       placeholder={
                         roleRequirementsQuery.isLoading
                           ? "Loading role standards..."
@@ -966,7 +1143,11 @@ export default function TnaPage() {
                 onClick={saveEmployeeSkills}
                 isLoading={upsertEmployeeSkillMutation.isPending}
               >
-                Save Employee Skills
+                {hasAssignedRole
+                  ? isRoleEditMode
+                    ? "Update Employee Role And Skills"
+                    : "Save Employee Skills"
+                  : "Assign Role And Save Skills"}
               </Button>
             </div>
           </section>
@@ -1006,7 +1187,7 @@ export default function TnaPage() {
                     <SearchableSelect
                       options={employeeSelectOptions}
                       value={analyzeEmployeeId}
-                      onChange={(value) => setAnalyzeEmployeeId(value)}
+                      onChange={applyEmployeeSelection}
                       placeholder={`Select ${employeeTerm.toLowerCase()}`}
                       loading={studentsQuery.isLoading}
                       emptyMessage={`No ${employeeTermPlural.toLowerCase()} found.`}
@@ -1021,7 +1202,7 @@ export default function TnaPage() {
                     <SearchableSelect
                       options={roleSelectOptions}
                       value={analyzeJobRole}
-                      onChange={(value) => setAnalyzeJobRole(value)}
+                      onChange={applyRoleSkillsToEmployee}
                       placeholder={
                         roleRequirementsQuery.isLoading
                           ? "Loading role standards..."
