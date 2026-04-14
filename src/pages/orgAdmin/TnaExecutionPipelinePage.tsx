@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { FaArrowLeft } from "react-icons/fa";
 import { toast } from "react-toastify";
@@ -7,12 +7,13 @@ import { useAuth } from "../../context/AuthContext";
 import {
   useAutoDeployTnaRecommendations,
   useGetTnaRecommendations,
-  useUpsertTnaRecommendationExecution,
 } from "../../hooks/useTna";
 import { getTerm } from "../../lib/utils";
 
 type RecommendationStatus = "pending" | "assigned" | "completed";
 type TrainingProgressStatus = "pending" | "in_progress" | "completed";
+type TrainingFilterStatus = "all" | TrainingProgressStatus;
+type TrainingPriority = "high" | "medium" | "low";
 
 type TnaRecommendation = {
   _id: string;
@@ -64,10 +65,33 @@ const normalizeTrainingProgressStatus = (value?: string): TrainingProgressStatus
   return "pending";
 };
 
+const normalizeTrainingPriority = (value?: string): TrainingPriority => {
+  if (value === "high" || value === "low") return value;
+  return "medium";
+};
+
 const trainingStatusLabelMap: Record<TrainingProgressStatus, string> = {
   pending: "Pending",
   in_progress: "In Progress",
   completed: "Completed",
+};
+
+const trainingStatusBadgeClassMap: Record<TrainingProgressStatus, string> = {
+  pending: "border-amber-200 bg-amber-50 text-amber-700",
+  in_progress: "border-cyan-200 bg-cyan-50 text-cyan-700",
+  completed: "border-emerald-200 bg-emerald-50 text-emerald-700",
+};
+
+const trainingPriorityLabelMap: Record<TrainingPriority, string> = {
+  high: "High",
+  medium: "Medium",
+  low: "Low",
+};
+
+const trainingPriorityBadgeClassMap: Record<TrainingPriority, string> = {
+  high: "border-rose-200 bg-rose-50 text-rose-700",
+  medium: "border-violet-200 bg-violet-50 text-violet-700",
+  low: "border-emerald-200 bg-emerald-50 text-emerald-700",
 };
 
 const getEmployeeName = (recommendation: TnaRecommendation): string => {
@@ -119,7 +143,6 @@ export default function TnaExecutionPipelinePage() {
   const employeeTerm = getTerm("learner", orgType);
 
   const recommendationsQuery = useGetTnaRecommendations({ limit: 500, skip: 0 });
-  const upsertExecutionMutation = useUpsertTnaRecommendationExecution();
   const autoDeployMutation = useAutoDeployTnaRecommendations();
 
   const recommendations = useMemo(() => {
@@ -129,9 +152,8 @@ export default function TnaExecutionPipelinePage() {
 
   const [selectedRecommendationId, setSelectedRecommendationId] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
-  const [trainingStatusDrafts, setTrainingStatusDrafts] = useState<
-    Record<string, TrainingProgressStatus>
-  >({});
+  const [trainingSearchTerm, setTrainingSearchTerm] = useState("");
+  const [trainingStatusFilter, setTrainingStatusFilter] = useState<TrainingFilterStatus>("all");
   const [autoDeploySummary, setAutoDeploySummary] = useState<AutoDeploySummary | null>(null);
 
   const filteredRecommendations = useMemo(() => {
@@ -162,21 +184,6 @@ export default function TnaExecutionPipelinePage() {
       null,
     [recommendations, filteredRecommendations, selectedRecommendationId]
   );
-
-  useEffect(() => {
-    if (!selectedRecommendation || !Array.isArray(selectedRecommendation.recommendedTrainings)) {
-      setTrainingStatusDrafts({});
-      return;
-    }
-
-    const nextDrafts: Record<string, TrainingProgressStatus> = {};
-    for (const training of selectedRecommendation.recommendedTrainings) {
-      const trainingId = String(training?._id || "");
-      if (!trainingId) continue;
-      nextDrafts[trainingId] = normalizeTrainingProgressStatus(training.progressStatus);
-    }
-    setTrainingStatusDrafts(nextDrafts);
-  }, [selectedRecommendation?._id, selectedRecommendation?.recommendedTrainings]);
 
   const totalRecommendations = recommendations.length;
   const withTrainingRecommendations = useMemo(
@@ -214,16 +221,39 @@ export default function TnaExecutionPipelinePage() {
       .filter(Boolean);
   }, [selectedRecommendation]);
 
+  const selectedTrainingRows = useMemo(() => {
+    if (!selectedRecommendation || !Array.isArray(selectedRecommendation.recommendedTrainings)) return [];
+    return selectedRecommendation.recommendedTrainings.map((item, index) => {
+      const rowId = String(item?._id || `training-${index}`);
+      return {
+        id: rowId,
+        title: String(item?.title || "").trim() || "Untitled training",
+        priority: normalizeTrainingPriority(String(item?.priority || "").trim().toLowerCase()),
+        mandatory: Boolean(item?.mandatory),
+        status: normalizeTrainingProgressStatus(item?.progressStatus),
+      };
+    });
+  }, [selectedRecommendation]);
+
+  const filteredTrainingRows = useMemo(() => {
+    const keyword = trainingSearchTerm.trim().toLowerCase();
+    return selectedTrainingRows.filter((row) => {
+      const matchesFilter = trainingStatusFilter === "all" || row.status === trainingStatusFilter;
+      if (!matchesFilter) return false;
+      if (!keyword) return true;
+      return `${row.title} ${row.priority} ${row.mandatory ? "mandatory" : "optional"}`
+        .toLowerCase()
+        .includes(keyword);
+    });
+  }, [selectedTrainingRows, trainingSearchTerm, trainingStatusFilter]);
+
   const trainingProgressSummary = useMemo(() => {
     const trainings = selectedRecommendation?.recommendedTrainings || [];
     let completed = 0;
     let inProgress = 0;
 
     for (const training of trainings) {
-      const trainingId = String(training?._id || "");
-      const status = trainingId
-        ? trainingStatusDrafts[trainingId] || normalizeTrainingProgressStatus(training?.progressStatus)
-        : normalizeTrainingProgressStatus(training?.progressStatus);
+      const status = normalizeTrainingProgressStatus(training?.progressStatus);
       if (status === "completed") completed += 1;
       if (status === "in_progress") inProgress += 1;
     }
@@ -234,40 +264,7 @@ export default function TnaExecutionPipelinePage() {
       inProgress,
       pending: Math.max(trainings.length - completed - inProgress, 0),
     };
-  }, [selectedRecommendation, trainingStatusDrafts]);
-
-  const saveTrainingProgress = async () => {
-    if (!selectedRecommendation) return;
-    const trainings = selectedRecommendation.recommendedTrainings || [];
-    const trainingStatuses = trainings
-      .map((training) => {
-        const trainingId = String(training?._id || "");
-        if (!trainingId) return null;
-        return {
-          trainingId,
-          status:
-            trainingStatusDrafts[trainingId] ||
-            normalizeTrainingProgressStatus(training.progressStatus),
-        };
-      })
-      .filter((item): item is { trainingId: string; status: TrainingProgressStatus } => Boolean(item));
-
-    try {
-      await toast.promise(
-        upsertExecutionMutation.mutateAsync({
-          recommendationId: selectedRecommendation._id,
-          trainingStatuses,
-        }),
-        {
-          pending: "Saving training progress...",
-          success: "Training progress updated",
-          error: "Failed to save training progress",
-        }
-      );
-    } catch {
-      // Error toast is already handled by toast.promise.
-    }
-  };
+  }, [selectedRecommendation]);
 
   const runAutoDeployFromTna = async () => {
     try {
@@ -374,9 +371,6 @@ export default function TnaExecutionPipelinePage() {
         <aside className={`${cardClassName} h-fit xl:sticky xl:top-20 space-y-3`}>
           <div>
             <p className={labelClassName}>TNA Recommendations</p>
-            <p className="text-xs text-slate-500 mt-1">
-              Select a recommendation to continue deployment.
-            </p>
           </div>
           <input
             value={searchTerm}
@@ -462,24 +456,7 @@ export default function TnaExecutionPipelinePage() {
               <section className="rounded-xl border border-slate-200 bg-white p-3">
                 <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
                   <div>
-                    <p className={labelClassName}>Recommended Trainings From TNA</p>
-                    <p className="text-xs text-slate-500 mt-1">
-                      Update each training item. Recommendation is marked completed only when all items are completed.
-                    </p>
-                  </div>
-                  <div className="flex flex-wrap gap-1.5 text-xs">
-                    <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-slate-700">
-                      Total: {trainingProgressSummary.total}
-                    </span>
-                    <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-emerald-700">
-                      Completed: {trainingProgressSummary.completed}
-                    </span>
-                    <span className="rounded-full border border-cyan-200 bg-cyan-50 px-2.5 py-1 text-cyan-700">
-                      In Progress: {trainingProgressSummary.inProgress}
-                    </span>
-                    <span className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-amber-700">
-                      Pending: {trainingProgressSummary.pending}
-                    </span>
+                    <p className={labelClassName}>Recommended Trainings</p>
                   </div>
                 </div>
 
@@ -487,69 +464,119 @@ export default function TnaExecutionPipelinePage() {
                   <p className="text-sm text-slate-500 mt-2">No generated training recommendations.</p>
                 ) : (
                   <>
-                    <div className="mt-3 space-y-2">
-                      {selectedRecommendation.recommendedTrainings?.map((item, index) => {
-                        const trainingId = String(item?._id || "");
-                        const trainingStatus = trainingId
-                          ? trainingStatusDrafts[trainingId] || normalizeTrainingProgressStatus(item.progressStatus)
-                          : normalizeTrainingProgressStatus(item.progressStatus);
-
-                        return (
-                          <div
-                            key={`${selectedRecommendation._id}-training-${trainingId || index}`}
-                            className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5"
-                          >
-                            <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-                              <div>
-                                <p className="text-sm font-medium text-slate-900">
-                                  {item.title || "Untitled training"}
-                                </p>
-                                <p className="text-xs text-slate-500 mt-0.5">
-                                  Priority: {item.priority || "medium"} |{" "}
-                                  {item.mandatory ? "mandatory" : "optional"}
-                                </p>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <span className="text-xs text-slate-500">Progress</span>
-                                <select
-                                  value={trainingStatus}
-                                  disabled={!trainingId || upsertExecutionMutation.isPending}
-                                  onChange={(event) => {
-                                    if (!trainingId) return;
-                                    setTrainingStatusDrafts((previous) => ({
-                                      ...previous,
-                                      [trainingId]: event.target.value as TrainingProgressStatus,
-                                    }));
-                                  }}
-                                  className="h-9 rounded-lg border border-slate-200 bg-white px-2.5 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-primary/20"
+                    <div className="mt-3 rounded-xl border border-slate-200 bg-white">
+                      <div className="flex flex-col gap-2 border-b border-slate-200 px-3 py-2.5">
+                        <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
+                          <input
+                            value={trainingSearchTerm}
+                            onChange={(event) => setTrainingSearchTerm(event.target.value)}
+                            className={`${inputClassName} h-9 max-w-xl py-2`}
+                            placeholder="Search training title, priority, or type"
+                          />
+                          <div className="flex flex-wrap gap-1.5">
+                            {(
+                              [
+                                {
+                                  key: "all",
+                                  label: "All",
+                                  count: trainingProgressSummary.total,
+                                },
+                                {
+                                  key: "completed",
+                                  label: "Completed",
+                                  count: trainingProgressSummary.completed,
+                                },
+                                {
+                                  key: "in_progress",
+                                  label: "In Progress",
+                                  count: trainingProgressSummary.inProgress,
+                                },
+                                {
+                                  key: "pending",
+                                  label: "Pending",
+                                  count: trainingProgressSummary.pending,
+                                },
+                              ] as Array<{
+                                key: TrainingFilterStatus;
+                                label: string;
+                                count: number;
+                              }>
+                            ).map((filterItem) => {
+                              const isActive = trainingStatusFilter === filterItem.key;
+                              return (
+                                <button
+                                  key={filterItem.key}
+                                  type="button"
+                                  onClick={() => setTrainingStatusFilter(filterItem.key)}
+                                  className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold transition-colors ${
+                                    isActive
+                                      ? "border-primary bg-primary/10 text-primary"
+                                      : "border-slate-200 bg-slate-50 text-slate-600 hover:border-slate-300 hover:bg-white"
+                                  }`}
                                 >
-                                  <option value="pending">{trainingStatusLabelMap.pending}</option>
-                                  <option value="in_progress">{trainingStatusLabelMap.in_progress}</option>
-                                  <option value="completed">{trainingStatusLabelMap.completed}</option>
-                                </select>
-                              </div>
-                            </div>
+                                  {filterItem.label}: {filterItem.count}
+                                </button>
+                              );
+                            })}
                           </div>
-                        );
-                      })}
+                        </div>
+                      </div>
+
+                      {filteredTrainingRows.length === 0 ? (
+                        <p className="px-3 py-4 text-sm text-slate-500">
+                          No training records match the current filter.
+                        </p>
+                      ) : (
+                        <div className="overflow-auto max-h-[460px]">
+                          <table className="min-w-[680px] w-full">
+                            <thead className="sticky top-0 z-10 bg-slate-50/95 backdrop-blur">
+                              <tr className="border-b border-slate-200 text-left text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                                <th className="px-3 py-2.5">Training</th>
+                                <th className="px-3 py-2.5">Priority</th>
+                                <th className="px-3 py-2.5">Type</th>
+                                <th className="px-3 py-2.5">Status</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {filteredTrainingRows.map((row) => (
+                                <tr key={row.id} className="border-b border-slate-100 last:border-b-0">
+                                  <td className="px-3 py-2.5 text-sm font-medium text-slate-900">{row.title}</td>
+                                  <td className="px-3 py-2.5">
+                                    <span
+                                      className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold ${trainingPriorityBadgeClassMap[row.priority]}`}
+                                    >
+                                      {trainingPriorityLabelMap[row.priority]}
+                                    </span>
+                                  </td>
+                                  <td className="px-3 py-2.5">
+                                    <span className="text-xs font-medium text-slate-600">
+                                      {row.mandatory ? "Mandatory" : "Optional"}
+                                    </span>
+                                  </td>
+                                  <td className="px-3 py-2.5">
+                                    <span
+                                      className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold ${trainingStatusBadgeClassMap[row.status]}`}
+                                    >
+                                      {trainingStatusLabelMap[row.status]}
+                                    </span>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
                     </div>
 
-                    <div className="mt-3 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                    <div className="mt-3">
                       <p className="text-xs text-slate-600">
                         {trainingProgressSummary.total > 0 &&
                         trainingProgressSummary.completed === trainingProgressSummary.total
                           ? "All recommendation items are completed. Next: update employee skills and rerun TNA."
                           : trainingProgressSummary.completed > 0
                           ? "Partial completion recorded. Keep recommendation status as Assigned until all items are completed."
-                          : "No completed items yet. Start the first training and mark it In Progress."}
+                          : "No completed items yet. Auto deploy will move pending items to In Progress."}
                       </p>
-                      <Button
-                        variant="primary"
-                        onClick={saveTrainingProgress}
-                        isLoading={upsertExecutionMutation.isPending}
-                      >
-                        Save Training Progress
-                      </Button>
                     </div>
                   </>
                 )}
