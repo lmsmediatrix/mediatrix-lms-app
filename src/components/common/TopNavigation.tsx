@@ -221,7 +221,7 @@ export default function TopNavigation() {
                 subItem.LABEL !== "Batch" &&
                 subItem.LABEL !== "Skill and Role" &&
                 subItem.LABEL !== "Training Needs" &&
-                subItem.LABEL !== "TNA Deployment"
+                subItem.LABEL !== "TNA Execution"
             );
 
             if (schoolSubmenu.length === 0 && !item.PATH) {

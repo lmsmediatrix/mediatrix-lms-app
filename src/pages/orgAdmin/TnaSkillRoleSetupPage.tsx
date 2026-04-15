@@ -1,10 +1,15 @@
 import { useMemo, useState } from "react";
-import { FaBriefcase, FaEdit, FaLightbulb, FaListUl, FaTrash } from "react-icons/fa";
+import { FaBriefcase, FaEdit, FaLightbulb, FaListUl, FaTable, FaThLarge, FaTrash } from "react-icons/fa";
 import { Navigate, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import { SearchableSelect } from "../../components/SearchableSelect";
 import Button from "../../components/common/Button";
 import Dialog from "../../components/common/Dialog";
+import GroupedDataTable, {
+  GroupedTableColumn,
+  GroupedTableGroup,
+} from "../../components/common/GroupedDataTable";
+import ActionMenuButton from "../../components/orgAdmin/ActionMenuButton";
 import { useAuth } from "../../context/AuthContext";
 import {
   useCreateTnaSkill,
@@ -117,12 +122,15 @@ export default function TnaSkillRoleSetupPage() {
 
   const [activeStep, setActiveStep] = useState<StepKey>("skill-library");
   const [skillName, setSkillName] = useState("");
+  const [skillSearch, setSkillSearch] = useState("");
   const [jobRole, setJobRole] = useState("");
   const [threshold, setThreshold] = useState(70);
   const [requiredSkills, setRequiredSkills] = useState<LevelRow[]>([{ skillId: "", level: 1 }]);
   const [editingRoleRequirementId, setEditingRoleRequirementId] = useState<string | null>(null);
+  const [roleStandardsView, setRoleStandardsView] = useState<"card" | "table">("card");
   const [deletingSkillId, setDeletingSkillId] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
+  const [requiredSkillsPreviewRole, setRequiredSkillsPreviewRole] = useState<any | null>(null);
 
   if (orgType !== "corporate") {
     return <Navigate to={`/${orgCode}/admin/dashboard`} replace />;
@@ -148,6 +156,11 @@ export default function TnaSkillRoleSetupPage() {
   const isThresholdValid = Number.isFinite(threshold) && threshold >= 0 && threshold <= 100;
   const canSaveRoleRequirements = hasRoleName && hasRequiredSkill && isThresholdValid;
   const isEditingRoleRequirement = Boolean(editingRoleRequirementId);
+  const filteredSkills = useMemo(() => {
+    const query = skillSearch.trim().toLowerCase();
+    if (!query) return skills;
+    return skills.filter((skill) => String(skill?.name || "").toLowerCase().includes(query));
+  }, [skills, skillSearch]);
 
   const resetRoleRequirementForm = () => {
     setEditingRoleRequirementId(null);
@@ -303,6 +316,146 @@ export default function TnaSkillRoleSetupPage() {
     setDeleteTarget(null);
   };
 
+  const roleStandardsTableGroups: GroupedTableGroup<any>[] = [
+    {
+      key: "role-standards",
+      title: "Role Standards",
+      rows: roleRequirements,
+      badgeText: `${roleRequirements.length} total`,
+    },
+  ];
+
+  const roleStandardsTableColumns: GroupedTableColumn<any>[] = [
+    {
+      key: "jobRole",
+      label: "Role",
+      sortable: true,
+      filterable: true,
+      filterPlaceholder: "Search role",
+      sortAccessor: (row) => String(row?.jobRole || ""),
+      filterAccessor: (row) => String(row?.jobRole || ""),
+      className: "min-w-[260px]",
+      render: (row) => (
+        <span className="text-sm font-semibold text-slate-900">
+          {String(row?.jobRole || "Unnamed role")}
+        </span>
+      ),
+    },
+    {
+      key: "threshold",
+      label: "Threshold",
+      sortable: true,
+      filterable: true,
+      filterPlaceholder: "Search threshold",
+      sortAccessor: (row) => Number(row?.preAssessmentThreshold) || 70,
+      filterAccessor: (row) => `${Number(row?.preAssessmentThreshold) || 70}%`,
+      className: "min-w-[130px]",
+      render: (row) => (
+        <span className="text-sm text-slate-700">{Number(row?.preAssessmentThreshold) || 70}%</span>
+      ),
+    },
+    {
+      key: "skillsCount",
+      label: "Skills",
+      sortable: true,
+      filterable: true,
+      filterPlaceholder: "Search count",
+      sortAccessor: (row) => (Array.isArray(row?.requiredSkills) ? row.requiredSkills.length : 0),
+      filterAccessor: (row) =>
+        String(Array.isArray(row?.requiredSkills) ? row.requiredSkills.length : 0),
+      className: "min-w-[110px]",
+      render: (row) => (
+        <span className="text-sm text-slate-700">
+          {Array.isArray(row?.requiredSkills) ? row.requiredSkills.length : 0}
+        </span>
+      ),
+    },
+    {
+      key: "skillsPreview",
+      label: "Required Skills",
+      sortable: true,
+      filterable: true,
+      filterPlaceholder: "Search required skill",
+      sortAccessor: (row) => {
+        const requiredSkills = Array.isArray(row?.requiredSkills) ? row.requiredSkills : [];
+        return requiredSkills.length;
+      },
+      filterAccessor: (row) => {
+        const requiredSkills = Array.isArray(row?.requiredSkills) ? row.requiredSkills : [];
+        return requiredSkills
+          .map((skillItem: any) => getRequiredSkillPreview(skillItem).name.toLowerCase())
+          .join(" ");
+      },
+      className: "min-w-[320px]",
+      render: (row) => {
+        const requiredSkills = Array.isArray(row?.requiredSkills) ? row.requiredSkills : [];
+        if (requiredSkills.length === 0) {
+          return <span className="text-xs text-slate-400">No required skills</span>;
+        }
+
+        const previews = requiredSkills.map((skillItem: any) => getRequiredSkillPreview(skillItem));
+        const firstTwo = previews.slice(0, 2);
+        const extraCount = previews.length - firstTwo.length;
+
+        return (
+          <div className="flex flex-wrap items-center gap-1.5">
+            {firstTwo.map((preview: { name: string; level: number }, index: number) => (
+              <span
+                key={`${String(row?._id || row?.jobRole || "role")}-${preview.name}-${index}`}
+                className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs text-slate-700"
+              >
+                {preview.name} (L{preview.level})
+              </span>
+            ))}
+            {extraCount > 0 ? (
+              <span className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs text-slate-500">
+                +{extraCount} more
+              </span>
+            ) : null}
+          </div>
+        );
+      },
+    },
+    {
+      key: "actions",
+      label: "Actions",
+      align: "right",
+      className: "min-w-[150px]",
+      render: (row) => (
+        <div className="flex items-center justify-end" data-row-click-stop="true">
+          <ActionMenuButton
+            buttonClassName="!px-2 !py-1.5"
+            items={[
+              {
+                key: "view-required-skills",
+                label: "View Required Skills",
+                onClick: () => setRequiredSkillsPreviewRole(row),
+              },
+              {
+                key: "edit-role-standard",
+                label: "Edit Role Standard",
+                onClick: () => startEditRoleRequirement(row),
+              },
+              {
+                key: "delete-role-standard",
+                label: "Delete Role Standard",
+                onClick: () => {
+                  setDeleteTarget({
+                    type: "role",
+                    id: String(row?._id || ""),
+                    label: String(row?.jobRole || "this role standard"),
+                  });
+                },
+                disabled: deleteRoleRequirementMutation.isPending,
+                danger: true,
+              },
+            ]}
+          />
+        </div>
+      ),
+    },
+  ];
+
   return (
     <div className="pt-14 pb-6 px-4 md:px-6 lg:p-6 space-y-6">
       <section
@@ -415,40 +568,77 @@ export default function TnaSkillRoleSetupPage() {
               ) : skills.length === 0 ? (
                 <p className="text-sm text-slate-500">No skills yet. Add your first skill above.</p>
               ) : (
-                <div className="flex flex-wrap gap-2">
-                  {skills.map((skill) => {
-                    const skillId = String(skill?._id || "");
-                    const isDeletingCurrent =
-                      deleteSkillMutation.isPending && deletingSkillId === skillId;
+                <div className="space-y-3">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                      Skill Library ({filteredSkills.length})
+                    </p>
+                    <input
+                      value={skillSearch}
+                      onChange={(event) => setSkillSearch(event.target.value)}
+                      className="h-9 w-full sm:w-72 rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:border-[color:var(--color-primary,#2563eb)] focus:ring-2 focus:ring-[color:color-mix(in_srgb,var(--color-primary,#2563eb)_18%,transparent)]"
+                      placeholder="Search skill..."
+                    />
+                  </div>
 
-                    return (
-                      <div
-                        key={skill._id}
-                        className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-slate-700"
-                      >
-                        <span className="px-1">{skill.name}</span>
-                        <button
-                          type="button"
-                          aria-label={`Delete skill ${skill.name}`}
-                          className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-red-200 bg-red-50 text-red-500 transition-colors hover:bg-red-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-300 disabled:cursor-not-allowed disabled:opacity-50"
-                          onClick={() => {
-                            setDeleteTarget({
-                              type: "skill",
-                              id: skillId,
-                              label: String(skill?.name || "this skill"),
-                            });
-                          }}
-                          disabled={deleteSkillMutation.isPending}
-                        >
-                          {isDeletingCurrent ? (
-                            <span className="h-2 w-2 animate-pulse rounded-full bg-red-500" />
-                          ) : (
-                            <FaTrash className="h-2.5 w-2.5" />
-                          )}
-                        </button>
+                  {filteredSkills.length === 0 ? (
+                    <div className="rounded-lg border border-dashed border-slate-300 bg-white/80 px-4 py-6 text-center text-sm text-slate-500">
+                      No skills matched your search.
+                    </div>
+                  ) : (
+                    <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+                      <div className="max-h-[360px] overflow-auto">
+                        <table className="w-full min-w-[520px]">
+                          <thead className="sticky top-0 z-10 bg-slate-100/95 backdrop-blur">
+                            <tr className="text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                              <th className="px-4 py-3 w-16">#</th>
+                              <th className="px-4 py-3">Skill Name</th>
+                              <th className="px-4 py-3 w-28 text-center">Action</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-200">
+                            {filteredSkills.map((skill, index) => {
+                              const skillId = String(skill?._id || "");
+                              const isDeletingCurrent =
+                                deleteSkillMutation.isPending && deletingSkillId === skillId;
+
+                              return (
+                                <tr key={skill._id} className="hover:bg-slate-50/80 transition-colors">
+                                  <td className="px-4 py-3 text-sm font-medium text-slate-500">{index + 1}</td>
+                                  <td className="px-4 py-3 text-sm font-medium text-slate-800">
+                                    {String(skill?.name || "Unnamed skill")}
+                                  </td>
+                                  <td className="px-4 py-3">
+                                    <div className="flex items-center justify-center">
+                                      <button
+                                        type="button"
+                                        aria-label={`Delete skill ${skill.name}`}
+                                        className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-red-200 bg-red-50 text-red-500 transition-colors hover:bg-red-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-300 disabled:cursor-not-allowed disabled:opacity-50"
+                                        onClick={() => {
+                                          setDeleteTarget({
+                                            type: "skill",
+                                            id: skillId,
+                                            label: String(skill?.name || "this skill"),
+                                          });
+                                        }}
+                                        disabled={deleteSkillMutation.isPending}
+                                      >
+                                        {isDeletingCurrent ? (
+                                          <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-red-500" />
+                                        ) : (
+                                          <FaTrash className="h-3 w-3" />
+                                        )}
+                                      </button>
+                                    </div>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
                       </div>
-                    );
-                  })}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -597,103 +787,176 @@ export default function TnaSkillRoleSetupPage() {
             </div>
 
             <div className="rounded-xl border border-slate-200 bg-white p-3.5 min-h-[66px]">
-              <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-500">
-                Existing Role Standards
-              </p>
+              <div className="mb-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                  Existing Role Standards
+                </p>
+                <div className="ml-auto inline-flex items-center rounded-lg border border-slate-200 bg-slate-50 p-1">
+                  <button
+                    type="button"
+                    onClick={() => setRoleStandardsView("card")}
+                    className={`inline-flex h-8 w-8 items-center justify-center rounded-md transition-colors ${
+                      roleStandardsView === "card"
+                        ? "bg-[color:var(--color-primary,#2563eb)] text-white shadow-sm"
+                        : "text-slate-500 hover:bg-white hover:text-slate-700"
+                    }`}
+                    aria-label="Card view"
+                    title="Card view"
+                    aria-pressed={roleStandardsView === "card"}
+                  >
+                    <FaThLarge className="h-3.5 w-3.5" />
+                    <span className="sr-only">Card view</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setRoleStandardsView("table")}
+                    className={`inline-flex h-8 w-8 items-center justify-center rounded-md transition-colors ${
+                      roleStandardsView === "table"
+                        ? "bg-[color:var(--color-primary,#2563eb)] text-white shadow-sm"
+                        : "text-slate-500 hover:bg-white hover:text-slate-700"
+                    }`}
+                    aria-label="Table view"
+                    title="Table view"
+                    aria-pressed={roleStandardsView === "table"}
+                  >
+                    <FaTable className="h-3.5 w-3.5" />
+                    <span className="sr-only">Table view</span>
+                  </button>
+                </div>
+              </div>
               {roleRequirementsQuery.isLoading ? (
                 <p className="text-sm text-slate-500">Loading role standards...</p>
               ) : roleRequirements.length === 0 ? (
                 <p className="text-sm text-slate-500">No role standards yet. Save your first role profile above.</p>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                  {roleRequirements.map((roleRequirement: any) => {
-                    const roleRequiredSkills = Array.isArray(roleRequirement.requiredSkills)
-                      ? roleRequirement.requiredSkills
-                      : [];
+                roleStandardsView === "card" ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                    {roleRequirements.map((roleRequirement: any) => {
+                      const roleRequiredSkills = Array.isArray(roleRequirement.requiredSkills)
+                        ? roleRequirement.requiredSkills
+                        : [];
 
-                    return (
-                      <div
-                        key={String(roleRequirement._id || roleRequirement.jobRole)}
-                        tabIndex={0}
-                        className="relative rounded-xl border border-slate-200 bg-slate-50/60 px-3.5 py-3 pr-32 outline-none transition-colors focus-visible:bg-white focus-visible:ring-2 focus-visible:ring-[color:color-mix(in_srgb,var(--color-primary,#2563eb)_28%,transparent)]"
-                      >
-                        <div className="absolute right-2 top-2 flex items-center gap-1">
-                          <button
-                            type="button"
-                            aria-label="Edit role standard"
-                            className={primaryIconButtonClassName}
-                            onClick={() => startEditRoleRequirement(roleRequirement)}
-                          >
-                            <FaEdit className="h-3 w-3" />
-                          </button>
+                      return (
+                        <div
+                          key={String(roleRequirement._id || roleRequirement.jobRole)}
+                          tabIndex={0}
+                          className="relative rounded-xl border border-slate-200 bg-slate-50/60 px-3.5 py-3 pr-32 outline-none transition-colors focus-visible:bg-white focus-visible:ring-2 focus-visible:ring-[color:color-mix(in_srgb,var(--color-primary,#2563eb)_28%,transparent)]"
+                        >
+                          <div className="absolute right-2 top-2 flex items-center gap-1">
+                            <button
+                              type="button"
+                              aria-label="Edit role standard"
+                              className={primaryIconButtonClassName}
+                              onClick={() => startEditRoleRequirement(roleRequirement)}
+                            >
+                              <FaEdit className="h-3 w-3" />
+                            </button>
 
-                          <button
-                            type="button"
-                            aria-label="Delete role standard"
-                            className={dangerIconButtonClassName}
-                            onClick={() => {
-                              setDeleteTarget({
-                                type: "role",
-                                id: String(roleRequirement?._id || ""),
-                                label: String(roleRequirement?.jobRole || "this role standard"),
-                              });
-                            }}
-                            disabled={deleteRoleRequirementMutation.isPending}
-                          >
-                            <FaTrash className="h-3 w-3" />
-                          </button>
+                            <button
+                              type="button"
+                              aria-label="Delete role standard"
+                              className={dangerIconButtonClassName}
+                              onClick={() => {
+                                setDeleteTarget({
+                                  type: "role",
+                                  id: String(roleRequirement?._id || ""),
+                                  label: String(roleRequirement?.jobRole || "this role standard"),
+                                });
+                              }}
+                              disabled={deleteRoleRequirementMutation.isPending}
+                            >
+                              <FaTrash className="h-3 w-3" />
+                            </button>
 
-                          <button
-                            type="button"
-                            aria-label="View required skills"
-                            className={`peer group ${secondaryIconButtonClassName}`}
-                          >
-                            <FaLightbulb className="h-3.5 w-3.5 transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-3" />
-                          </button>
-
-                          <div className="pointer-events-none absolute bottom-full right-0 z-40 mb-2 hidden w-72 max-w-[calc(100vw-2rem)] rounded-lg border border-slate-200 bg-white/95 p-3 shadow-xl peer-hover:block peer-focus-visible:block">
-                            <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-                              Required Skills
-                            </p>
-                            {roleRequiredSkills.length === 0 ? (
-                              <p className="mt-2 text-xs text-slate-500">No required skills configured.</p>
-                            ) : (
-                              <div className="mt-2 space-y-1.5">
-                                {roleRequiredSkills.map((skillItem: any, index: number) => {
-                                  const preview = getRequiredSkillPreview(skillItem);
-                                  return (
-                                    <div
-                                      key={`${preview.name}-${index}`}
-                                      className="flex items-center justify-between gap-2 text-xs"
-                                    >
-                                      <p className="truncate text-slate-700">{preview.name}</p>
-                                      <span className="inline-flex shrink-0 rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-700">
-                                        Level {preview.level}
-                                      </span>
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            )}
+                            <button
+                              type="button"
+                              aria-label="View required skills"
+                              className={`group ${secondaryIconButtonClassName}`}
+                              onClick={() => setRequiredSkillsPreviewRole(roleRequirement)}
+                            >
+                              <FaLightbulb className="h-3.5 w-3.5 transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-3" />
+                            </button>
                           </div>
-                        </div>
 
-                        <p className="text-sm font-semibold text-slate-900">
-                          {String(roleRequirement.jobRole || "Unnamed role")}
-                        </p>
-                        <p className="mt-1 text-xs text-slate-500">
-                          Threshold: {Number(roleRequirement.preAssessmentThreshold) || 70}% | Skills:{" "}
-                          {roleRequiredSkills.length}
-                        </p>
-                      </div>
-                    );
-                  })}
-                </div>
+                          <p className="text-sm font-semibold text-slate-900">
+                            {String(roleRequirement.jobRole || "Unnamed role")}
+                          </p>
+                          <p className="mt-1 text-xs text-slate-500">
+                            Threshold: {Number(roleRequirement.preAssessmentThreshold) || 70}% | Skills:{" "}
+                            {roleRequiredSkills.length}
+                          </p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+                    <GroupedDataTable
+                      groups={roleStandardsTableGroups}
+                      columns={roleStandardsTableColumns}
+                      rowKey={(row) => String(row?._id || row?.jobRole || "")}
+                      tableMinWidthClassName="min-w-[980px]"
+                      showPagination={false}
+                      cardless
+                      showGroupHeader={false}
+                      emptyFilteredText="No matching role standards found."
+                    />
+                  </div>
+                )
               )}
             </div>
           </section>
         )}
       </div>
+
+      <Dialog
+        isOpen={Boolean(requiredSkillsPreviewRole)}
+        onClose={() => setRequiredSkillsPreviewRole(null)}
+        title={`Required Skills${requiredSkillsPreviewRole?.jobRole ? ` • ${String(requiredSkillsPreviewRole.jobRole)}` : ""}`}
+        backdrop="blur"
+        size="lg"
+      >
+        <div className="space-y-4">
+          <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+            <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Role Standard Summary</p>
+            <p className="mt-1 text-sm text-slate-700">
+              Threshold: {Number(requiredSkillsPreviewRole?.preAssessmentThreshold) || 70}% | Skills:{" "}
+              {Array.isArray(requiredSkillsPreviewRole?.requiredSkills)
+                ? requiredSkillsPreviewRole.requiredSkills.length
+                : 0}
+            </p>
+          </div>
+
+          {!Array.isArray(requiredSkillsPreviewRole?.requiredSkills) ||
+          requiredSkillsPreviewRole.requiredSkills.length === 0 ? (
+            <p className="text-sm text-slate-500">No required skills configured.</p>
+          ) : (
+            <div className="max-h-[420px] overflow-y-auto rounded-lg border border-slate-200">
+              <table className="w-full min-w-[520px]">
+                <thead className="sticky top-0 z-10 bg-slate-100/95">
+                  <tr className="text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                    <th className="px-3 py-2.5 w-16">#</th>
+                    <th className="px-3 py-2.5">Skill</th>
+                    <th className="px-3 py-2.5 w-28">Level</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-200 bg-white">
+                  {requiredSkillsPreviewRole.requiredSkills.map((skillItem: any, index: number) => {
+                    const preview = getRequiredSkillPreview(skillItem);
+                    return (
+                      <tr key={`${String(requiredSkillsPreviewRole?._id || "role")}-${preview.name}-${index}`}>
+                        <td className="px-3 py-2.5 text-sm text-slate-500">{index + 1}</td>
+                        <td className="px-3 py-2.5 text-sm font-medium text-slate-800">{preview.name}</td>
+                        <td className="px-3 py-2.5 text-sm text-slate-700">Level {preview.level}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </Dialog>
 
       <Dialog
         isOpen={Boolean(deleteTarget)}

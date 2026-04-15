@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { FaArrowLeft } from "react-icons/fa";
+import { FaArrowLeft, FaLightbulb } from "react-icons/fa";
 import { toast } from "react-toastify";
 import Button from "../../components/common/Button";
 import { useAuth } from "../../context/AuthContext";
@@ -14,6 +14,7 @@ type RecommendationStatus = "pending" | "assigned" | "completed";
 type TrainingProgressStatus = "pending" | "in_progress" | "completed";
 type TrainingFilterStatus = "all" | TrainingProgressStatus;
 type TrainingPriority = "high" | "medium" | "low";
+type DeploymentCreateMode = "auto_create" | "manual_create";
 
 type TnaRecommendation = {
   _id: string;
@@ -76,10 +77,17 @@ const trainingStatusLabelMap: Record<TrainingProgressStatus, string> = {
   completed: "Completed",
 };
 
+const themePrimarySoftBadgeClass =
+  "border-[color:color-mix(in_srgb,var(--color-primary,#2563eb)_30%,white)] bg-[color:color-mix(in_srgb,var(--color-primary,#2563eb)_10%,white)] text-[color:color-mix(in_srgb,var(--color-primary,#2563eb)_78%,black)]";
+const themePrimaryStrongBadgeClass =
+  "border-[color:color-mix(in_srgb,var(--color-primary,#2563eb)_34%,white)] bg-[color:color-mix(in_srgb,var(--color-primary,#2563eb)_16%,white)] text-[color:color-mix(in_srgb,var(--color-primary,#2563eb)_84%,black)]";
+const themeSecondarySoftBadgeClass =
+  "border-[color:color-mix(in_srgb,var(--color-secondary,#0ea5e9)_30%,white)] bg-[color:color-mix(in_srgb,var(--color-secondary,#0ea5e9)_10%,white)] text-[color:color-mix(in_srgb,var(--color-secondary,#0ea5e9)_78%,black)]";
+
 const trainingStatusBadgeClassMap: Record<TrainingProgressStatus, string> = {
-  pending: "border-amber-200 bg-amber-50 text-amber-700",
-  in_progress: "border-cyan-200 bg-cyan-50 text-cyan-700",
-  completed: "border-emerald-200 bg-emerald-50 text-emerald-700",
+  pending: themeSecondarySoftBadgeClass,
+  in_progress: themePrimarySoftBadgeClass,
+  completed: themePrimaryStrongBadgeClass,
 };
 
 const trainingPriorityLabelMap: Record<TrainingPriority, string> = {
@@ -89,10 +97,17 @@ const trainingPriorityLabelMap: Record<TrainingPriority, string> = {
 };
 
 const trainingPriorityBadgeClassMap: Record<TrainingPriority, string> = {
-  high: "border-rose-200 bg-rose-50 text-rose-700",
-  medium: "border-violet-200 bg-violet-50 text-violet-700",
-  low: "border-emerald-200 bg-emerald-50 text-emerald-700",
+  high: themePrimaryStrongBadgeClass,
+  medium: themeSecondarySoftBadgeClass,
+  low: "border-slate-200 bg-slate-50 text-slate-700",
 };
+
+const WHAT_HAPPENS_NEXT_ITEMS = [
+  "Finish one recommendation item: keep overall status as Assigned.",
+  "Finish all recommendation items: recommendation becomes Completed.",
+  "Completed batch + passed threshold auto-syncs training progress and employee skill levels.",
+  "Open the employee in TNA or rerun analysis to see refreshed levels and next actions.",
+];
 
 const getEmployeeName = (recommendation: TnaRecommendation): string => {
   if (!recommendation.employee || typeof recommendation.employee === "string") return "--";
@@ -132,7 +147,7 @@ const getErrorMessage = (error: unknown): string => {
       }
     }
   }
-  return "Failed to complete auto deployment";
+  return "Failed to complete auto create";
 };
 
 export default function TnaExecutionPipelinePage() {
@@ -155,6 +170,8 @@ export default function TnaExecutionPipelinePage() {
   const [trainingSearchTerm, setTrainingSearchTerm] = useState("");
   const [trainingStatusFilter, setTrainingStatusFilter] = useState<TrainingFilterStatus>("all");
   const [autoDeploySummary, setAutoDeploySummary] = useState<AutoDeploySummary | null>(null);
+  const [deploymentCreateMode, setDeploymentCreateMode] =
+    useState<DeploymentCreateMode>("auto_create");
 
   const filteredRecommendations = useMemo(() => {
     const query = searchTerm.trim().toLowerCase();
@@ -271,12 +288,12 @@ export default function TnaExecutionPipelinePage() {
       const response = await toast.promise(
         autoDeployMutation.mutateAsync({}),
         {
-          pending: "Auto deploying TNA recommendations...",
+          pending: "Auto creating from TNA recommendations...",
           success: {
             render: ({ data }) => {
               const responseMessage = (data as { message?: unknown } | undefined)?.message;
               if (typeof responseMessage === "string" && responseMessage.trim()) return responseMessage;
-              return "Program, course, and batch deployment completed";
+              return "Program, course, and batch setup completed";
             },
           },
           error: {
@@ -342,7 +359,7 @@ export default function TnaExecutionPipelinePage() {
             <div>
               <p className={labelClassName}>Post-TNA Handoff</p>
               <h1 className="text-2xl md:text-3xl font-bold text-slate-900 mt-1">
-                TNA To Course And Batch Deployment
+                TNA To Course And Batch Execution
               </h1>
               <p className="text-sm text-slate-600 mt-2 max-w-3xl">
                 After reviewing TNA, continue in LMS setup: create or select Program and Course,
@@ -350,18 +367,24 @@ export default function TnaExecutionPipelinePage() {
               </p>
             </div>
           </div>
-          <div className="grid grid-cols-3 gap-2 min-w-[290px] text-sm">
-            <div className="rounded-xl border border-slate-200 bg-white/85 px-3 py-2">
-              <p className="text-xs text-slate-500">Total TNA</p>
-              <p className="text-lg font-semibold text-slate-900">{totalRecommendations}</p>
+          <div className="grid w-full grid-cols-1 gap-2 sm:w-auto sm:min-w-[390px] sm:grid-cols-3">
+            <div className="relative overflow-hidden rounded-2xl border border-[color:color-mix(in_srgb,var(--color-primary,#2563eb)_22%,white)] bg-[color:color-mix(in_srgb,var(--color-primary,#2563eb)_8%,white)] px-3.5 py-2.5 min-h-[92px] shadow-[0_10px_24px_-18px_rgba(37,99,235,0.34)]">
+              <span className="pointer-events-none absolute inset-x-0 top-0 h-0.5 bg-[color:color-mix(in_srgb,var(--color-primary,#2563eb)_48%,white)]" />
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-[color:color-mix(in_srgb,var(--color-primary,#2563eb)_68%,black)]">Total TNA</p>
+              <p className="mt-1 text-2xl font-bold leading-none text-[color:color-mix(in_srgb,var(--color-primary,#2563eb)_84%,black)]">{totalRecommendations}</p>
+              <p className="mt-2 text-[11px] text-[color:color-mix(in_srgb,var(--color-primary,#2563eb)_62%,black)]">All recommendations in scope</p>
             </div>
-            <div className="rounded-xl border border-cyan-200 bg-cyan-50/90 px-3 py-2">
-              <p className="text-xs text-cyan-700">With Trainings</p>
-              <p className="text-lg font-semibold text-cyan-700">{withTrainingRecommendations}</p>
+            <div className="relative overflow-hidden rounded-2xl border border-[color:color-mix(in_srgb,var(--color-secondary,#0ea5e9)_24%,white)] bg-[color:color-mix(in_srgb,var(--color-secondary,#0ea5e9)_10%,white)] px-3.5 py-2.5 min-h-[92px] shadow-[0_10px_24px_-18px_rgba(14,165,233,0.38)]">
+              <span className="pointer-events-none absolute inset-x-0 top-0 h-0.5 bg-[color:color-mix(in_srgb,var(--color-secondary,#0ea5e9)_50%,white)]" />
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-[color:color-mix(in_srgb,var(--color-secondary,#0ea5e9)_70%,black)]">With Trainings</p>
+              <p className="mt-1 text-2xl font-bold leading-none text-[color:color-mix(in_srgb,var(--color-secondary,#0ea5e9)_84%,black)]">{withTrainingRecommendations}</p>
+              <p className="mt-2 text-[11px] text-[color:color-mix(in_srgb,var(--color-secondary,#0ea5e9)_64%,black)]">Has generated training items</p>
             </div>
-            <div className="rounded-xl border border-amber-200 bg-amber-50/90 px-3 py-2">
-              <p className="text-xs text-amber-700">Pending</p>
-              <p className="text-lg font-semibold text-amber-700">{pendingRecommendations}</p>
+            <div className="relative overflow-hidden rounded-2xl border border-[color:color-mix(in_srgb,var(--color-primary,#2563eb)_26%,white)] bg-[color:color-mix(in_srgb,var(--color-primary,#2563eb)_6%,white)] px-3.5 py-2.5 min-h-[92px] shadow-[0_10px_24px_-18px_rgba(37,99,235,0.3)]">
+              <span className="pointer-events-none absolute inset-x-0 top-0 h-0.5 bg-[color:color-mix(in_srgb,var(--color-primary,#2563eb)_44%,white)]" />
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-[color:color-mix(in_srgb,var(--color-primary,#2563eb)_70%,black)]">Pending</p>
+              <p className="mt-1 text-2xl font-bold leading-none text-[color:color-mix(in_srgb,var(--color-primary,#2563eb)_84%,black)]">{pendingRecommendations}</p>
+              <p className="mt-2 text-[11px] text-[color:color-mix(in_srgb,var(--color-primary,#2563eb)_64%,black)]">Ready for execution action</p>
             </div>
           </div>
         </div>
@@ -458,6 +481,27 @@ export default function TnaExecutionPipelinePage() {
                   <div>
                     <p className={labelClassName}>Recommended Trainings</p>
                   </div>
+                  <div className="relative group/self">
+                    <button
+                      type="button"
+                      className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-[color:color-mix(in_srgb,var(--color-secondary,#0ea5e9)_32%,white)] bg-[color:color-mix(in_srgb,var(--color-secondary,#0ea5e9)_12%,white)] text-[color:color-mix(in_srgb,var(--color-secondary,#0ea5e9)_78%,black)] transition-colors hover:bg-[color:color-mix(in_srgb,var(--color-secondary,#0ea5e9)_20%,white)] focus:outline-none focus:ring-2 focus:ring-[color:color-mix(in_srgb,var(--color-secondary,#0ea5e9)_32%,transparent)]"
+                      aria-label="What happens next"
+                    >
+                      <FaLightbulb className="h-3.5 w-3.5" />
+                    </button>
+                    <div className="pointer-events-none absolute right-0 top-9 z-20 w-[320px] rounded-xl border border-slate-200 bg-white p-3 text-xs text-slate-700 shadow-xl opacity-0 translate-y-1 transition-all duration-150 group-hover/self:translate-y-0 group-hover/self:opacity-100 group-focus-within/self:translate-y-0 group-focus-within/self:opacity-100">
+                      <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                        What Happens Next
+                      </p>
+                      <div className="mt-2 space-y-1.5">
+                        {WHAT_HAPPENS_NEXT_ITEMS.map((item, index) => (
+                          <p key={`next-item-${index}`}>
+                            {index + 1}. {item}
+                          </p>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
                 {suggestedTrainings.length === 0 ? (
@@ -466,14 +510,14 @@ export default function TnaExecutionPipelinePage() {
                   <>
                     <div className="mt-3 rounded-xl border border-slate-200 bg-white">
                       <div className="flex flex-col gap-2 border-b border-slate-200 px-3 py-2.5">
-                        <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
+                        <div className="grid grid-cols-1 gap-2 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
                           <input
                             value={trainingSearchTerm}
                             onChange={(event) => setTrainingSearchTerm(event.target.value)}
-                            className={`${inputClassName} h-9 max-w-xl py-2`}
+                            className={`${inputClassName} h-9 min-w-0 max-w-none lg:max-w-[640px] py-2`}
                             placeholder="Search training title, priority, or type"
                           />
-                          <div className="flex flex-wrap gap-1.5">
+                          <div className="flex flex-nowrap items-center gap-1.5 overflow-x-auto whitespace-nowrap pb-0.5">
                             {(
                               [
                                 {
@@ -508,7 +552,7 @@ export default function TnaExecutionPipelinePage() {
                                   key={filterItem.key}
                                   type="button"
                                   onClick={() => setTrainingStatusFilter(filterItem.key)}
-                                  className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold transition-colors ${
+                                  className={`inline-flex shrink-0 items-center rounded-full border px-2.5 py-1 text-xs font-semibold transition-colors ${
                                     isActive
                                       ? "border-primary bg-primary/10 text-primary"
                                       : "border-slate-200 bg-slate-50 text-slate-600 hover:border-slate-300 hover:bg-white"
@@ -575,157 +619,197 @@ export default function TnaExecutionPipelinePage() {
                           ? "All recommendation items are completed. Next: update employee skills and rerun TNA."
                           : trainingProgressSummary.completed > 0
                           ? "Partial completion recorded. Keep recommendation status as Assigned until all items are completed."
-                          : "No completed items yet. Auto deploy will move pending items to In Progress."}
+                          : "No completed items yet. Auto create will move pending items to In Progress."}
                       </p>
                     </div>
                   </>
                 )}
               </section>
 
-              <section className="rounded-xl border border-slate-200 bg-emerald-50/50 p-4">
-                <p className={labelClassName}>What Happens Next</p>
-                <div className="mt-2 space-y-1.5 text-sm text-slate-700">
-                  <p>1. Finish one recommendation item: keep overall status as Assigned.</p>
-                  <p>2. Finish all recommendation items: recommendation becomes Completed.</p>
-                  <p>3. After completion: update employee skill levels in Step 3.</p>
-                  <p>4. Rerun TNA in Step 4 to measure remaining gaps and generate next actions.</p>
-                </div>
-              </section>
-
               <section className="rounded-xl border border-slate-200 bg-slate-50/80 p-4">
-                <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-                  <div>
-                    <p className={labelClassName}>Deployment Flow In LMS</p>
-                    <p className="text-xs text-slate-600 mt-1">
-                      Auto deploy runs only for training items still in <span className="font-semibold">Pending</span>.
-                      Deployed items are moved to <span className="font-semibold">In Progress</span>.
-                    </p>
-                    <p className="text-xs text-slate-500 mt-1">
-                      Pending training items ready for auto deploy:{" "}
-                      <span className="font-semibold text-slate-700">{pendingTrainingItemsCount}</span>
-                    </p>
+                <div className="flex flex-col gap-3">
+                  <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                    <div>
+                      <p className={labelClassName}>Execution Flow In LMS</p>
+                      <p className="text-xs text-slate-600 mt-1">
+                        Choose execution mode: auto create from TNA, or manual create using LMS setup steps.
+                      </p>
+                    </div>
+                    <div className="inline-grid grid-cols-2 rounded-xl border border-slate-200 bg-white p-1">
+                      <button
+                        type="button"
+                        onClick={() => setDeploymentCreateMode("auto_create")}
+                        className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
+                          deploymentCreateMode === "auto_create"
+                            ? "bg-primary text-white"
+                            : "text-slate-600 hover:bg-slate-100"
+                        }`}
+                      >
+                        Auto Create
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setDeploymentCreateMode("manual_create")}
+                        className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
+                          deploymentCreateMode === "manual_create"
+                            ? "bg-primary text-white"
+                            : "text-slate-600 hover:bg-slate-100"
+                        }`}
+                      >
+                        Manual Create
+                      </button>
+                    </div>
                   </div>
-                  <Button
-                    variant="primary"
-                    onClick={runAutoDeployFromTna}
-                    isLoading={autoDeployMutation.isPending}
-                    disabled={pendingTrainingItemsCount === 0}
-                    className="h-10"
-                  >
-                    Auto Deploy From TNA
-                  </Button>
                 </div>
 
-                <div className="mt-3 rounded-lg border border-slate-200 bg-white p-3 text-xs text-slate-700 space-y-1.5">
-                  <p className="font-semibold text-slate-900">How this works</p>
-                  <p>1. Groups employees by the same pending training title.</p>
-                  <p>2. Creates or reuses program, course, and batch (no duplicate enrollments).</p>
-                  <p>3. Sets deployed training items from Pending to In Progress automatically.</p>
-                  <p>4. Re-clicking auto deploy only processes new pending items.</p>
-                </div>
+                {deploymentCreateMode === "auto_create" ? (
+                  <>
+                    <div className="mt-3 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                      <div>
+                        <p className="text-xs text-slate-600">
+                          Auto create runs only for training items still in{" "}
+                          <span className="font-semibold">Pending</span>. Deployed items are moved to{" "}
+                          <span className="font-semibold">In Progress</span>.
+                        </p>
+                        <p className="text-xs text-slate-500 mt-1">
+                          Pending training items ready for auto create:{" "}
+                          <span className="font-semibold text-slate-700">{pendingTrainingItemsCount}</span>
+                        </p>
+                      </div>
+                      <Button
+                        variant="primary"
+                        onClick={runAutoDeployFromTna}
+                        isLoading={autoDeployMutation.isPending}
+                        disabled={pendingTrainingItemsCount === 0}
+                        className="h-10"
+                      >
+                        Auto Create From TNA
+                      </Button>
+                    </div>
 
-                {autoDeploySummary && (
-                  <div
-                    className={`mt-3 rounded-lg p-3 space-y-2 ${
-                      autoDeploySummary.noOp
-                        ? "border border-slate-200 bg-slate-50"
-                        : "border border-emerald-200 bg-emerald-50"
-                    }`}
-                  >
-                    <p
-                      className={`text-sm font-semibold ${
-                        autoDeploySummary.noOp ? "text-slate-800" : "text-emerald-900"
-                      }`}
-                    >
-                      Auto Deployment Summary
-                    </p>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
-                      <div className="rounded-md border border-emerald-200 bg-white px-2.5 py-1.5">
-                        Groups: <span className="font-semibold">{autoDeploySummary.totalGroups || 0}</span>
+                    <div className="mt-3 rounded-lg border border-slate-200 bg-white p-3 text-xs text-slate-700 space-y-1.5">
+                      <p className="font-semibold text-slate-900">How auto create works</p>
+                      <p>1. Groups employees by the same pending training title.</p>
+                      <p>2. Creates or reuses program, course, and batch (no duplicate enrollments).</p>
+                      <p>3. Sets deployed training items from Pending to In Progress automatically.</p>
+                      <p>4. Re-clicking auto create only processes new pending items.</p>
+                    </div>
+
+                    {autoDeploySummary && (
+                      <div
+                        className={`mt-3 rounded-lg p-3 space-y-2 ${
+                          autoDeploySummary.noOp
+                            ? "border border-slate-200 bg-slate-50"
+                            : "border border-[color:color-mix(in_srgb,var(--color-primary,#2563eb)_28%,white)] bg-[color:color-mix(in_srgb,var(--color-primary,#2563eb)_8%,white)]"
+                        }`}
+                      >
+                        <p
+                          className={`text-sm font-semibold ${
+                            autoDeploySummary.noOp
+                              ? "text-slate-800"
+                              : "text-[color:color-mix(in_srgb,var(--color-primary,#2563eb)_84%,black)]"
+                          }`}
+                        >
+                          Auto Create Summary
+                        </p>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
+                          <div className="rounded-md border border-[color:color-mix(in_srgb,var(--color-primary,#2563eb)_24%,white)] bg-white px-2.5 py-1.5">
+                            Groups: <span className="font-semibold">{autoDeploySummary.totalGroups || 0}</span>
+                          </div>
+                          <div className="rounded-md border border-[color:color-mix(in_srgb,var(--color-primary,#2563eb)_24%,white)] bg-white px-2.5 py-1.5">
+                            Programs Created:{" "}
+                            <span className="font-semibold">{autoDeploySummary.programsCreated || 0}</span>
+                          </div>
+                          <div className="rounded-md border border-[color:color-mix(in_srgb,var(--color-primary,#2563eb)_24%,white)] bg-white px-2.5 py-1.5">
+                            Courses Created:{" "}
+                            <span className="font-semibold">{autoDeploySummary.coursesCreated || 0}</span>
+                          </div>
+                          <div className="rounded-md border border-[color:color-mix(in_srgb,var(--color-primary,#2563eb)_24%,white)] bg-white px-2.5 py-1.5">
+                            Batches Created:{" "}
+                            <span className="font-semibold">{autoDeploySummary.batchesCreated || 0}</span>
+                          </div>
+                          <div className="rounded-md border border-[color:color-mix(in_srgb,var(--color-primary,#2563eb)_24%,white)] bg-white px-2.5 py-1.5">
+                            Batches Updated:{" "}
+                            <span className="font-semibold">{autoDeploySummary.batchesUpdated || 0}</span>
+                          </div>
+                          <div className="rounded-md border border-[color:color-mix(in_srgb,var(--color-primary,#2563eb)_24%,white)] bg-white px-2.5 py-1.5">
+                            Enrollments Added:{" "}
+                            <span className="font-semibold">{autoDeploySummary.enrollmentsAdded || 0}</span>
+                          </div>
+                          <div className="rounded-md border border-[color:color-mix(in_srgb,var(--color-primary,#2563eb)_24%,white)] bg-white px-2.5 py-1.5">
+                            Recommendations Updated:{" "}
+                            <span className="font-semibold">
+                              {autoDeploySummary.recommendationsUpdated || 0}
+                            </span>
+                          </div>
+                        </div>
                       </div>
-                      <div className="rounded-md border border-emerald-200 bg-white px-2.5 py-1.5">
-                        Programs Created:{" "}
-                        <span className="font-semibold">{autoDeploySummary.programsCreated || 0}</span>
+                    )}
+                  </>
+                ) : (
+                  <div className="mt-3 rounded-lg border border-slate-200 bg-white p-3 text-xs text-slate-700 space-y-1.5">
+                    <p className="font-semibold text-slate-900">How manual create works</p>
+                    <p>1. Choose/create Program, then choose/create Course.</p>
+                    <p>2. Create Batch with instructor and schedule.</p>
+                    <p>3. Assign the recommended employee to the batch.</p>
+                    <p>4. Progress updates are tracked back in TNA recommendation status.</p>
+                  </div>
+                )}
+                {deploymentCreateMode === "manual_create" && (
+                  <div className="mt-3 space-y-3">
+                    <div className="rounded-lg border border-slate-200 bg-white p-3 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-semibold text-slate-900">1. Create or select Program</p>
+                        <p className="text-xs text-slate-600 mt-0.5">
+                          Group related training initiatives under a program.
+                        </p>
                       </div>
-                      <div className="rounded-md border border-emerald-200 bg-white px-2.5 py-1.5">
-                        Courses Created:{" "}
-                        <span className="font-semibold">{autoDeploySummary.coursesCreated || 0}</span>
+                      <Button variant="outline" onClick={() => navigate(`/${orgCode}/admin/program`)}>
+                        Go To Programs
+                      </Button>
+                    </div>
+
+                    <div className="rounded-lg border border-slate-200 bg-white p-3 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-semibold text-slate-900">2. Create or select Course</p>
+                        <p className="text-xs text-slate-600 mt-0.5">
+                          Build the actual training course based on TNA recommendations.
+                        </p>
                       </div>
-                      <div className="rounded-md border border-emerald-200 bg-white px-2.5 py-1.5">
-                        Batches Created:{" "}
-                        <span className="font-semibold">{autoDeploySummary.batchesCreated || 0}</span>
+                      <Button variant="outline" onClick={() => navigate(`/${orgCode}/admin/course`)}>
+                        Go To Courses
+                      </Button>
+                    </div>
+
+                    <div className="rounded-lg border border-slate-200 bg-white p-3 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-semibold text-slate-900">
+                          3. Create Batch and assign Instructor
+                        </p>
+                        <p className="text-xs text-slate-600 mt-0.5">
+                          In batch creation, choose the course, instructor, and schedule.
+                        </p>
                       </div>
-                      <div className="rounded-md border border-emerald-200 bg-white px-2.5 py-1.5">
-                        Batches Updated:{" "}
-                        <span className="font-semibold">{autoDeploySummary.batchesUpdated || 0}</span>
+                      <Button variant="primary" onClick={() => navigate(createBatchPath)}>
+                        Create Batch
+                      </Button>
+                    </div>
+
+                    <div className="rounded-lg border border-slate-200 bg-white p-3 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-semibold text-slate-900">
+                          4. Assign {employeeTerm} to Batch
+                        </p>
+                        <p className="text-xs text-slate-600 mt-0.5">
+                          After creating the batch, open section details and add the recommended employee.
+                        </p>
                       </div>
-                      <div className="rounded-md border border-emerald-200 bg-white px-2.5 py-1.5">
-                        Enrollments Added:{" "}
-                        <span className="font-semibold">{autoDeploySummary.enrollmentsAdded || 0}</span>
-                      </div>
-                      <div className="rounded-md border border-emerald-200 bg-white px-2.5 py-1.5">
-                        Recommendations Updated:{" "}
-                        <span className="font-semibold">
-                          {autoDeploySummary.recommendationsUpdated || 0}
-                        </span>
-                      </div>
+                      <Button variant="outline" onClick={() => navigate(`/${orgCode}/admin/section`)}>
+                        Open Batches
+                      </Button>
                     </div>
                   </div>
                 )}
-
-                <div className="mt-3 space-y-3">
-                  <div className="rounded-lg border border-slate-200 bg-white p-3 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-                    <div>
-                      <p className="text-sm font-semibold text-slate-900">1. Create or select Program</p>
-                      <p className="text-xs text-slate-600 mt-0.5">
-                        Group related training initiatives under a program.
-                      </p>
-                    </div>
-                    <Button variant="outline" onClick={() => navigate(`/${orgCode}/admin/program`)}>
-                      Go To Programs
-                    </Button>
-                  </div>
-
-                  <div className="rounded-lg border border-slate-200 bg-white p-3 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-                    <div>
-                      <p className="text-sm font-semibold text-slate-900">2. Create or select Course</p>
-                      <p className="text-xs text-slate-600 mt-0.5">
-                        Build the actual training course based on TNA recommendations.
-                      </p>
-                    </div>
-                    <Button variant="outline" onClick={() => navigate(`/${orgCode}/admin/course`)}>
-                      Go To Courses
-                    </Button>
-                  </div>
-
-                  <div className="rounded-lg border border-slate-200 bg-white p-3 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-                    <div>
-                      <p className="text-sm font-semibold text-slate-900">
-                        3. Create Batch and assign Instructor
-                      </p>
-                      <p className="text-xs text-slate-600 mt-0.5">
-                        In batch creation, choose the course, instructor, and schedule.
-                      </p>
-                    </div>
-                    <Button variant="primary" onClick={() => navigate(createBatchPath)}>
-                      Create Batch
-                    </Button>
-                  </div>
-
-                  <div className="rounded-lg border border-slate-200 bg-white p-3 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-                    <div>
-                      <p className="text-sm font-semibold text-slate-900">
-                        4. Assign {employeeTerm} to Batch
-                      </p>
-                      <p className="text-xs text-slate-600 mt-0.5">
-                        After creating the batch, open section details and add the recommended employee.
-                      </p>
-                    </div>
-                    <Button variant="outline" onClick={() => navigate(`/${orgCode}/admin/section`)}>
-                      Open Batches
-                    </Button>
-                  </div>
-                </div>
               </section>
 
               <section className="rounded-xl border border-slate-200 bg-white p-3">
