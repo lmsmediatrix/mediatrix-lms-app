@@ -434,7 +434,7 @@ export default function SideNavigation({
       </button>
 
       <m.nav
-        className={`fixed left-2 top-2 z-40 flex h-[calc(100vh-1rem)] flex-col overflow-hidden rounded-[28px] border border-slate-200/90 bg-white/95 shadow-[0_24px_60px_-38px_rgba(15,23,42,0.4)] backdrop-blur sm:left-3 sm:top-3 sm:h-[calc(100vh-1.5rem)] ${
+        className={`fixed left-2 top-2 z-40 flex h-[calc(100vh-1rem)] flex-col overflow-hidden rounded-2xl border border-slate-200/90 bg-white/95 shadow-[0_24px_60px_-38px_rgba(15,23,42,0.4)] backdrop-blur sm:left-3 sm:top-3 sm:h-[calc(100vh-1.5rem)] ${
           isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"
         } lg:translate-x-0`}
         animate={{ width: isCollapsed && !isMobileMenuOpen ? 80 : 250 }}
