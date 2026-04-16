@@ -37,6 +37,7 @@ const TableEmptyState: React.FC<TableEmptyStateProps> = ({
   isFiltered = false,
 }) => {
   const navigate = useNavigate();
+  void colSpan;
 
   const handlePrimaryAction = () => {
     if (onPrimaryAction) {
@@ -519,51 +520,49 @@ const TableEmptyState: React.FC<TableEmptyStateProps> = ({
   };
 
   return (
-    <tr>
-      <td colSpan={colSpan} className="py-8 px-4">
-        <div className="flex flex-col items-center justify-center">
-          {/* Illustration */}
-          <div className="mb-6">{renderIllustration()}</div>
+    <div className="w-full px-4 py-8">
+      <div className="mx-auto flex min-h-[340px] w-full max-w-3xl flex-col items-center justify-center">
+        {/* Illustration */}
+        <div className="mb-6">{renderIllustration()}</div>
 
-          {/* Title and Description */}
-          <div className="text-center mb-6">
-            <h3 className="text-xl font-bold text-gray-800 mb-2">
-              {isFiltered ? "No Results Found" : title}
-            </h3>
-            <p className="text-gray-600 max-w-lg mx-auto">
-              {isFiltered
-                ? "Try adjusting your search or filter criteria to find what you're looking for."
-                : description}
-            </p>
-          </div>
+        {/* Title and Description */}
+        <div className="mb-6 text-center">
+          <h3 className="mb-2 text-xl font-bold text-gray-800">
+            {isFiltered ? "No Results Found" : title}
+          </h3>
+          <p className="mx-auto max-w-lg text-gray-600">
+            {isFiltered
+              ? "Try adjusting your search or filter criteria to find what you're looking for."
+              : description}
+          </p>
+        </div>
 
-          {/* Actions - Only show actions if not in filtered state */}
-          {!isFiltered && (
-            <div className="flex flex-col sm:flex-row gap-3">
+        {/* Actions - Only show actions if not in filtered state */}
+        {!isFiltered && (
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <Button
+              variant="primary"
+              onClick={handlePrimaryAction}
+              className="flex items-center justify-center gap-2"
+            >
+              <FaPlus /> {primaryActionLabel}
+            </Button>
+            {secondaryActionLabel && (
               <Button
-                variant="primary"
-                onClick={handlePrimaryAction}
+                variant="outline"
+                onClick={handleSecondaryAction}
                 className="flex items-center justify-center gap-2"
               >
-                <FaPlus /> {primaryActionLabel}
+                {secondaryActionLabel.includes("Bulk") ? (
+                  <FaFileUpload />
+                ) : null}{" "}
+                {secondaryActionLabel}
               </Button>
-              {secondaryActionLabel && (
-                <Button
-                  variant="outline"
-                  onClick={handleSecondaryAction}
-                  className="flex items-center justify-center gap-2"
-                >
-                  {secondaryActionLabel.includes("Bulk") ? (
-                    <FaFileUpload />
-                  ) : null}{" "}
-                  {secondaryActionLabel}
-                </Button>
-              )}
-            </div>
-          )}
-        </div>
-      </td>
-    </tr>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
   );
 };
 

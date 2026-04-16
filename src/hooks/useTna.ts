@@ -45,7 +45,12 @@ export const useUpsertRoleRequirement = () => {
   return useMutation({
     mutationFn: (payload: {
       jobRole: string;
-      requiredSkills: Array<{ skillId?: string; skillName?: string; requiredLevel: number }>;
+      requiredSkills: Array<{
+        skillId?: string;
+        skillName?: string;
+        requiredLevel: number;
+        passingThreshold?: number;
+      }>;
       preAssessmentThreshold?: number;
     }) => TnaService.upsertRoleRequirement(payload),
     onSuccess: () => {
@@ -93,7 +98,12 @@ export const useAnalyzeTna = () => {
     mutationFn: (payload: {
       employeeId: string;
       jobRole: string;
-      requiredSkillsOverride?: Array<{ skillId?: string; skillName?: string; requiredLevel: number }>;
+      requiredSkillsOverride?: Array<{
+        skillId?: string;
+        skillName?: string;
+        requiredLevel: number;
+        passingThreshold?: number;
+      }>;
       employeeSkillsOverride?: Array<{ skillId?: string; skillName?: string; currentLevel: number }>;
       preAssessment?: { score?: number; threshold?: number };
       performanceGaps?: string[];
