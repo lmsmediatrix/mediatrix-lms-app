@@ -1487,7 +1487,7 @@ export default function TnaPage() {
                   </p>
                 </div>
                 <span className="inline-flex h-fit items-center rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-700">
-                  Passing threshold: {analyzeThreshold}%
+                  Pre-assessment threshold: {analyzeThreshold}%
                 </span>
               </div>
 
@@ -1513,6 +1513,9 @@ export default function TnaPage() {
                       <p className="font-medium text-slate-900">{skillItem.skillName}</p>
                       <p className="text-xs text-slate-500 mt-0.5">
                         Required level: {Number(skillItem.requiredLevel) || 0}
+                      </p>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        Skill threshold: {Number(skillItem.passingThreshold) || 70}%
                       </p>
                     </div>
                   ))}

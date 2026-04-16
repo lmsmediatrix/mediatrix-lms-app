@@ -47,7 +47,12 @@ class TnaService extends APIService {
 
   upsertRoleRequirement = async (body: {
     jobRole: string;
-    requiredSkills: Array<{ skillId?: string; skillName?: string; requiredLevel: number }>;
+    requiredSkills: Array<{
+      skillId?: string;
+      skillName?: string;
+      requiredLevel: number;
+      passingThreshold?: number;
+    }>;
     preAssessmentThreshold?: number;
   }) => {
     const response = await apiClient.put(`${BASE_URL}${TNA.ROLE_REQUIREMENT_UPSERT}`, body, {
@@ -89,7 +94,12 @@ class TnaService extends APIService {
   analyze = async (body: {
     employeeId: string;
     jobRole: string;
-    requiredSkillsOverride?: Array<{ skillId?: string; skillName?: string; requiredLevel: number }>;
+    requiredSkillsOverride?: Array<{
+      skillId?: string;
+      skillName?: string;
+      requiredLevel: number;
+      passingThreshold?: number;
+    }>;
     employeeSkillsOverride?: Array<{ skillId?: string; skillName?: string; currentLevel: number }>;
     preAssessment?: { score?: number; threshold?: number };
     performanceGaps?: string[];

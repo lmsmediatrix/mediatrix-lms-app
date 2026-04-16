@@ -4,12 +4,11 @@ import { FaBars } from "react-icons/fa";
 import { UserIcon } from "@/components/ui/user-icon";
 import { SettingsIcon } from "@/components/ui/settings-icon";
 import { LogoutIcon } from "@/components/ui/logout-icon";
+import { PanelLeft } from "@/components/ui/panel-left";
 import { IoEllipsisVerticalSharp } from "react-icons/io5";
 import {
   MdKeyboardArrowDown,
   MdKeyboardArrowRight,
-  MdChevronLeft,
-  MdChevronRight,
 } from "react-icons/md";
 import { IoClose } from "react-icons/io5";
 import { useAuth } from "../../context/AuthContext";
@@ -435,51 +434,56 @@ export default function SideNavigation({
       </button>
 
       <m.nav
-        className={`fixed left-2 top-2 z-40 flex h-[calc(100vh-1rem)] flex-col overflow-hidden rounded-[28px] border border-slate-200/90 bg-white/95 shadow-[0_24px_60px_-38px_rgba(15,23,42,0.4)] backdrop-blur sm:left-3 sm:top-3 sm:h-[calc(100vh-1.5rem)] ${
+        className={`fixed left-2 top-2 z-40 flex h-[calc(100vh-1rem)] flex-col overflow-hidden rounded-2xl border border-slate-200/90 bg-white/95 shadow-[0_24px_60px_-38px_rgba(15,23,42,0.4)] backdrop-blur sm:left-3 sm:top-3 sm:h-[calc(100vh-1.5rem)] ${
           isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"
         } lg:translate-x-0`}
         animate={{ width: isCollapsed && !isMobileMenuOpen ? 80 : 250 }}
         transition={{ duration: 0.3, ease: "easeInOut" }}
       >
-        <div className="relative border-b border-gray-200 bg-[color-mix(in_srgb,var(--color-primary)_10%,transparent_90%)] px-3 py-4">
+        <div
+          className={`relative border-b border-gray-200 bg-[color-mix(in_srgb,var(--color-primary)_10%,transparent_90%)] px-3 pr-12 ${
+            isCollapsed && !isMobileMenuOpen ? "min-h-[48px] py-2" : "py-4"
+          }`}
+        >
           <button
-            className="absolute -right-3.5 top-1/2 hidden size-7 -translate-y-1/2 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-600 shadow-sm transition-colors hover:text-primary lg:flex"
+            className={`absolute z-20 hidden size-8 items-center justify-center rounded-full border border-slate-300 bg-white text-slate-700 shadow-[0_8px_16px_-10px_rgba(15,23,42,0.45)] transition-colors hover:border-primary/40 hover:text-primary lg:flex ${
+              isCollapsed && !isMobileMenuOpen
+                ? "left-1/2 top-2 -translate-x-1/2"
+                : "right-2 top-1/2 -translate-y-1/2"
+            }`}
             onClick={() => setIsCollapsed(!isCollapsed)}
+            aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
           >
-            {isCollapsed ? (
-              <MdChevronRight className="size-5" />
-            ) : (
-              <MdChevronLeft className="size-5" />
-            )}
-          </button>
-          <div ref={logoMenuRef} className="relative">
-            <button
-              onClick={handleLogoClick}
-              className={`flex w-full items-center gap-3 text-left focus:outline-none ${
-                isCollapsed && !isMobileMenuOpen ? "justify-center" : ""
+            <PanelLeft
+              animateOnHover
+              size={18}
+              className={`transition-transform duration-200 ${
+                isCollapsed ? "rotate-180" : ""
               }`}
-              aria-label="Open logo menu"
-            >
-              {role === "SUPERADMIN" ||
-              !currentUser.user.organization.branding?.logo ? (
-                <img
-                  src="https://res.cloudinary.com/dyal0wstg/image/upload/v1751936802/alma_new_circle_idxrmk.png"
-                  className={`${
-                    isCollapsed && !isMobileMenuOpen ? "size-9" : "size-10"
-                  } text-primary cursor-pointer rounded-lg border border-slate-200 bg-white object-cover`}
-                  alt="Logo"
-                />
-              ) : (
-                <img
-                  src={currentUser.user.organization.branding.logo}
-                  alt="Organization Logo"
-                  className={`cursor-pointer rounded-lg border border-slate-200 bg-white object-cover ${
-                    isCollapsed && !isMobileMenuOpen ? "h-9 w-9" : "h-10 w-10"
-                  }`}
-                />
-              )}
-              <AnimatePresence>
-                {(!isCollapsed || isMobileMenuOpen) && (
+            />
+          </button>
+          {(!isCollapsed || isMobileMenuOpen) && (
+            <div ref={logoMenuRef} className="relative">
+              <button
+                onClick={handleLogoClick}
+                className="flex w-full items-center gap-3 text-left focus:outline-none"
+                aria-label="Open logo menu"
+              >
+                {role === "SUPERADMIN" ||
+                !currentUser.user.organization.branding?.logo ? (
+                  <img
+                    src="https://res.cloudinary.com/dyal0wstg/image/upload/v1751936802/alma_new_circle_idxrmk.png"
+                    className="size-10 text-primary cursor-pointer rounded-lg border border-slate-200 bg-white object-cover"
+                    alt="Logo"
+                  />
+                ) : (
+                  <img
+                    src={currentUser.user.organization.branding.logo}
+                    alt="Organization Logo"
+                    className="cursor-pointer rounded-lg border border-slate-200 bg-white object-cover h-10 w-10"
+                  />
+                )}
+                <AnimatePresence>
                   <m.div
                     initial={{ opacity: 0, width: 0 }}
                     animate={{ opacity: 1, width: "auto" }}
@@ -488,47 +492,42 @@ export default function SideNavigation({
                     className="min-w-0 flex-1 overflow-hidden"
                   >
                     {currentUser.user.organization ? (
-                      <>
-                        <p className="text-sm font-semibold leading-tight text-gray-800">
-                          {currentUser.user.organization?.name}
-                        </p>
-                        <p className="mt-1 inline-flex rounded-full bg-gray-100 px-2 py-0.5 text-[11px] text-gray-600">
-                          {currentUser.user.organization?.code}
-                        </p>
-                      </>
+                      <p className="text-sm font-semibold leading-tight text-gray-800">
+                        {currentUser.user.organization?.name}
+                      </p>
                     ) : (
                       <p className="text-sm font-semibold text-primary">ALMA</p>
                     )}
                   </m.div>
+                </AnimatePresence>
+                {performancePath && (
+                  <MdKeyboardArrowDown
+                    className={`text-[20px] text-gray-500 transition-transform ${
+                      isLogoMenuOpen ? "rotate-180" : ""
+                    }`}
+                  />
+                )}
+              </button>
+              <AnimatePresence>
+                {isLogoMenuOpen && performancePath && (
+                  <m.div
+                    className="absolute left-0 right-0 top-[calc(100%+0.5rem)] z-50 overflow-hidden rounded-lg border border-gray-200 bg-white shadow-lg"
+                    initial={{ opacity: 0, y: 8, scale: 0.98 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 8, scale: 0.98 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    <button
+                      onClick={navigateToPerformance}
+                      className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                    >
+                      Performance Management
+                    </button>
+                  </m.div>
                 )}
               </AnimatePresence>
-              {(!isCollapsed || isMobileMenuOpen) && performancePath && (
-                <MdKeyboardArrowDown
-                  className={`text-[20px] text-gray-500 transition-transform ${
-                    isLogoMenuOpen ? "rotate-180" : ""
-                  }`}
-                />
-              )}
-            </button>
-            <AnimatePresence>
-              {isLogoMenuOpen && performancePath && (
-                <m.div
-                  className="absolute left-0 right-0 top-[calc(100%+0.5rem)] z-50 overflow-hidden rounded-lg border border-gray-200 bg-white shadow-lg"
-                  initial={{ opacity: 0, y: 8, scale: 0.98 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: 8, scale: 0.98 }}
-                  transition={{ duration: 0.2 }}
-                >
-                  <button
-                    onClick={navigateToPerformance}
-                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                  >
-                    Performance Management
-                  </button>
-                </m.div>
-              )}
-            </AnimatePresence>
-          </div>
+            </div>
+          )}
         </div>
 
         <div className="no-scrollbar min-h-0 flex-1 overflow-y-auto px-2 py-2">

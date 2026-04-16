@@ -36,9 +36,17 @@ const MainLayout = () => {
       <div
         className={`flex min-h-0 flex-1 ${
           isSideNav
-            ? "gap-2 overflow-hidden bg-[radial-gradient(circle_at_0%_0%,#dbeafe_0%,#f1f5f9_40%,#f8fafc_100%)] p-2 sm:gap-3 sm:p-3"
+            ? "gap-1 overflow-hidden p-2 sm:gap-2 sm:p-3"
             : ""
         }`}
+        style={
+          isSideNav
+            ? {
+                backgroundColor:
+                  "color-mix(in srgb, var(--color-primary, #3e5b93) 24%, white 76%)",
+              }
+            : undefined
+        }
       >
         {isSideNav && (
           <SideNavigation
@@ -49,7 +57,7 @@ const MainLayout = () => {
         <main
           className={`min-h-0 flex-1 transition-all duration-300 ${
             isSideNav
-              ? `${isCollapsed ? "lg:ml-[104px]" : "lg:ml-[276px]"} overflow-hidden rounded-[28px] border border-white/70 bg-white/70 shadow-[0_24px_60px_-36px_rgba(15,23,42,0.4)] backdrop-blur`
+              ? `${isCollapsed ? "lg:ml-[92px]" : "lg:ml-[262px]"} overflow-hidden rounded-2xl border border-white/70 bg-white/70 shadow-[0_24px_60px_-36px_rgba(15,23,42,0.4)] backdrop-blur`
               : "no-scrollbar overflow-y-auto overflow-x-hidden bg-gray-50"
           }`}
         >

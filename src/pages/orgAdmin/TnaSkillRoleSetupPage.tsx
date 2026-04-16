@@ -1,7 +1,9 @@
 import { useMemo, useState } from "react";
-import { FaBriefcase, FaEdit, FaLightbulb, FaListUl, FaTable, FaThLarge, FaTrash } from "react-icons/fa";
+import { FaBriefcase, FaEdit, FaListUl, FaTable, FaThLarge } from "react-icons/fa";
+import { Trash } from "@/components/animate-ui/icons/trash";
 import { Navigate, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
+import { Lightbulb } from "@/components/animate-ui/icons/lightbulb";
 import { SearchableSelect } from "../../components/SearchableSelect";
 import Button from "../../components/common/Button";
 import Dialog from "../../components/common/Dialog";
@@ -20,7 +22,7 @@ import {
   useUpsertRoleRequirement,
 } from "../../hooks/useTna";
 
-type LevelRow = { skillId: string; level: number };
+type LevelRow = { skillId: string; level: number; passingThreshold: number };
 type StepKey = "skill-library" | "role-requirements";
 type DeleteTarget =
   | { type: "skill"; id: string; label: string }
@@ -116,8 +118,13 @@ export default function TnaSkillRoleSetupPage() {
 
     const parsedLevel = Number(skillItem?.requiredLevel);
     const level = Number.isFinite(parsedLevel) ? parsedLevel : 0;
+    const parsedPassingThreshold = Number(skillItem?.passingThreshold);
+    const passingThreshold =
+      Number.isFinite(parsedPassingThreshold) && parsedPassingThreshold >= 0 && parsedPassingThreshold <= 100
+        ? parsedPassingThreshold
+        : 70;
 
-    return { name, level };
+    return { name, level, passingThreshold };
   };
 
   const [activeStep, setActiveStep] = useState<StepKey>("skill-library");
@@ -125,7 +132,9 @@ export default function TnaSkillRoleSetupPage() {
   const [skillSearch, setSkillSearch] = useState("");
   const [jobRole, setJobRole] = useState("");
   const [threshold, setThreshold] = useState(70);
-  const [requiredSkills, setRequiredSkills] = useState<LevelRow[]>([{ skillId: "", level: 1 }]);
+  const [requiredSkills, setRequiredSkills] = useState<LevelRow[]>([
+    { skillId: "", level: 1, passingThreshold: 70 },
+  ]);
   const [editingRoleRequirementId, setEditingRoleRequirementId] = useState<string | null>(null);
   const [roleStandardsView, setRoleStandardsView] = useState<"card" | "table">("card");
   const [deletingSkillId, setDeletingSkillId] = useState<string | null>(null);
@@ -166,7 +175,7 @@ export default function TnaSkillRoleSetupPage() {
     setEditingRoleRequirementId(null);
     setJobRole("");
     setThreshold(70);
-    setRequiredSkills([{ skillId: "", level: 1 }]);
+    setRequiredSkills([{ skillId: "", level: 1, passingThreshold: 70 }]);
   };
 
   const saveSkill = async () => {
@@ -188,6 +197,7 @@ export default function TnaSkillRoleSetupPage() {
     const payloadSkills = requiredSkills.filter((item) => item.skillId).map((item) => ({
       skillId: item.skillId,
       requiredLevel: Number(item.level),
+      passingThreshold: Number(item.passingThreshold),
     }));
     if (payloadSkills.length === 0) return toast.error("Add at least one required skill");
     try {
@@ -226,7 +236,7 @@ export default function TnaSkillRoleSetupPage() {
 
       setRequiredSkills((previous) => {
         const filtered = previous.filter((item) => item.skillId !== skillId);
-        return filtered.length > 0 ? filtered : [{ skillId: "", level: 1 }];
+        return filtered.length > 0 ? filtered : [{ skillId: "", level: 1, passingThreshold: 70 }];
       });
     } catch (error) {
       toast.error(getErrorMessage(error));
@@ -250,9 +260,16 @@ export default function TnaSkillRoleSetupPage() {
 
         if (!resolvedSkillId) return null;
         const parsedLevel = Number(skillItem?.requiredLevel);
+        const parsedPassingThreshold = Number(skillItem?.passingThreshold);
         return {
           skillId: resolvedSkillId,
           level: Number.isFinite(parsedLevel) ? parsedLevel : 1,
+          passingThreshold:
+            Number.isFinite(parsedPassingThreshold) &&
+            parsedPassingThreshold >= 0 &&
+            parsedPassingThreshold <= 100
+              ? parsedPassingThreshold
+              : 70,
         };
       })
       .filter(Boolean) as LevelRow[];
@@ -264,7 +281,7 @@ export default function TnaSkillRoleSetupPage() {
     setRequiredSkills(
       normalizedRequiredSkills.length > 0
         ? normalizedRequiredSkills
-        : [{ skillId: "", level: 1 }]
+        : [{ skillId: "", level: 1, passingThreshold: 70 }]
     );
   };
 
@@ -343,7 +360,7 @@ export default function TnaSkillRoleSetupPage() {
     },
     {
       key: "threshold",
-      label: "Threshold",
+      label: "Pre-test Threshold",
       sortable: true,
       filterable: true,
       filterPlaceholder: "Search threshold",
@@ -399,14 +416,16 @@ export default function TnaSkillRoleSetupPage() {
 
         return (
           <div className="flex flex-wrap items-center gap-1.5">
-            {firstTwo.map((preview: { name: string; level: number }, index: number) => (
+            {firstTwo.map(
+              (preview: { name: string; level: number; passingThreshold: number }, index: number) => (
               <span
                 key={`${String(row?._id || row?.jobRole || "role")}-${preview.name}-${index}`}
                 className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs text-slate-700"
               >
-                {preview.name} (L{preview.level})
+                {preview.name} (L{preview.level} | T{preview.passingThreshold}%)
               </span>
-            ))}
+              )
+            )}
             {extraCount > 0 ? (
               <span className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs text-slate-500">
                 +{extraCount} more
@@ -626,7 +645,7 @@ export default function TnaSkillRoleSetupPage() {
                                         {isDeletingCurrent ? (
                                           <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-red-500" />
                                         ) : (
-                                          <FaTrash className="h-3 w-3" />
+                                          <Trash animateOnHover size={14} />
                                         )}
                                       </button>
                                     </div>
@@ -655,7 +674,7 @@ export default function TnaSkillRoleSetupPage() {
                 <div>
                   <h2 className="text-xl font-semibold text-slate-900">Role and Skills Configuration</h2>
                   <p className="mt-1 text-sm text-slate-600">
-                    Set role expectations with required skills and passing threshold.
+                    Set role expectations with required skill levels and per-skill passing thresholds.
                   </p>
                 </div>
               </div>
@@ -680,7 +699,7 @@ export default function TnaSkillRoleSetupPage() {
                       </p>
                     </div>
                     <div>
-                      <label className={fieldLabelClassName}>Passing Threshold (%)</label>
+                      <label className={fieldLabelClassName}>Pre-test Threshold (%)</label>
                       <input
                         type="number"
                         min={0}
@@ -690,7 +709,9 @@ export default function TnaSkillRoleSetupPage() {
                         className={`${inputClassName} mt-1`}
                         placeholder="70"
                       />
-                      <p className={fieldHintClassName}>Employees below this score will be flagged for support.</p>
+                      <p className={fieldHintClassName}>
+                        Used for pre-assessment score checks in TNA analysis.
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -700,11 +721,12 @@ export default function TnaSkillRoleSetupPage() {
                     <span className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-[color:color-mix(in_srgb,var(--color-primary,#2563eb)_26%,white)] bg-[color:color-mix(in_srgb,var(--color-primary,#2563eb)_8%,white)] text-[color:var(--color-primary,#2563eb)]">
                       <FaListUl className="h-3.5 w-3.5" />
                     </span>
-                    <p className={fieldLabelClassName}>Required Skills And Levels</p>
+                    <p className={fieldLabelClassName}>Required Skills, Levels, and Thresholds</p>
                   </div>
                   <div className="hidden md:grid grid-cols-12 gap-2 px-1">
-                    <p className={`col-span-8 ${fieldLabelClassName}`}>Skill</p>
+                    <p className={`col-span-6 ${fieldLabelClassName}`}>Skill</p>
                     <p className={`col-span-2 ${fieldLabelClassName}`}>Level</p>
+                    <p className={`col-span-2 ${fieldLabelClassName}`}>Skill Threshold %</p>
                     <p className={`col-span-2 ${fieldLabelClassName}`}>Action</p>
                   </div>
                   {requiredSkills.map((item, index) => (
@@ -712,7 +734,7 @@ export default function TnaSkillRoleSetupPage() {
                       key={`required-${index}`}
                       className="grid grid-cols-12 gap-2 rounded-lg border border-slate-200 bg-slate-50/70 p-2"
                     >
-                      <div className="col-span-12 md:col-span-8">
+                      <div className="col-span-12 md:col-span-6">
                         <SearchableSelect
                           options={skillSelectOptions}
                           value={item.skillId}
@@ -737,23 +759,40 @@ export default function TnaSkillRoleSetupPage() {
                           next[index] = { ...next[index], level: Number(event.target.value || 0) };
                           setRequiredSkills(next);
                         }}
-                        className={`col-span-7 md:col-span-2 ${inputClassName}`}
+                        className={`col-span-6 md:col-span-2 ${inputClassName}`}
+                      />
+                      <input
+                        type="number"
+                        min={0}
+                        max={100}
+                        value={item.passingThreshold}
+                        onChange={(event) => {
+                          const next = [...requiredSkills];
+                          next[index] = {
+                            ...next[index],
+                            passingThreshold: Number(event.target.value || 0),
+                          };
+                          setRequiredSkills(next);
+                        }}
+                        className={`col-span-6 md:col-span-2 ${inputClassName}`}
                       />
                       <button
                         type="button"
-                        className="col-span-5 md:col-span-2 inline-flex items-center justify-center gap-1.5 rounded-lg border border-rose-200 bg-white text-sm font-medium text-rose-600 transition-colors hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-50"
+                        className="col-span-12 md:col-span-2 inline-flex items-center justify-center gap-1.5 rounded-lg border border-rose-200 bg-white text-sm font-medium text-rose-600 transition-colors hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-50"
                         onClick={() => {
                           if (requiredSkills.length === 1) return;
                           setRequiredSkills(requiredSkills.filter((_, rowIndex) => rowIndex !== index));
                         }}
                         disabled={requiredSkills.length === 1}
                       >
-                        <FaTrash className="h-3 w-3" />
+                        <Trash animateOnHover size={14} />
                         <span>Remove</span>
                       </button>
                     </div>
                   ))}
-                  <p className={fieldHintClassName}>Use levels 1 to 5, where 5 is expert capability.</p>
+                  <p className={fieldHintClassName}>
+                    Use levels 1 to 5 (5 is expert), and set the passing threshold for assessment averages per skill.
+                  </p>
                 </div>
               </div>
             </div>
@@ -762,7 +801,9 @@ export default function TnaSkillRoleSetupPage() {
               <Button
                 variant="outline"
                 className="h-10 rounded-lg px-4 font-medium"
-                onClick={() => setRequiredSkills([...requiredSkills, { skillId: "", level: 1 }])}
+                onClick={() =>
+                  setRequiredSkills([...requiredSkills, { skillId: "", level: 1, passingThreshold: 70 }])
+                }
               >
                 Add Skill Requirement
               </Button>
@@ -865,7 +906,7 @@ export default function TnaSkillRoleSetupPage() {
                               }}
                               disabled={deleteRoleRequirementMutation.isPending}
                             >
-                              <FaTrash className="h-3 w-3" />
+                              <Trash animateOnHover size={14} />
                             </button>
 
                             <button
@@ -874,7 +915,7 @@ export default function TnaSkillRoleSetupPage() {
                               className={`group ${secondaryIconButtonClassName}`}
                               onClick={() => setRequiredSkillsPreviewRole(roleRequirement)}
                             >
-                              <FaLightbulb className="h-3.5 w-3.5 transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-3" />
+                              <Lightbulb animateOnHover size={14} />
                             </button>
                           </div>
 
@@ -882,7 +923,7 @@ export default function TnaSkillRoleSetupPage() {
                             {String(roleRequirement.jobRole || "Unnamed role")}
                           </p>
                           <p className="mt-1 text-xs text-slate-500">
-                            Threshold: {Number(roleRequirement.preAssessmentThreshold) || 70}% | Skills:{" "}
+                            Pre-test threshold: {Number(roleRequirement.preAssessmentThreshold) || 70}% | Skills:{" "}
                             {roleRequiredSkills.length}
                           </p>
                         </div>
@@ -920,7 +961,7 @@ export default function TnaSkillRoleSetupPage() {
           <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
             <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Role Standard Summary</p>
             <p className="mt-1 text-sm text-slate-700">
-              Threshold: {Number(requiredSkillsPreviewRole?.preAssessmentThreshold) || 70}% | Skills:{" "}
+              Pre-test threshold: {Number(requiredSkillsPreviewRole?.preAssessmentThreshold) || 70}% | Skills:{" "}
               {Array.isArray(requiredSkillsPreviewRole?.requiredSkills)
                 ? requiredSkillsPreviewRole.requiredSkills.length
                 : 0}
@@ -938,6 +979,7 @@ export default function TnaSkillRoleSetupPage() {
                     <th className="px-3 py-2.5 w-16">#</th>
                     <th className="px-3 py-2.5">Skill</th>
                     <th className="px-3 py-2.5 w-28">Level</th>
+                    <th className="px-3 py-2.5 w-44">Skill Threshold</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200 bg-white">
@@ -948,6 +990,7 @@ export default function TnaSkillRoleSetupPage() {
                         <td className="px-3 py-2.5 text-sm text-slate-500">{index + 1}</td>
                         <td className="px-3 py-2.5 text-sm font-medium text-slate-800">{preview.name}</td>
                         <td className="px-3 py-2.5 text-sm text-slate-700">Level {preview.level}</td>
+                        <td className="px-3 py-2.5 text-sm text-slate-700">{preview.passingThreshold}%</td>
                       </tr>
                     );
                   })}

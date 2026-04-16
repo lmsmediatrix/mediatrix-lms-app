@@ -1,7 +1,8 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { FaArrowLeft, FaLightbulb } from "react-icons/fa";
+import { FaArrowLeft } from "react-icons/fa";
 import { toast } from "react-toastify";
+import { Lightbulb } from "@/components/animate-ui/icons/lightbulb";
 import Button from "../../components/common/Button";
 import { useAuth } from "../../context/AuthContext";
 import {
@@ -487,7 +488,7 @@ export default function TnaExecutionPipelinePage() {
                       className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-[color:color-mix(in_srgb,var(--color-secondary,#0ea5e9)_32%,white)] bg-[color:color-mix(in_srgb,var(--color-secondary,#0ea5e9)_12%,white)] text-[color:color-mix(in_srgb,var(--color-secondary,#0ea5e9)_78%,black)] transition-colors hover:bg-[color:color-mix(in_srgb,var(--color-secondary,#0ea5e9)_20%,white)] focus:outline-none focus:ring-2 focus:ring-[color:color-mix(in_srgb,var(--color-secondary,#0ea5e9)_32%,transparent)]"
                       aria-label="What happens next"
                     >
-                      <FaLightbulb className="h-3.5 w-3.5" />
+                      <Lightbulb animateOnHover size={14} />
                     </button>
                     <div className="pointer-events-none absolute right-0 top-9 z-20 w-[320px] rounded-xl border border-slate-200 bg-white p-3 text-xs text-slate-700 shadow-xl opacity-0 translate-y-1 transition-all duration-150 group-hover/self:translate-y-0 group-hover/self:opacity-100 group-focus-within/self:translate-y-0 group-focus-within/self:opacity-100">
                       <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
