@@ -519,7 +519,7 @@ export default function TnaSkillRoleSetupPage() {
       </section>
 
       <section>
-        <div className="rounded-xl border border-slate-200 bg-slate-50/90 p-1.5 md:p-2">
+        <div className="rounded-xl bg-slate-50/90 p-1.5 md:p-2">
           <div className="relative grid grid-cols-1 gap-1.5 sm:grid-cols-2">
             <div
               className="pointer-events-none absolute left-0 top-0 hidden h-full w-1/2 rounded-lg border border-primary/20 bg-white shadow-[0_10px_20px_-16px_rgba(37,99,235,0.7)] transition-transform duration-300 sm:block"
