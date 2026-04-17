@@ -8,6 +8,7 @@ interface TableEmptyStateProps {
   description: string;
   primaryActionLabel: string;
   primaryActionPath: string;
+  hidePrimaryAction?: boolean;
   secondaryActionLabel?: string;
   secondaryActionPath?: string;
   onPrimaryAction?: () => void;
@@ -28,6 +29,7 @@ const TableEmptyState: React.FC<TableEmptyStateProps> = ({
   description,
   primaryActionLabel,
   primaryActionPath,
+  hidePrimaryAction = false,
   secondaryActionLabel,
   secondaryActionPath,
   onPrimaryAction,
@@ -66,6 +68,9 @@ const TableEmptyState: React.FC<TableEmptyStateProps> = ({
       navigate(secondaryActionPath);
     }
   };
+
+  const showPrimaryAction = !hidePrimaryAction;
+  const showActions = !isFiltered && (showPrimaryAction || Boolean(secondaryActionLabel));
 
   // Render the appropriate illustration based on type
   const renderIllustration = () => {
@@ -538,15 +543,17 @@ const TableEmptyState: React.FC<TableEmptyStateProps> = ({
         </div>
 
         {/* Actions - Only show actions if not in filtered state */}
-        {!isFiltered && (
+        {showActions && (
           <div className="flex flex-col gap-3 sm:flex-row">
-            <Button
-              variant="primary"
-              onClick={handlePrimaryAction}
-              className="flex items-center justify-center gap-2"
-            >
-              <FaPlus /> {primaryActionLabel}
-            </Button>
+            {showPrimaryAction && (
+              <Button
+                variant="primary"
+                onClick={handlePrimaryAction}
+                className="flex items-center justify-center gap-2"
+              >
+                <FaPlus /> {primaryActionLabel}
+              </Button>
+            )}
             {secondaryActionLabel && (
               <Button
                 variant="outline"

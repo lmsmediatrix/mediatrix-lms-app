@@ -1,5 +1,6 @@
 import Button from "../../components/common/Button";
 import { FaPlus } from "react-icons/fa";
+import { FaFileExport } from "react-icons/fa6";
 import { FiBookOpen, FiCheckCircle, FiEdit3, FiList, FiToggleLeft, FiToggleRight } from "react-icons/fi";
 import { useSearchParams } from "react-router-dom";
 import UpsertCourseModal from "../../components/orgAdmin/UpsertCourseModal";
@@ -402,11 +403,6 @@ export default function CoursePage() {
                 danger: true,
               },
               {
-                key: "export",
-                label: "Export CSV",
-                onClick: () => setIsExportModalOpen(true),
-              },
-              {
                 key: "archive-toggle",
                 label: archiveStatus === "only" ? "Show Active" : "Show Archived",
                 icon:
@@ -507,6 +503,15 @@ export default function CoursePage() {
             <span className="hidden sm:inline">Add Course</span>
             <span className="sm:hidden">Add</span>
           </Button>
+          <Button
+            variant="outline"
+            onClick={() => setIsExportModalOpen(true)}
+            className="whitespace-nowrap text-sm flex-1 md:flex-initial"
+          >
+            <FaFileExport className="size-4" />
+            <span className="hidden sm:inline">Export CSV</span>
+            <span className="sm:hidden">Export</span>
+          </Button>
           {/* Archive Status Toggle Switch */}
           <div className="flex items-center gap-2">
             <button
@@ -543,6 +548,7 @@ export default function CoursePage() {
           description="Start by creating a course. You'll need courses before you can create sections."
           primaryActionLabel="Add Course"
           primaryActionPath="?modal=create-course"
+          hidePrimaryAction
           colSpan={isCorporate ? 5 : 6}
           type="course"
           isFiltered={Boolean(

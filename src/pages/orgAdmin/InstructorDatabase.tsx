@@ -24,7 +24,8 @@ import TableEmptyState from "../../components/common/TableEmptyState";
 import ActionMenuButton from "../../components/orgAdmin/ActionMenuButton";
 import TableSkeletonClean from "../../components/skeleton/TableSkeletonClean";
 import { MdLockReset } from "react-icons/md";
-import { FiToggleLeft, FiToggleRight } from "react-icons/fi";
+import { FiToggleLeft, FiToggleRight, FiUpload } from "react-icons/fi";
+import { FaFileExport } from "react-icons/fa6";
 import ResetUserPassword from "../../components/ResetUserPassword";
 import { useDebounce } from "../../hooks/useDebounce";
 import {
@@ -381,16 +382,6 @@ export default function InstructorDatabase() {
                 disabled: archiveStatus === "only",
               },
               {
-                key: "import",
-                label: `Import ${instructorsTerm}`,
-                onClick: () => setIsBulkImportOpen(true),
-              },
-              {
-                key: "export",
-                label: "Export CSV",
-                onClick: () => setIsExportModalOpen(true),
-              },
-              {
                 key: "archive-toggle",
                 label: archiveStatus === "only" ? "Show Active" : "Show Archived",
                 icon:
@@ -513,6 +504,24 @@ export default function InstructorDatabase() {
             <span className="hidden sm:inline">Add {instructorTerm}</span>
             <span className="sm:hidden">Add</span>
           </Button>
+          <Button
+            variant="outline"
+            onClick={() => setIsBulkImportOpen(true)}
+            className="whitespace-nowrap text-sm flex-1 md:flex-initial"
+          >
+            <FiUpload className="size-4" />
+            <span className="hidden sm:inline">Bulk Upload</span>
+            <span className="sm:hidden">Upload</span>
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => setIsExportModalOpen(true)}
+            className="whitespace-nowrap text-sm flex-1 md:flex-initial"
+          >
+            <FaFileExport className="size-4" />
+            <span className="hidden sm:inline">Export CSV</span>
+            <span className="sm:hidden">Export</span>
+          </Button>
           {/* Archive Status Toggle Switch */}
           <div className="flex items-center gap-2">
             <button
@@ -546,8 +555,7 @@ export default function InstructorDatabase() {
           description={`Start by adding ${instructorsTerm.toLowerCase()} who will teach your courses.`}
           primaryActionLabel={`Add ${instructorTerm}`}
           primaryActionPath="?modal=create-instructor"
-          secondaryActionLabel="Bulk Import"
-          onSecondaryAction={() => setIsBulkImportOpen(true)}
+          hidePrimaryAction
           colSpan={orgType === "school" ? 5 : 4}
           type="instructor"
           isFiltered={false}
