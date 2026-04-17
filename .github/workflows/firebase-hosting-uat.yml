@@ -1,0 +1,64 @@
+name: Build on uat push
+
+on:
+  push:
+    branches:
+      - uat
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: firebase-hosting-uat
+  cancel-in-progress: true
+
+jobs:
+  build_and_deploy:
+    name: Build and Deploy (uat)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci
+          else
+            npm install
+          fi
+
+      - name: Prepare .env.uat
+        run: |
+          if [ -f .env.uat ]; then
+            cp .env.uat .env
+            echo "Using .env.uat for build"
+          elif [ -f .env.develop ]; then
+            cp .env.develop .env
+            echo "WARN: .env.uat not found. Falling back to .env.develop"
+          else
+            echo "WARN: No .env.uat/.env.develop file found in repository"
+          fi
+
+      - name: Build
+        run: npm run build
+        env:
+          CI: false
+          VITE_BASE_URL: https://lms-api-uat-vhxswakwqa-as.a.run.app/api
+          VITE_CLOUDINARY_PATH: ${{ secrets.VITE_CLOUDINARY_PATH_UAT || secrets.VITE_CLOUDINARY_PATH_DEV }}
+
+      - name: Deploy to Firebase Hosting (UAT)
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_MEDIATRIX_LMS_APP_UAT || secrets.FIREBASE_SERVICE_ACCOUNT_LMS_APP_DEV_1F189 }}
+          projectId: mediatrix-lms-app-uat
+          channelId: live
