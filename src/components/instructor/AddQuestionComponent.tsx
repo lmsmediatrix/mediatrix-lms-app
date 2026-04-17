@@ -26,14 +26,26 @@ export default function AddQuestionComponent({
     (initialQuestion?.type as TQuestionType) || "multiple_choice"
   );
   const [choices, setChoices] = useState<string[]>(
-    initialQuestion?.options?.map((opt) => opt.text) || []
+    initialQuestion?.options?.map((opt) => opt.text || "") || []
   );
   const [correctAnswer, setCorrectAnswer] = useState<number | null>(() => {
-    if (
-      initialQuestion?.type === "true_false" &&
-      initialQuestion?.correctAnswers
-    ) {
-      return initialQuestion.correctAnswers[0].toLowerCase() === "true" ? 0 : 1;
+    if (initialQuestion?.type === "true_false") {
+      const firstCorrectAnswer =
+        typeof initialQuestion?.correctAnswers?.[0] === "string"
+          ? initialQuestion.correctAnswers[0].toLowerCase()
+          : "";
+
+      if (firstCorrectAnswer === "true") return 0;
+      if (firstCorrectAnswer === "false") return 1;
+
+      if (initialQuestion?.options && initialQuestion.options.length > 0) {
+        const correctIndexFromOption = initialQuestion.options.findIndex(
+          (opt) => opt.isCorrect
+        );
+        return correctIndexFromOption >= 0 ? correctIndexFromOption : null;
+      }
+
+      return null;
     } else if (initialQuestion?.options) {
       const correctIndex = initialQuestion.options.findIndex(
         (opt) => opt.isCorrect

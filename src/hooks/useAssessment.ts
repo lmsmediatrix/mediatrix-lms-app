@@ -38,6 +38,7 @@ export const useGetAssessmentById = (
         ...(hasStarted ? ["questions.options.text",] : []),
         ...(hasStarted ? ["questions.points",] : []),
         ...(hasStarted ? ["questions._id",] : []),
+        ...(!isStudent ? ["questions.correctAnswers"] : []),
         ...(!isStudent ? ["questions.options.isCorrect"] : []),
       ]);
 
