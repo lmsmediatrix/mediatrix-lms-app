@@ -281,8 +281,6 @@ export default function ModuleTab({
                 <InstructorTableEmptyState
                   title="Create Your First Module"
                   description="Start by creating a module. Modules help you organize your course content into logical sections."
-                  primaryActionLabel="Add Module"
-                  primaryActionPath="manage?tab=modules&modal=create-module"
                   type="module"
                 />
               ) : (

@@ -541,8 +541,6 @@ export default function CoursePage() {
         <TableEmptyState
           title="Create Your First Course"
           description="Start by creating a course. You'll need courses before you can create sections."
-          primaryActionLabel="Add Course"
-          primaryActionPath="?modal=create-course"
           colSpan={isCorporate ? 5 : 6}
           type="course"
           isFiltered={Boolean(

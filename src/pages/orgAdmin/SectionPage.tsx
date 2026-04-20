@@ -508,8 +508,6 @@ export default function SectionPage() {
         <TableEmptyState
           title={`Create Your First ${sectionTerm}`}
           description={`Start by creating a ${sectionTerm.toLowerCase()}. You'll need courses, ${instructorTerm.toLowerCase()}s, and ${learnerTerm.toLowerCase()}s first.`}
-          primaryActionLabel={`Create ${sectionTerm}`}
-          primaryActionPath={`/${orgCode}/admin/section/new`}
           colSpan={6}
           type="section"
           isFiltered={false}

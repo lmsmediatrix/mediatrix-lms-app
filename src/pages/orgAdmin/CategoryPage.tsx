@@ -350,8 +350,6 @@ export default function CategoryPage() {
         <TableEmptyState
           title="Create Your First Category"
           description="Start by creating a category. Categories help organize your courses."
-          primaryActionLabel="Add Category"
-          primaryActionPath="?modal=create-category"
           colSpan={4}
           type="category"
           isFiltered={Boolean(searchTerm || selectedStatus || archiveStatus !== "none")}

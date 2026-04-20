@@ -544,8 +544,6 @@ export default function InstructorDatabase() {
         <TableEmptyState
           title={`Add Your First ${instructorTerm}`}
           description={`Start by adding ${instructorsTerm.toLowerCase()} who will teach your courses.`}
-          primaryActionLabel={`Add ${instructorTerm}`}
-          primaryActionPath="?modal=create-instructor"
           secondaryActionLabel="Bulk Import"
           onSecondaryAction={() => setIsBulkImportOpen(true)}
           colSpan={orgType === "school" ? 5 : 4}

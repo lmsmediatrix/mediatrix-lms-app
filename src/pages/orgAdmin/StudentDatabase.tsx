@@ -685,8 +685,6 @@ export default function StudentDatabase() {
         <TableEmptyState
           title={`Add Your First ${learnerTerm}`}
           description={`Start by adding ${learnersTerm.toLowerCase()} who will take your courses.`}
-          primaryActionLabel={`Add ${learnerTerm}`}
-          primaryActionPath="?modal=create-student"
           secondaryActionLabel="Bulk Import"
           onSecondaryAction={() => setIsBulkImportOpen(true)}
           colSpan={orgType === "school" ? 5 : 6}

@@ -158,12 +158,27 @@ export default function TnaSkillRoleSetupPage() {
     "inline-flex h-7 w-7 items-center justify-center rounded-full border border-[color:color-mix(in_srgb,var(--color-secondary,#0ea5e9)_30%,white)] bg-[color:color-mix(in_srgb,var(--color-secondary,#0ea5e9)_10%,white)] text-[color:var(--color-secondary,#0ea5e9)] transition-colors hover:bg-[color:color-mix(in_srgb,var(--color-secondary,#0ea5e9)_18%,white)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:color-mix(in_srgb,var(--color-secondary,#0ea5e9)_28%,transparent)]";
   const dangerIconButtonClassName =
     "inline-flex h-7 w-7 items-center justify-center rounded-full border border-rose-200 bg-rose-50 text-rose-600 transition-colors hover:bg-rose-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-300";
-  const tabPillHighlightTransform = activeStep === "skill-library" ? "translateX(0%)" : "translateX(100%)";
   const canSaveSkill = Boolean(skillName.trim());
   const hasRoleName = Boolean(jobRole.trim());
   const hasRequiredSkill = requiredSkills.some((item) => Boolean(String(item.skillId || "").trim()));
+  const duplicateRequiredSkillIds = useMemo(() => {
+    const countBySkillId = new Map<string, number>();
+    for (const requiredSkill of requiredSkills) {
+      const skillId = String(requiredSkill?.skillId || "").trim();
+      if (!skillId) continue;
+      countBySkillId.set(skillId, (countBySkillId.get(skillId) || 0) + 1);
+    }
+
+    const duplicates = new Set<string>();
+    for (const [skillId, count] of countBySkillId.entries()) {
+      if (count > 1) duplicates.add(skillId);
+    }
+    return duplicates;
+  }, [requiredSkills]);
+  const hasDuplicateRequiredSkills = duplicateRequiredSkillIds.size > 0;
   const isThresholdValid = Number.isFinite(threshold) && threshold >= 0 && threshold <= 100;
-  const canSaveRoleRequirements = hasRoleName && hasRequiredSkill && isThresholdValid;
+  const canSaveRoleRequirements =
+    hasRoleName && hasRequiredSkill && isThresholdValid && !hasDuplicateRequiredSkills;
   const isEditingRoleRequirement = Boolean(editingRoleRequirementId);
   const filteredSkills = useMemo(() => {
     const query = skillSearch.trim().toLowerCase();
@@ -200,6 +215,15 @@ export default function TnaSkillRoleSetupPage() {
       passingThreshold: Number(item.passingThreshold),
     }));
     if (payloadSkills.length === 0) return toast.error("Add at least one required skill");
+    const seenSkillIds = new Set<string>();
+    for (const payloadSkill of payloadSkills) {
+      const normalizedSkillId = String(payloadSkill.skillId || "").trim();
+      if (!normalizedSkillId) continue;
+      if (seenSkillIds.has(normalizedSkillId)) {
+        return toast.error("Duplicate required skills are not allowed.");
+      }
+      seenSkillIds.add(normalizedSkillId);
+    }
     try {
       await toast.promise(
         upsertRoleRequirementMutation.mutateAsync({
@@ -496,7 +520,7 @@ export default function TnaSkillRoleSetupPage() {
             </div>
             <Button
               variant="outline"
-              className="h-10 w-full md:w-auto"
+              className="h-10 w-full md:w-72 md:shrink-0 text-center whitespace-nowrap"
               onClick={() => navigate(`/${orgCode}/admin/tna`)}
             >
               Open Training Needs Analysis
@@ -522,8 +546,7 @@ export default function TnaSkillRoleSetupPage() {
         <div className="rounded-xl border border-slate-200 bg-slate-50/90 p-1.5 md:p-2">
           <div className="relative grid grid-cols-1 gap-1.5 sm:grid-cols-2">
             <div
-              className="pointer-events-none absolute left-0 top-0 hidden h-full w-1/2 rounded-lg border border-primary/20 bg-white shadow-[0_10px_20px_-16px_rgba(37,99,235,0.7)] transition-transform duration-300 sm:block"
-              style={{ transform: tabPillHighlightTransform }}
+              className="pointer-events-none absolute left-0 top-0 hidden h-full w-1/2 rounded-lg border border-primary/20 bg-white shadow-[0_10px_20px_-16px_rgba(37,99,235,0.7)] transition-transform duration-300"
             />
             {SETUP_TABS.map((step) => {
               const isActive = activeStep === step.key;
@@ -729,16 +752,45 @@ export default function TnaSkillRoleSetupPage() {
                     <p className={`col-span-2 ${fieldLabelClassName}`}>Skill Threshold %</p>
                     <p className={`col-span-2 ${fieldLabelClassName}`}>Action</p>
                   </div>
-                  {requiredSkills.map((item, index) => (
+                  {requiredSkills.map((item, index) => {
+                    const selectedSkillIdsFromOtherRows = requiredSkills
+                      .map((row, rowIndex) =>
+                        rowIndex === index ? "" : String(row?.skillId || "").trim()
+                      )
+                      .filter(Boolean);
+                    const rowSkillOptions = skillSelectOptions.filter(
+                      (option) =>
+                        option.value === String(item.skillId || "").trim() ||
+                        !selectedSkillIdsFromOtherRows.includes(option.value)
+                    );
+                    const isDuplicateRow =
+                      Boolean(String(item.skillId || "").trim()) &&
+                      duplicateRequiredSkillIds.has(String(item.skillId || "").trim());
+
+                    return (
                     <div
                       key={`required-${index}`}
-                      className="grid grid-cols-12 gap-2 rounded-lg border border-slate-200 bg-slate-50/70 p-2"
+                      className={`grid grid-cols-12 gap-2 rounded-lg border p-2 ${
+                        isDuplicateRow
+                          ? "border-rose-300 bg-rose-50/60"
+                          : "border-slate-200 bg-slate-50/70"
+                      }`}
                     >
                       <div className="col-span-12 md:col-span-6">
                         <SearchableSelect
-                          options={skillSelectOptions}
+                          options={rowSkillOptions}
                           value={item.skillId}
                           onChange={(value) => {
+                            const nextSkillId = String(value || "").trim();
+                            const duplicateIndex = requiredSkills.findIndex(
+                              (row, rowIndex) =>
+                                rowIndex !== index &&
+                                String(row?.skillId || "").trim() === nextSkillId
+                            );
+                            if (duplicateIndex !== -1) {
+                              toast.error("This skill is already selected in another row.");
+                              return;
+                            }
                             const next = [...requiredSkills];
                             next[index] = { ...next[index], skillId: value };
                             setRequiredSkills(next);
@@ -748,6 +800,11 @@ export default function TnaSkillRoleSetupPage() {
                           emptyMessage="No skills yet. Add skills in the Skills tab."
                           className="w-full"
                         />
+                        {isDuplicateRow && (
+                          <p className="mt-1 text-xs font-medium text-rose-600">
+                            Duplicate skill selected. Pick a different skill.
+                          </p>
+                        )}
                       </div>
                       <input
                         type="number"
@@ -789,10 +846,16 @@ export default function TnaSkillRoleSetupPage() {
                         <span>Remove</span>
                       </button>
                     </div>
-                  ))}
+                  );
+                  })}
                   <p className={fieldHintClassName}>
                     Use levels 1 to 5 (5 is expert), and set the passing threshold for assessment averages per skill.
                   </p>
+                  {hasDuplicateRequiredSkills && (
+                    <p className="text-xs font-medium text-rose-600">
+                      Remove duplicate required skills before saving.
+                    </p>
+                  )}
                 </div>
               </div>
             </div>

@@ -6,8 +6,6 @@ import { useNavigate } from "react-router-dom";
 interface TableEmptyStateProps {
   title: string;
   description: string;
-  primaryActionLabel: string;
-  primaryActionPath: string;
   secondaryActionLabel?: string;
   secondaryActionPath?: string;
   onPrimaryAction?: () => void;
@@ -26,8 +24,6 @@ interface TableEmptyStateProps {
 const TableEmptyState: React.FC<TableEmptyStateProps> = ({
   title,
   description,
-  primaryActionLabel,
-  primaryActionPath,
   secondaryActionLabel,
   secondaryActionPath,
   onPrimaryAction,
@@ -38,19 +34,6 @@ const TableEmptyState: React.FC<TableEmptyStateProps> = ({
 }) => {
   const navigate = useNavigate();
   void colSpan;
-
-  const handlePrimaryAction = () => {
-    if (onPrimaryAction) {
-      onPrimaryAction();
-    } else if (primaryActionPath.startsWith("?")) {
-      // If it's a search param, use navigate with the current path
-      const searchParams = new URLSearchParams(primaryActionPath.substring(1));
-      const currentPath = window.location.pathname;
-      navigate({ pathname: currentPath, search: searchParams.toString() });
-    } else {
-      navigate(primaryActionPath);
-    }
-  };
 
   const handleSecondaryAction = () => {
     if (onSecondaryAction) {
@@ -540,13 +523,6 @@ const TableEmptyState: React.FC<TableEmptyStateProps> = ({
         {/* Actions - Only show actions if not in filtered state */}
         {!isFiltered && (
           <div className="flex flex-col gap-3 sm:flex-row">
-            <Button
-              variant="primary"
-              onClick={handlePrimaryAction}
-              className="flex items-center justify-center gap-2"
-            >
-              <FaPlus /> {primaryActionLabel}
-            </Button>
             {secondaryActionLabel && (
               <Button
                 variant="outline"
