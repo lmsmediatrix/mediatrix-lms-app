@@ -72,7 +72,7 @@ type DefaultIconProps<T = string> = {
 };
 
 type AnimateIconProps<T = string> = WithAsChild<
-  Omit<HTMLMotionProps<'span'>, 'ref'> &
+  HTMLMotionProps<'span'> &
     DefaultIconProps<T> & {
       children: React.ReactNode;
       asChild?: boolean;
@@ -85,7 +85,11 @@ type IconProps<T> = DefaultIconProps<T> &
   };
 
 type IconWrapperProps<T> = IconProps<T> & {
-  icon: React.ComponentType<IconProps<T>>;
+  icon:
+    | React.ComponentType<IconProps<T>>
+    | React.ForwardRefExoticComponent<
+        IconProps<T> & React.RefAttributes<SVGSVGElement>
+      >;
 };
 
 const AnimateIconContext = React.createContext<AnimateIconContextValue | null>(

@@ -356,8 +356,6 @@ export default function DepartmentPage() {
         <TableEmptyState
           title="Create Your First Department"
           description="Start by creating a department to organize your corporate workforce."
-          primaryActionLabel="Add Department"
-          primaryActionPath="?modal=create-department"
           colSpan={5}
           isFiltered={Boolean(searchTerm || selectedStatus || archiveStatus !== "none")}
         />

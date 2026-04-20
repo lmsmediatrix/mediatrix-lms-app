@@ -264,8 +264,6 @@ export default function ProgramPage() {
         <TableEmptyState
           title="Create Your First Program"
           description="Start by creating a program. Programs help organize your academic offerings."
-          primaryActionLabel="Add Program"
-          primaryActionPath="?modal=create-program"
           colSpan={4}
         />
       ) : (
