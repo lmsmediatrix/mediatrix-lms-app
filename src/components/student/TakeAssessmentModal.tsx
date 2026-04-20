@@ -17,6 +17,10 @@ export default function TakeAssessmentModal() {
     assessmentId ? assessmentId : ""
   );
 
+  if (!assessmentId) {
+    return null;
+  }
+
   if (isPending) {
     return (
       <Dialog
@@ -63,6 +67,31 @@ export default function TakeAssessmentModal() {
         <div className="flex justify-end gap-4 mt-10">
           <div className="h-10 bg-gray-200 rounded w-20"></div>
           <div className="h-10 bg-gray-200 rounded w-28"></div>
+        </div>
+      </Dialog>
+    );
+  }
+
+  if (!assessment) {
+    return (
+      <Dialog
+        title="Assessment Unavailable"
+        backdrop="dark"
+        isOpen={!!assessmentId}
+        onClose={() => setSearchParams({ tab: "assessments" })}
+        size="full"
+        contentClassName="w-full md:w-[35vw] md:min-w-[450px]"
+      >
+        <p className="text-sm text-gray-700">
+          Unable to load this assessment right now.
+        </p>
+        <div className="flex justify-end gap-4 mt-6">
+          <Button
+            variant="cancel"
+            onClick={() => setSearchParams({ tab: "assessments" })}
+          >
+            Close
+          </Button>
         </div>
       </Dialog>
     );

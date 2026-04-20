@@ -628,6 +628,7 @@ export const useSectionStudent = (
         .sort("createdAt")
         .limit(apiParams?.limit || 1000)
         .skip(apiParams?.skip || 0)
+        .withArchive(apiParams?.archiveStatus || "include")
         .withDocument(true)
         .withPagination(!!apiParams?.withPagination)
         .getSectionStudent(apiParams?.sectionCode as string);

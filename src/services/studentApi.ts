@@ -98,9 +98,28 @@ class StudentService extends APIService {
         }
       );
       return response.data;
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error deleting student:", error);
-      throw new Error("Error deleting student");
+      throw new Error(
+        error?.response?.data?.message ||
+          error?.data?.error?.message ||
+          "Error deleting student"
+      );
+    }
+  };
+
+  getStudentArchiveImpact = async (studentId: string) => {
+    try {
+      const response = await apiClient.get(
+        `${BASE_URL}${STUDENT.ARCHIVE_IMPACT.replace(":id", studentId)}`,
+        {
+          withCredentials: true,
+        }
+      );
+      return response.data;
+    } catch (error: any) {
+      console.error("Error fetching student archive impact:", error);
+      throw new Error(error?.data?.error?.message || "Error fetching archive impact");
     }
   };
 

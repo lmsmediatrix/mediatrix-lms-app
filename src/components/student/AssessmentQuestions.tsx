@@ -59,14 +59,31 @@ export default function AssessmentQuestion({
   };
 
   const handleEnumeration = (idx: number, value: string) => {
-    const newAnswers = Array.isArray(answer) ? [...answer] : [""];
+    const requiredCount =
+      typeof question.requiredAnswerCount === "number" &&
+      question.requiredAnswerCount > 0
+        ? question.requiredAnswerCount
+        : Array.isArray(answer) && answer.length > 0
+        ? answer.length
+        : 1;
+    const newAnswers = Array.isArray(answer)
+      ? [...answer]
+      : Array(requiredCount).fill("");
+    while (newAnswers.length < requiredCount) {
+      newAnswers.push("");
+    }
     newAnswers[idx] = value;
-    const filteredAnswers = newAnswers.filter((a) => a);
-    setAnswer(filteredAnswers);
-    if (question._id) onAnswerChange(question._id, filteredAnswers);
+    setAnswer(newAnswers);
+    if (question._id) onAnswerChange(question._id, newAnswers);
   };
 
   const addEnumeration = () => {
+    if (
+      typeof question.requiredAnswerCount === "number" &&
+      question.requiredAnswerCount > 0
+    ) {
+      return;
+    }
     const newAnswers = [...(Array.isArray(answer) ? answer : []), ""];
     setAnswer(newAnswers);
     if (question._id) onAnswerChange(question._id, newAnswers);
@@ -257,7 +274,18 @@ export default function AssessmentQuestion({
         );
 
       case "enumeration":
-        const enumAnswers = Array.isArray(answer) ? answer : [""];
+        const requiredEnumerationCount =
+          typeof question.requiredAnswerCount === "number" &&
+          question.requiredAnswerCount > 0
+            ? question.requiredAnswerCount
+            : Array.isArray(answer) && answer.length > 0
+            ? answer.length
+            : 1;
+        const existingEnumAnswers = Array.isArray(answer) ? answer : [];
+        const enumAnswers = Array.from(
+          { length: requiredEnumerationCount },
+          (_, idx) => existingEnumAnswers[idx] || ""
+        );
         return (
           <div className="space-y-3">
             {question.questionImage && (
@@ -269,6 +297,11 @@ export default function AssessmentQuestion({
                 />
               </div>
             )}
+            <p className="text-sm text-gray-600">
+              Provide up to {requiredEnumerationCount} answer
+              {requiredEnumerationCount > 1 ? "s" : ""}. Each correct answer is
+              1 point. Order does not matter.
+            </p>
             {enumAnswers.map((ans, idx) => (
               <input
                 key={idx}
@@ -281,12 +314,15 @@ export default function AssessmentQuestion({
                 className="w-full max-w-md px-3 py-2 text-gray-800 border rounded-lg border-gray-200 focus:outline-none focus:border-green-500 bg-white"
               />
             ))}
-            <button
-              onClick={addEnumeration}
-              className="text-primary hover:underline text-sm ml-2"
-            >
-              Add another answer
-            </button>
+            {typeof question.requiredAnswerCount !== "number" && (
+              <button
+                type="button"
+                onClick={addEnumeration}
+                className="text-primary hover:underline text-sm ml-2"
+              >
+                Add another answer
+              </button>
+            )}
           </div>
         );
 

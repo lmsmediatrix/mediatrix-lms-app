@@ -519,7 +519,7 @@ export default function StudentDatabase() {
               },
               {
                 key: "delete",
-                label: "Delete",
+                label: "Archive",
                 onClick: () => handleDeleteClick(row),
                 disabled: archiveStatus === "only",
                 danger: true,

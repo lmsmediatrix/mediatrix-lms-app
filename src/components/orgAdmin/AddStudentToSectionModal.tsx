@@ -47,6 +47,7 @@ export default function AddStudentToSectionModal({
         ? { key: "program", value: selectedProgram }
         : { key: "role", value: "student" },
     limit: 50,
+    archiveStatus: "none",
   });
 
   const { data: programsData } = useProgramsForDropdown({

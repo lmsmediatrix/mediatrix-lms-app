@@ -152,17 +152,34 @@ export default function AssessmentPage() {
       return;
     }
 
+    const isQuestionUnanswered = (question: IQuestion) => {
+      if (!question._id) return true;
+
+      const existingAnswer = answers.find((a) => a.questionId === question._id);
+      if (!existingAnswer) return true;
+
+      if (question.type === "enumeration") {
+        if (!Array.isArray(existingAnswer.answer)) {
+          return true;
+        }
+
+        const normalizedAnswers = existingAnswer.answer
+          .map((ans) => (typeof ans === "string" ? ans.trim() : ""))
+          .filter((ans) => ans !== "");
+
+        return normalizedAnswers.length === 0;
+      }
+
+      if (Array.isArray(existingAnswer.answer)) {
+        return existingAnswer.answer.length === 0;
+      }
+
+      return !existingAnswer.answer;
+    };
+
     // Check for unanswered questions
-    const unansweredQuestions = data?.questions.filter(
-      (question: IQuestion) =>
-        !question._id ||
-        !answers.find((a) => a.questionId === question._id) ||
-        (Array.isArray(
-          answers.find((a) => a.questionId === question._id)?.answer
-        )
-          ? answers.find((a) => a.questionId === question._id)?.answer
-              .length === 0
-          : !answers.find((a) => a.questionId === question._id)?.answer)
+    const unansweredQuestions = data?.questions.filter((question: IQuestion) =>
+      isQuestionUnanswered(question)
     );
 
     // If there are unanswered questions and not forcing submission, show modal
@@ -184,8 +201,8 @@ export default function AssessmentPage() {
           const existingAnswer = answers.find(
             (a) => a.questionId === question._id
           );
-          const isMultiAnswer =
-            question.type === "checkbox" || question.type === "enumeration";
+          const isEnumeration = question.type === "enumeration";
+          const isMultiAnswer = question.type === "checkbox" || isEnumeration;
           return {
             questionId: question._id,
             answer: existingAnswer
