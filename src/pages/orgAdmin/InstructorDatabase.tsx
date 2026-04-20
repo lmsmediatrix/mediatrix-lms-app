@@ -24,7 +24,7 @@ import TableEmptyState from "../../components/common/TableEmptyState";
 import ActionMenuButton from "../../components/orgAdmin/ActionMenuButton";
 import TableSkeletonClean from "../../components/skeleton/TableSkeletonClean";
 import { MdLockReset } from "react-icons/md";
-import { FiToggleLeft, FiToggleRight } from "react-icons/fi";
+import { FiDownload, FiToggleLeft, FiToggleRight, FiUpload } from "react-icons/fi";
 import ResetUserPassword from "../../components/ResetUserPassword";
 import { useDebounce } from "../../hooks/useDebounce";
 import {
@@ -32,6 +32,7 @@ import {
   GroupedTableGroup,
   default as GroupedDataTable,
 } from "../../components/common/GroupedDataTable";
+import { PanelLeft } from "@/components/animate-ui/icons/panel-left";
 
 const EMPLOYMENT_TYPES = [
   "full_time",
@@ -69,6 +70,7 @@ export default function InstructorDatabase() {
     limit: 10,
   });
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+  const [isImportExportOpen, setIsImportExportOpen] = useState(false);
   const exportInstructor = useExportInstructorToCsv();
 
   const instructorTerm = getTerm("instructor", orgType);
@@ -381,16 +383,6 @@ export default function InstructorDatabase() {
                 disabled: archiveStatus === "only",
               },
               {
-                key: "import",
-                label: `Import ${instructorsTerm}`,
-                onClick: () => setIsBulkImportOpen(true),
-              },
-              {
-                key: "export",
-                label: "Export CSV",
-                onClick: () => setIsExportModalOpen(true),
-              },
-              {
                 key: "archive-toggle",
                 label: archiveStatus === "only" ? "Show Active" : "Show Archived",
                 icon:
@@ -503,15 +495,55 @@ export default function InstructorDatabase() {
 
       {/* Table Section */}
       <div className="flex flex-col gap-4 py-6 md:flex-row md:items-center md:justify-end">
-        <div className="flex gap-2 flex-shrink-0">
+        <div className="flex gap-2 flex-shrink-0 flex-wrap md:flex-nowrap md:items-center">
           <Button
             variant="primary"
             onClick={() => setSearchParams({ modal: "create-instructor" })}
-            className="whitespace-nowrap text-sm flex-1 md:flex-initial"
+            className="whitespace-nowrap text-sm h-[42px] flex-1 md:flex-initial"
           >
             <PlusIcon size={14} />
             <span className="hidden sm:inline">Add {instructorTerm}</span>
             <span className="sm:hidden">Add</span>
+          </Button>
+          <div
+            className={`flex items-center gap-2 overflow-hidden transition-all duration-300 ease-out ${
+              isImportExportOpen
+                ? "max-w-[520px] opacity-100 translate-x-0"
+                : "max-w-0 opacity-0 -translate-x-2 pointer-events-none"
+            }`}
+          >
+            <Button
+              variant="outline"
+              onClick={() => setIsBulkImportOpen(true)}
+              className={`whitespace-nowrap text-sm h-[42px] transition-all duration-300 ${
+                isImportExportOpen ? "scale-100" : "scale-95"
+              }`}
+            >
+              <FiUpload className="size-4" />
+              <span>Import</span>
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => setIsExportModalOpen(true)}
+              className={`whitespace-nowrap text-sm h-[42px] transition-all duration-300 ${
+                isImportExportOpen ? "scale-100" : "scale-95"
+              }`}
+            >
+              <FiDownload className="size-4" />
+              <span>Export</span>
+            </Button>
+          </div>
+          <Button
+            variant={isImportExportOpen ? "outline" : "primary"}
+            onClick={() => setIsImportExportOpen((prev) => !prev)}
+            className="text-sm h-[42px] !px-4 md:!px-4"
+          >
+            <PanelLeft
+              size={15}
+              animate={isImportExportOpen ? "default" : false}
+              animateOnHover
+            />
+            <span className="sr-only">Toggle import and export actions</span>
           </Button>
           {/* Archive Status Toggle Switch */}
           <div className="flex items-center gap-2">
