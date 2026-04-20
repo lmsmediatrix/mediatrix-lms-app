@@ -47,7 +47,10 @@ export const useGetStudentProfile = (
       studentService.resetQuery();
       const query = studentService
         .select([
+          "role",
           "studentId",
+          "subrole",
+          "directTo",
           "program",
           "person",
           "firstName",
@@ -57,6 +60,7 @@ export const useGetStudentProfile = (
           "status",
           "archive",
           "gpa",
+          "lastLogin",
           "updatedAt",
           "createdAt",
           "socialLinks",
@@ -70,6 +74,10 @@ export const useGetStudentProfile = (
           {
             path: "person.department",
             select: "name",
+          },
+          {
+            path: "directTo",
+            select: "firstName lastName subrole",
           },
         ]);
 
