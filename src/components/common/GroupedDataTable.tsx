@@ -188,6 +188,8 @@ interface GroupedDataTableProps<T> {
   onRowClick?: (row: T) => void;
   cardless?: boolean;
   showGroupHeader?: boolean;
+  collapsibleGroups?: boolean;
+  defaultGroupsCollapsed?: boolean;
 }
 
 export default function GroupedDataTable<T extends object>({
@@ -202,6 +204,8 @@ export default function GroupedDataTable<T extends object>({
   onRowClick,
   cardless = false,
   showGroupHeader = true,
+  collapsibleGroups = false,
+  defaultGroupsCollapsed = false,
 }: GroupedDataTableProps<T>) {
   const triggerRowClick = (
     row: T,
@@ -233,6 +237,17 @@ export default function GroupedDataTable<T extends object>({
   const [filtersByGroup, setFiltersByGroup] = useState<
     Record<string, Record<string, string>>
   >({});
+  const [collapsedByGroup, setCollapsedByGroup] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    setCollapsedByGroup((prev) => {
+      const next: Record<string, boolean> = {};
+      groups.forEach((group) => {
+        next[group.key] = prev[group.key] ?? defaultGroupsCollapsed;
+      });
+      return next;
+    });
+  }, [groups, defaultGroupsCollapsed]);
 
   const getSortState = (groupKey: string) =>
     sortByGroup[groupKey] || { key: firstSortableColumn, direction: "asc" as SortDirection };
@@ -284,6 +299,7 @@ export default function GroupedDataTable<T extends object>({
       {groups.map((group) => {
         const sortState = getSortState(group.key);
         const groupFilters = getFiltersState(group.key);
+        const isCollapsed = collapsibleGroups ? Boolean(collapsedByGroup[group.key]) : false;
 
         const filteredRows = showColumnFilters
           ? group.rows.filter((row) =>
@@ -375,27 +391,70 @@ export default function GroupedDataTable<T extends object>({
                     "color-mix(in srgb, var(--color-primary, #3b82f6) 15%, white 85%)",
                 }}
               >
-                <span className="text-sm font-semibold text-gray-800">{group.title}</span>
-                {group.badgeText && (
-                  <span
-                    className="text-xs font-medium px-2.5 py-0.5 rounded-full border"
-                    style={{
-                      color:
-                        "color-mix(in srgb, var(--color-primary, #3b82f6) 80%, black 20%)",
-                      backgroundColor:
-                        "color-mix(in srgb, var(--color-primary, #3b82f6) 10%, white 90%)",
-                      borderColor:
-                        "color-mix(in srgb, var(--color-primary, #3b82f6) 20%, white 80%)",
-                    }}
+                {collapsibleGroups ? (
+                  <button
+                    type="button"
+                    className="w-full flex items-center justify-between gap-3 text-left"
+                    onClick={() =>
+                      setCollapsedByGroup((prev) => ({
+                        ...prev,
+                        [group.key]: !isCollapsed,
+                      }))
+                    }
+                    aria-expanded={!isCollapsed}
+                    aria-controls={`group-content-${group.key}`}
                   >
-                    {group.badgeText}
-                  </span>
+                    <span className="text-sm font-semibold text-gray-800">{group.title}</span>
+                    <span className="flex items-center gap-2">
+                      {group.badgeText && (
+                        <span
+                          className="text-xs font-medium px-2.5 py-0.5 rounded-full border"
+                          style={{
+                            color:
+                              "color-mix(in srgb, var(--color-primary, #3b82f6) 80%, black 20%)",
+                            backgroundColor:
+                              "color-mix(in srgb, var(--color-primary, #3b82f6) 10%, white 90%)",
+                            borderColor:
+                              "color-mix(in srgb, var(--color-primary, #3b82f6) 20%, white 80%)",
+                          }}
+                        >
+                          {group.badgeText}
+                        </span>
+                      )}
+                      <span
+                        className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500"
+                        aria-hidden="true"
+                      >
+                        {isCollapsed ? "\u25be" : "\u25b4"}
+                      </span>
+                    </span>
+                  </button>
+                ) : (
+                  <>
+                    <span className="text-sm font-semibold text-gray-800">{group.title}</span>
+                    {group.badgeText && (
+                      <span
+                        className="text-xs font-medium px-2.5 py-0.5 rounded-full border"
+                        style={{
+                          color:
+                            "color-mix(in srgb, var(--color-primary, #3b82f6) 80%, black 20%)",
+                          backgroundColor:
+                            "color-mix(in srgb, var(--color-primary, #3b82f6) 10%, white 90%)",
+                          borderColor:
+                            "color-mix(in srgb, var(--color-primary, #3b82f6) 20%, white 80%)",
+                        }}
+                      >
+                        {group.badgeText}
+                      </span>
+                    )}
+                  </>
                 )}
               </div>
             )}
 
-            <div className="bg-white overflow-x-auto">
-              <table className={`w-full ${tableMinWidthClassName}`}>
+            {!isCollapsed && (
+              <div id={`group-content-${group.key}`} className="bg-white overflow-x-auto">
+                <table className={`w-full ${tableMinWidthClassName}`}>
                 <thead>
                   <tr
                     className="border-b"
@@ -542,10 +601,11 @@ export default function GroupedDataTable<T extends object>({
                     ))
                   )}
                 </tbody>
-              </table>
-            </div>
+                </table>
+              </div>
+            )}
 
-            {showPagination && (
+            {showPagination && !isCollapsed && (
               <div className="bg-white border-t border-gray-100 px-5 py-3 flex items-center justify-between">
                 <p className="text-xs text-gray-500">
                   Showing{" "}

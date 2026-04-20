@@ -123,6 +123,38 @@ export const useDeleteCourse = () => {
   });
 };
 
+export const useCourseArchiveImpact = (
+  courseId: string,
+  options?: { enabled?: boolean }
+) => {
+  return useQuery({
+    queryKey: ["course-archive-impact", courseId],
+    queryFn: () => courseService.getCourseArchiveImpact(courseId),
+    enabled: Boolean(courseId) && (options?.enabled ?? true),
+  });
+};
+
+export const useArchiveCourse = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (params: {
+      courseId: string;
+      confirm?: boolean;
+      cascade?: boolean;
+    }) =>
+      courseService.archiveCourse(params.courseId, {
+        confirm: params.confirm,
+        cascade: params.cascade,
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["search-course"] });
+      queryClient.invalidateQueries({ queryKey: ["course-by-id"] });
+      queryClient.invalidateQueries({ queryKey: ["course-archive-impact"] });
+    },
+  });
+};
+
 export const useExportCourseToCsv = () => {
   return useMutation({
     mutationFn: async (apiParams?: Partial<ApiParams>) => {
