@@ -196,6 +196,10 @@ const BulkImportStudentModal = ({
               <p className="text-sm text-gray-600">
                 Upload a CSV file containing student information
               </p>
+              <p className="text-xs text-gray-500 mt-1">
+                Required: `firstName`, `lastName`. Optional: `email`, `studentId`/`employeeId`,
+                `program`, `department`/`departmentCode`.
+              </p>
             </div>
             <Button
               variant="outline"

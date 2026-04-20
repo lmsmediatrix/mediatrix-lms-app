@@ -2,7 +2,8 @@
   "projects": {
     "default": "mediatrix-lms-app-dev",
     "lms-app-test": "lms-app-test-bffd3",
-    "develop": "mediatrix-lms-app-dev"
+    "develop": "mediatrix-lms-app-dev",
+    "uat": "mediatrix-lms-app-uat"
   },
   "targets": {},
   "etags": {}

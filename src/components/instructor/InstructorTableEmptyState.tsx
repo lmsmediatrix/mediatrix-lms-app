@@ -1,7 +1,6 @@
 import React from "react";
 import { FaPlus } from "react-icons/fa";
 import Button from "../common/Button";
-import { useNavigate } from "react-router-dom";
 
 interface InstructorTableEmptyStateProps {
   title: string;
@@ -15,9 +14,6 @@ const InstructorTableEmptyState: React.FC<InstructorTableEmptyStateProps> = ({
   description,
   type,
 }) => {
-  const navigate = useNavigate();
-
-
   // Render the appropriate illustration based on type
   const renderIllustration = () => {
     switch (type) {

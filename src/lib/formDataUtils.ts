@@ -281,6 +281,9 @@ export const createAssessmentFormData = (data: any): FormData => {
   if (data.questionsToDisplay)
     formData.append("numberOfQuestionsToShow", data.questionsToDisplay);
   if (data.totalPoints) formData.append("totalPoints", data.totalPoints);
+  if (data.csvFile instanceof File) {
+    formData.append("csvFile", data.csvFile);
+  }
 
   // Track file upload stats for debugging
   let questionImagesCount = 0;

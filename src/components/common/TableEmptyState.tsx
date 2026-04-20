@@ -1,5 +1,5 @@
 import React from "react";
-import { FaPlus, FaFileUpload } from "react-icons/fa";
+import { FaFileUpload } from "react-icons/fa";
 import Button from "./Button";
 import { useNavigate } from "react-router-dom";
 
@@ -26,7 +26,6 @@ const TableEmptyState: React.FC<TableEmptyStateProps> = ({
   description,
   secondaryActionLabel,
   secondaryActionPath,
-  onPrimaryAction,
   onSecondaryAction,
   colSpan = 6,
   type = "course",

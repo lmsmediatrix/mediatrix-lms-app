@@ -1,4 +1,4 @@
-import { FaLightbulb, FaPlus, FaRegMinusSquare } from "react-icons/fa";
+import { FaDownload, FaLightbulb, FaPlus, FaRegMinusSquare } from "react-icons/fa";
 import Button from "../common/Button";
 import Dialog from "../common/Dialog";
 import { AiOutlineDelete, AiOutlineEdit } from "react-icons/ai";
@@ -457,6 +457,16 @@ export default function CreateAssessmentModal({
     }
   };
 
+  const handleDownloadCsvTemplate = () => {
+    const templateUrl = "/templates/assessment-question-import-template.csv";
+    const link = document.createElement("a");
+    link.href = templateUrl;
+    link.download = "assessment-question-import-template.csv";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -816,6 +826,14 @@ export default function CreateAssessmentModal({
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between pb-4 gap-4">
               <h3 className="text-lg font-medium">Questions</h3>
               <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                <Button
+                  variant="outline"
+                  onClick={handleDownloadCsvTemplate}
+                  className="w-full sm:w-auto"
+                >
+                  <FaDownload className="mr-2" />
+                  Download CSV Template
+                </Button>
                 <Button
                   variant="outline"
                   onClick={handleImportClick}

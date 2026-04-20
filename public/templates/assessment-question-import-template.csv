@@ -1,0 +1,5 @@
+questionType,questionText,points,maxWords,option1,option2,option3,option4,correctOption,correctAnswer,correctAnswers
+multiple_choice,What is the capital of France?,1,,Paris,Lyon,Marseille,Nice,1,,
+true_false,The Pacific Ocean is larger than the Atlantic Ocean.,1,,,,,,,true,
+short_answer,Name one primary color.,2,,,,,,,,red;blue;yellow
+essay,Explain the importance of hand hygiene in patient care.,5,150,,,,,,,

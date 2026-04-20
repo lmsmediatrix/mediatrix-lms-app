@@ -231,7 +231,7 @@ export const useStudentSections = (
     queryFn: async () => {
       sectionService.resetQuery();
       return sectionService
-        .select(["code", "title", "name", "status"])
+        .select(["code", "title", "name", "status", "schedule"])
         .populate([
           {
             path: "course",
@@ -628,6 +628,7 @@ export const useSectionStudent = (
         .sort("createdAt")
         .limit(apiParams?.limit || 1000)
         .skip(apiParams?.skip || 0)
+        .withArchive(apiParams?.archiveStatus || "include")
         .withDocument(true)
         .withPagination(!!apiParams?.withPagination)
         .getSectionStudent(apiParams?.sectionCode as string);
