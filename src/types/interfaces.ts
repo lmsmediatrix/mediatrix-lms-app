@@ -217,6 +217,7 @@ export interface IQuestion {
   type: TQuestionType;
   questionText: string;
   points: number;
+  requiredAnswerCount?: number;
   options?: {
     option: string;
     text: string;

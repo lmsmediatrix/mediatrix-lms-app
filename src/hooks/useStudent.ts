@@ -37,12 +37,15 @@ export const useBulkImportStudent = () => {
   });
 };
 
-export const useGetStudentProfile = (studentId: string) => {
+export const useGetStudentProfile = (
+  studentId: string,
+  options?: { includeArchived?: boolean }
+) => {
   return useQuery({
-    queryKey: ["student-profile", studentId],
+    queryKey: ["student-profile", studentId, options?.includeArchived],
     queryFn: async () => {
       studentService.resetQuery();
-      return studentService
+      const query = studentService
         .select([
           "studentId",
           "program",
@@ -52,6 +55,7 @@ export const useGetStudentProfile = (studentId: string) => {
           "email",
           "avatar",
           "status",
+          "archive",
           "gpa",
           "updatedAt",
           "createdAt",
@@ -67,8 +71,13 @@ export const useGetStudentProfile = (studentId: string) => {
             path: "person.department",
             select: "name",
           },
-        ])
-        .getStudentById(studentId);
+        ]);
+
+      if (options?.includeArchived) {
+        query.withArchive("include");
+      }
+
+      return query.getStudentById(studentId);
     },
     enabled: !!studentId,
   });
@@ -103,6 +112,17 @@ export const useGetStudentById = (studentId: string) => {
         .getStudentById(studentId);
     },
     enabled: !!studentId,
+  });
+};
+
+export const useStudentArchiveImpact = (
+  studentId: string,
+  options?: { enabled?: boolean }
+) => {
+  return useQuery({
+    queryKey: ["student-archive-impact", studentId],
+    queryFn: () => studentService.getStudentArchiveImpact(studentId),
+    enabled: Boolean(studentId) && (options?.enabled ?? true),
   });
 };
 

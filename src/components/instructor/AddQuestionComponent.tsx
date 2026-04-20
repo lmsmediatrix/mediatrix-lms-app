@@ -26,14 +26,26 @@ export default function AddQuestionComponent({
     (initialQuestion?.type as TQuestionType) || "multiple_choice"
   );
   const [choices, setChoices] = useState<string[]>(
-    initialQuestion?.options?.map((opt) => opt.text) || []
+    initialQuestion?.options?.map((opt) => opt.text || "") || []
   );
   const [correctAnswer, setCorrectAnswer] = useState<number | null>(() => {
-    if (
-      initialQuestion?.type === "true_false" &&
-      initialQuestion?.correctAnswers
-    ) {
-      return initialQuestion.correctAnswers[0].toLowerCase() === "true" ? 0 : 1;
+    if (initialQuestion?.type === "true_false") {
+      const firstCorrectAnswer =
+        typeof initialQuestion?.correctAnswers?.[0] === "string"
+          ? initialQuestion.correctAnswers[0].toLowerCase()
+          : "";
+
+      if (firstCorrectAnswer === "true") return 0;
+      if (firstCorrectAnswer === "false") return 1;
+
+      if (initialQuestion?.options && initialQuestion.options.length > 0) {
+        const correctIndexFromOption = initialQuestion.options.findIndex(
+          (opt) => opt.isCorrect
+        );
+        return correctIndexFromOption >= 0 ? correctIndexFromOption : null;
+      }
+
+      return null;
     } else if (initialQuestion?.options) {
       const correctIndex = initialQuestion.options.findIndex(
         (opt) => opt.isCorrect
@@ -66,6 +78,16 @@ export default function AddQuestionComponent({
   const [choiceImages, setChoiceImages] = useState<(File | string | null)[]>(
     initialQuestion?.options?.map((opt) => opt.image || null) || []
   );
+  const enumerationPointTotal = Math.max(
+    1,
+    enumerationAnswers.filter((answer) => answer.trim()).length
+  );
+
+  useEffect(() => {
+    if (questionType === "enumeration" && points !== enumerationPointTotal) {
+      setPoints(enumerationPointTotal);
+    }
+  }, [questionType, points, enumerationPointTotal]);
 
   useEffect(() => {
     if (!initialQuestion) {
@@ -198,6 +220,7 @@ export default function AddQuestionComponent({
         newQuestion.correctAnswers = enumerationAnswers.filter((answer) =>
           answer.trim()
         );
+        newQuestion.points = newQuestion.correctAnswers.length;
         break;
 
       case "fill_in_the_blank":
@@ -289,8 +312,14 @@ export default function AddQuestionComponent({
             placeholder="Enter points"
             min={1}
             max={100}
-            className="mt-1 block w-full px-3 py-2 bg-gray-100 rounded-md focus:outline-none focus:ring-2 focus:ring-primary/50"
+                className="mt-1 block w-full px-3 py-2 bg-gray-100 rounded-md focus:outline-none focus:ring-2 focus:ring-primary/50"
+            disabled={questionType === "enumeration"}
           />
+          {questionType === "enumeration" && (
+            <p className="mt-1 text-xs text-gray-500">
+              Auto points: 1 point per enumeration answer ({enumerationPointTotal} total).
+            </p>
+          )}
         </div>
       </div>
 

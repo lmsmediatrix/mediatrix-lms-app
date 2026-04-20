@@ -140,7 +140,9 @@ function SectionsDisplayGeneric({
 export default function StudentDetailsPage() {
   const location = useLocation();
   const studentId = location.pathname.split("/").pop();
-  const { data, isPending } = useGetStudentProfile(studentId as string);
+  const { data, isPending } = useGetStudentProfile(studentId as string, {
+    includeArchived: true,
+  });
   const navigate = useNavigate();
   const { currentUser } = useAuth();
   const orgType = currentUser.user.organization.type;
@@ -148,7 +150,33 @@ export default function StudentDetailsPage() {
 
   if (isPending) return <ProfilePageSkeleton />;
 
-  const userData = data?.data as IStudent;
+  const userData = data?.data as IStudent | undefined;
+  const isArchived = Boolean((userData as any)?.archive?.status);
+  const statusText = isArchived
+    ? "Archived"
+    : userData?.status
+      ? `${userData.status.charAt(0).toUpperCase()}${userData.status.slice(1)}`
+      : "Active";
+
+  if (!userData) {
+    return (
+      <div className="max-w-5xl mx-auto p-6">
+        <div className="mb-6">
+          <h1 className="text-3xl font-bold">{learnerTerm} Details</h1>
+          <p className="text-sm text-gray-500">
+            We couldn't load this {learnerTerm.toLowerCase()} profile.
+          </p>
+        </div>
+        <Button
+          variant="link"
+          className="flex items-center gap-2 text-gray-700 hover:text-blue-600 text-sm font-medium"
+          onClick={() => navigate(-1)}
+        >
+          <FaAngleLeft /> Go back
+        </Button>
+      </div>
+    );
+  }
 
   const socialIcons = {
     linkedIn: <FaLinkedin className="text-blue-600 text-lg" />,
@@ -212,13 +240,22 @@ export default function StudentDetailsPage() {
             </div>
             <div className="flex justify-between flex-1">
               <div className="flex-1">
-                <h2 className="text-2xl font-semibold text-gray-800">{`${userData?.firstName} ${userData?.lastName}`}</h2>
+                <h2 className="text-2xl font-semibold text-gray-800">
+                  {`${userData?.firstName || ""} ${userData?.lastName || ""}`.trim() ||
+                    `Unnamed ${learnerTerm}`}
+                </h2>
                 <div className="flex items-center space-x-2 mt-1">
                   <span className="text-sm text-gray-600">
-                    {userData?.email}
+                    {userData?.email || "No email available"}
                   </span>
-                  <span className="bg-green-100 text-green-800 text-xs font-medium px-2.5 py-0.5 rounded">
-                    Active
+                  <span
+                    className={`text-xs font-medium px-2.5 py-0.5 rounded ${
+                      isArchived
+                        ? "bg-red-100 text-red-800"
+                        : "bg-green-100 text-green-800"
+                    }`}
+                  >
+                    {statusText}
                   </span>
                 </div>
               </div>
