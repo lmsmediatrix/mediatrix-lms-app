@@ -1,5 +1,4 @@
 import { FaPlus } from "react-icons/fa";
-import { FaFileExport } from "react-icons/fa6";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import Button from "../../components/common/Button";
 import {
@@ -405,6 +404,11 @@ export default function SectionPage() {
                 disabled: archiveStatus === "only",
               },
               {
+                key: "export",
+                label: "Export CSV",
+                onClick: () => setIsExportModalOpen(true),
+              },
+              {
                 key: "archive-toggle",
                 label: archiveStatus === "only" ? "Show Active" : "Show Archived",
                 icon:
@@ -469,15 +473,6 @@ export default function SectionPage() {
             <span className="hidden sm:inline">Add {sectionTerm}</span>
             <span className="sm:hidden">Create</span>
           </Button>
-          <Button
-            variant="outline"
-            onClick={() => setIsExportModalOpen(true)}
-            className="whitespace-nowrap text-sm flex-1 md:flex-initial"
-          >
-            <FaFileExport className="size-4" />
-            <span className="hidden sm:inline">Export CSV</span>
-            <span className="sm:hidden">Export</span>
-          </Button>
 
           <div className="flex items-center gap-2">
             <button
@@ -513,9 +508,6 @@ export default function SectionPage() {
         <TableEmptyState
           title={`Create Your First ${sectionTerm}`}
           description={`Start by creating a ${sectionTerm.toLowerCase()}. You'll need courses, ${instructorTerm.toLowerCase()}s, and ${learnerTerm.toLowerCase()}s first.`}
-          primaryActionLabel={`Create ${sectionTerm}`}
-          primaryActionPath={`/${orgCode}/admin/section/new`}
-          hidePrimaryAction
           colSpan={6}
           type="section"
           isFiltered={false}

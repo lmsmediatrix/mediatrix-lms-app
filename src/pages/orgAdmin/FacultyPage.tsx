@@ -365,8 +365,6 @@ export default function FacultyPage() {
         <TableEmptyState
           title="Create Your First Faculty"
           description="Start by creating a faculty. Faculties help organize your academic departments."
-          primaryActionLabel="Add Faculty"
-          primaryActionPath="?modal=create-faculty"
           colSpan={5}
           type="faculty"
           isFiltered={Boolean(searchTerm || selectedStatus || archiveStatus !== "none")}

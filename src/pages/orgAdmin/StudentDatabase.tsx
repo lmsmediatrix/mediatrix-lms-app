@@ -29,12 +29,10 @@ import {
   FiList,
   FiToggleLeft,
   FiToggleRight,
-  FiUpload,
   FiUserCheck,
   FiUserX,
   FiUsers,
 } from "react-icons/fi";
-import { FaFileExport } from "react-icons/fa6";
 import { useDebounce } from "../../hooks/useDebounce";
 import {
   GroupedTableColumn,
@@ -507,6 +505,16 @@ export default function StudentDatabase() {
                 disabled: archiveStatus === "only",
               },
               {
+                key: "import",
+                label: `Import ${learnersTerm}`,
+                onClick: () => setIsBulkImportOpen(true),
+              },
+              {
+                key: "export",
+                label: "Export CSV",
+                onClick: () => setIsExportModalOpen(true),
+              },
+              {
                 key: "archive-toggle",
                 label: archiveStatus === "only" ? "Show Active" : "Show Archived",
                 icon:
@@ -519,7 +527,7 @@ export default function StudentDatabase() {
               },
               {
                 key: "delete",
-                label: "Archive",
+                label: "Delete",
                 onClick: () => handleDeleteClick(row),
                 disabled: archiveStatus === "only",
                 danger: true,
@@ -647,24 +655,6 @@ export default function StudentDatabase() {
             <span className="hidden sm:inline">Add {learnerTerm}</span>
             <span className="sm:hidden">Add</span>
           </Button>
-          <Button
-            variant="outline"
-            onClick={() => setIsBulkImportOpen(true)}
-            className="whitespace-nowrap text-sm flex-1 md:flex-initial"
-          >
-            <FiUpload className="size-4" />
-            <span className="hidden sm:inline">Bulk Upload</span>
-            <span className="sm:hidden">Upload</span>
-          </Button>
-          <Button
-            variant="outline"
-            onClick={() => setIsExportModalOpen(true)}
-            className="whitespace-nowrap text-sm flex-1 md:flex-initial"
-          >
-            <FaFileExport className="size-4" />
-            <span className="hidden sm:inline">Export CSV</span>
-            <span className="sm:hidden">Export</span>
-          </Button>
           <div className="flex items-center gap-2">
             <button
               onClick={toggleArchiveStatus}
@@ -695,9 +685,8 @@ export default function StudentDatabase() {
         <TableEmptyState
           title={`Add Your First ${learnerTerm}`}
           description={`Start by adding ${learnersTerm.toLowerCase()} who will take your courses.`}
-          primaryActionLabel={`Add ${learnerTerm}`}
-          primaryActionPath="?modal=create-student"
-          hidePrimaryAction
+          secondaryActionLabel="Bulk Import"
+          onSecondaryAction={() => setIsBulkImportOpen(true)}
           colSpan={orgType === "school" ? 5 : 6}
           type="student"
           isFiltered={false}
