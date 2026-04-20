@@ -22,7 +22,7 @@ import {
   useUpsertRoleRequirement,
 } from "../../hooks/useTna";
 
-type LevelRow = { skillId: string; level: number; passingThreshold: number };
+type LevelRow = { skillId: string; level: number | ""; passingThreshold: number };
 type StepKey = "skill-library" | "role-requirements";
 type DeleteTarget =
   | { type: "skill"; id: string; label: string }
@@ -57,6 +57,12 @@ const getErrorMessage = (error: unknown): string => {
     if (typeof err.message === "string") return err.message;
   }
   return "Something went wrong";
+};
+
+const normalizeSkillLevel = (value: unknown): number => {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return 1;
+  return Math.min(5, Math.max(1, Math.round(parsed)));
 };
 
 export default function TnaSkillRoleSetupPage() {
@@ -116,8 +122,7 @@ export default function TnaSkillRoleSetupPage() {
     const name =
       directSkillName || nestedSkillName || nestedSkillIdName || fallbackNameFromLibrary || "Unnamed skill";
 
-    const parsedLevel = Number(skillItem?.requiredLevel);
-    const level = Number.isFinite(parsedLevel) ? parsedLevel : 0;
+    const level = normalizeSkillLevel(skillItem?.requiredLevel);
     const parsedPassingThreshold = Number(skillItem?.passingThreshold);
     const passingThreshold =
       Number.isFinite(parsedPassingThreshold) && parsedPassingThreshold >= 0 && parsedPassingThreshold <= 100
@@ -211,7 +216,7 @@ export default function TnaSkillRoleSetupPage() {
     if (!jobRole.trim()) return toast.error("Job role is required");
     const payloadSkills = requiredSkills.filter((item) => item.skillId).map((item) => ({
       skillId: item.skillId,
-      requiredLevel: Number(item.level),
+      requiredLevel: normalizeSkillLevel(item.level),
       passingThreshold: Number(item.passingThreshold),
     }));
     if (payloadSkills.length === 0) return toast.error("Add at least one required skill");
@@ -283,11 +288,10 @@ export default function TnaSkillRoleSetupPage() {
             : String(rawSkillId?._id || "").trim();
 
         if (!resolvedSkillId) return null;
-        const parsedLevel = Number(skillItem?.requiredLevel);
         const parsedPassingThreshold = Number(skillItem?.passingThreshold);
         return {
           skillId: resolvedSkillId,
-          level: Number.isFinite(parsedLevel) ? parsedLevel : 1,
+          level: normalizeSkillLevel(skillItem?.requiredLevel),
           passingThreshold:
             Number.isFinite(parsedPassingThreshold) &&
             parsedPassingThreshold >= 0 &&
@@ -807,13 +811,27 @@ export default function TnaSkillRoleSetupPage() {
                         )}
                       </div>
                       <input
-                        type="number"
-                        min={0}
-                        max={5}
-                        value={item.level}
+                        type="text"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
+                        maxLength={1}
+                        value={item.level === "" ? "" : String(item.level)}
+                        onFocus={(event) => event.currentTarget.select()}
+                        onClick={(event) => event.currentTarget.select()}
                         onChange={(event) => {
+                          const rawDigits = event.target.value.replace(/\D/g, "");
                           const next = [...requiredSkills];
-                          next[index] = { ...next[index], level: Number(event.target.value || 0) };
+                          if (!rawDigits) {
+                            next[index] = { ...next[index], level: "" };
+                            setRequiredSkills(next);
+                            return;
+                          }
+                          next[index] = { ...next[index], level: normalizeSkillLevel(rawDigits) };
+                          setRequiredSkills(next);
+                        }}
+                        onBlur={() => {
+                          const next = [...requiredSkills];
+                          next[index] = { ...next[index], level: normalizeSkillLevel(next[index].level) };
                           setRequiredSkills(next);
                         }}
                         className={`col-span-6 md:col-span-2 ${inputClassName}`}
