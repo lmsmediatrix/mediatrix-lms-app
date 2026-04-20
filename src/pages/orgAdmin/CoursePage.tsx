@@ -405,7 +405,7 @@ export default function CoursePage() {
               },
               {
                 key: "delete",
-                label: "Delete",
+                label: "Archive",
                 onClick: () => handleDeleteClick(row),
                 disabled: archiveStatus === "only",
                 danger: true,

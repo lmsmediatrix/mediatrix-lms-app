@@ -75,6 +75,7 @@ export const API_ENDPOINTS = {
     UPDATE: "/course/update",
     REMOVE: "/course/remove/:id",
     ARCHIVE: "/course/archive/:id",
+    ARCHIVE_IMPACT: "/course/archive-impact/:id",
     SEARCH: "/course/search",
     BULK_CREATE: "/course/create/bulk",
     EXPORT: "/course/export",

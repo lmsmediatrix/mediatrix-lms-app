@@ -584,6 +584,7 @@ export default function OrgAdminCompletionPage() {
                   columns={tableColumns}
                   rowKey={(row) => row.id}
                   pageSize={8}
+                  collapsibleGroups
                   emptyFilteredText={`No matching ${learnersTerm.toLowerCase()} found.`}
                   tableMinWidthClassName="min-w-[1120px]"
                 />
