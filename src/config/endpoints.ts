@@ -41,6 +41,7 @@ export const API_ENDPOINTS = {
     UPDATE: "/student/update",
     REMOVE: "/student/remove/:id",
     ARCHIVE: "/student/archive/:id",
+    ARCHIVE_IMPACT: "/student/archive-impact/:id",
     SEARCH: "/student/search",
     BULK_IMPORT: "/student/import",
     EXPORT: "/student/export",

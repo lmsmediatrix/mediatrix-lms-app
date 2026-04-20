@@ -78,6 +78,16 @@ export default function AddQuestionComponent({
   const [choiceImages, setChoiceImages] = useState<(File | string | null)[]>(
     initialQuestion?.options?.map((opt) => opt.image || null) || []
   );
+  const enumerationPointTotal = Math.max(
+    1,
+    enumerationAnswers.filter((answer) => answer.trim()).length
+  );
+
+  useEffect(() => {
+    if (questionType === "enumeration" && points !== enumerationPointTotal) {
+      setPoints(enumerationPointTotal);
+    }
+  }, [questionType, points, enumerationPointTotal]);
 
   useEffect(() => {
     if (!initialQuestion) {
@@ -210,6 +220,7 @@ export default function AddQuestionComponent({
         newQuestion.correctAnswers = enumerationAnswers.filter((answer) =>
           answer.trim()
         );
+        newQuestion.points = newQuestion.correctAnswers.length;
         break;
 
       case "fill_in_the_blank":
@@ -301,8 +312,14 @@ export default function AddQuestionComponent({
             placeholder="Enter points"
             min={1}
             max={100}
-            className="mt-1 block w-full px-3 py-2 bg-gray-100 rounded-md focus:outline-none focus:ring-2 focus:ring-primary/50"
+                className="mt-1 block w-full px-3 py-2 bg-gray-100 rounded-md focus:outline-none focus:ring-2 focus:ring-primary/50"
+            disabled={questionType === "enumeration"}
           />
+          {questionType === "enumeration" && (
+            <p className="mt-1 text-xs text-gray-500">
+              Auto points: 1 point per enumeration answer ({enumerationPointTotal} total).
+            </p>
+          )}
         </div>
       </div>
 
