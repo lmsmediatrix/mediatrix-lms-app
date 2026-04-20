@@ -231,7 +231,7 @@ export const useStudentSections = (
     queryFn: async () => {
       sectionService.resetQuery();
       return sectionService
-        .select(["code", "title", "name", "status"])
+        .select(["code", "title", "name", "status", "schedule"])
         .populate([
           {
             path: "course",

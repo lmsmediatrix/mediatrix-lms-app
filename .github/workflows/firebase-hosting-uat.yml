@@ -59,6 +59,6 @@ jobs:
         uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: ${{ secrets.GITHUB_TOKEN }}
-          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_MEDIATRIX_LMS_APP_UAT || secrets.FIREBASE_SERVICE_ACCOUNT_LMS_APP_DEV_1F189 }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_MEDIATRIX_LMS_APP_UAT }}
           projectId: mediatrix-lms-app-uat
           channelId: live
