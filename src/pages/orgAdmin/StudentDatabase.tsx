@@ -5,9 +5,8 @@ import UpsertStudentModal from "../../components/student/UpsertStudentModal";
 import BulkImportStudentModal from "../../components/student/BulkImportStudentModal";
 import { useMemo, useState, Suspense } from "react";
 import StatsCards from "../../components/common/StatsCards";
-import { dateFilter, IStudent } from "../../types/interfaces";
+import { IStudent } from "../../types/interfaces";
 import { generateStats } from "../../components/common/statUtils";
-import { CgChevronDown } from "react-icons/cg";
 import {
   useExportStudentToCsv,
   useSearchStudents,
@@ -20,6 +19,7 @@ import DeleteStudentModal from "../../components/student/DeleteStudentModal";
 import { exportToCSVUtil } from "../../lib/exportCsvUtils";
 import ExportModal from "../../components/orgAdmin/ExportModal";
 import TableEmptyState from "../../components/common/TableEmptyState";
+import HoverHelpTooltip from "../../components/common/HoverHelpTooltip";
 import ActionMenuButton from "../../components/orgAdmin/ActionMenuButton";
 import { useProgramsForDropdown } from "../../hooks/useProgram";
 import TableSkeletonClean from "../../components/skeleton/TableSkeletonClean";
@@ -50,8 +50,7 @@ export default function StudentDatabase() {
   const orgType = currentUser.user.organization.type;
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
-  const [isFilterOpen, setIsFilterOpen] = useState(false);
-  const [selectedPeriod, setSelectedPeriod] = useState<dateFilter>("month");
+  const selectedPeriod = "month";
   const [resetUserPassword, setResetUserPassword] = useState<IStudent | null>(
     null
   );
@@ -182,18 +181,6 @@ export default function StudentDatabase() {
     { width: "10%" }, // Status
     { width: "10%", alignment: "center" as const }, // Actions
   ];
-
-  const TIME_PERIODS = [
-    { display: "Today", value: "today" },
-    { display: "This Week", value: "week" },
-    { display: "This Month", value: "month" },
-    { display: "This Year", value: "year" },
-  ] as const;
-
-  const handleFilterSelect = (period: dateFilter) => {
-    setSelectedPeriod(period);
-    setIsFilterOpen(false);
-  };
 
   const handleDeleteClick = (student: any) => {
     setStudentToDelete({
@@ -551,59 +538,21 @@ export default function StudentDatabase() {
   return (
     <div className="pt-14 pb-6 px-6 lg:p-6">
       <div className="mb-6">
-        <h1 className="text-2xl md:text-3xl font-bold text-slate-900">
-          {pageTitle}
-        </h1>
-        <p className="mt-1 text-sm md:text-base text-slate-600">
-          {pageDescription}
-        </p>
+        <div className="flex items-center gap-2">
+          <h1 className="text-2xl md:text-3xl font-bold text-slate-900">
+            {pageTitle}
+          </h1>
+          <HoverHelpTooltip
+            text={pageDescription}
+            
+            className="shrink-0"
+          />
+        </div>
       </div>
 
       {/* Overview Cards Section */}
       {orgType === "school" && (
         <>
-          <div className="flex justify-between mb-2">
-            <h2 className="text-3xl font-bold">Overview</h2>
-            <div className="relative">
-              <Button
-                variant="cancel"
-                onClick={() => setIsFilterOpen(!isFilterOpen)}
-                className="flex items-center gap-2"
-              >
-                <span className="capitalize flex justify-center items-center gap-2">
-                  {selectedPeriod === "week"
-                    ? "This Week"
-                    : selectedPeriod === "month"
-                    ? "This Month"
-                    : selectedPeriod === "year"
-                    ? "This Year"
-                    : selectedPeriod}
-                  <CgChevronDown />
-                </span>
-              </Button>
-              {isFilterOpen && (
-                <div className="absolute right-0 mt-2 w-32 bg-white rounded-md shadow-lg z-10">
-                  <ul className="py-1">
-                    {TIME_PERIODS.map((period) => (
-                      <li
-                        key={period.value}
-                        className={`px-4 py-2 hover:bg-gray-100 cursor-pointer text-sm ${
-                          selectedPeriod === period.value
-                            ? "bg-gray-100 font-medium"
-                            : ""
-                        }`}
-                        onClick={() =>
-                          handleFilterSelect(period.value as dateFilter)
-                        }
-                      >
-                        {period.display}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </div>
-          </div>
           <Suspense
             fallback={
               <div className="mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 ">
@@ -623,11 +572,6 @@ export default function StudentDatabase() {
 
       {orgType === "corporate" && (
         <div className="mb-2">
-          <div className="flex justify-between mb-2">
-            <h2 className="text-xl md:text-2xl font-bold text-slate-900">
-              {learnerTerm} Summary
-            </h2>
-          </div>
           <div className="mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <StatsCards
               stats={employeeSummaryStats}

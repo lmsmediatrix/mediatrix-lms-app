@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { ChartBarIcon } from "@/components/ui/chart-bar-icon";
 import PageHeader from "../../components/common/PageHeader";
+import HoverHelpTooltip from "../../components/common/HoverHelpTooltip";
 import {
   GroupedTableColumn,
   GroupedTableGroup,
@@ -509,8 +510,15 @@ export default function OrgAdminCompletionPage() {
             backgroundColor:
               "color-mix(in srgb, var(--color-primary, #3b82f6) 12%, white 88%)",
           }}
-          title={`${learnersTerm} Completion Tracker`}
-          subtitle={`Completion progress across instructors, ${sectionsTerm.toLowerCase()}, modules, and lessons.`}
+          title={
+            <span className="inline-flex items-center gap-2">
+              {learnersTerm} Completion Tracker
+              <HoverHelpTooltip
+                text={`Completion progress across instructors, ${sectionsTerm.toLowerCase()}, modules, and lessons.`}
+                className="shrink-0"
+              />
+            </span>
+          }
         />
 
         {isPending ? (
@@ -567,12 +575,15 @@ export default function OrgAdminCompletionPage() {
 
             <section className="rounded-2xl border border-slate-200 bg-white p-4 md:p-5 shadow-sm">
               <div className="mb-4">
-                <h2 className="text-lg font-semibold text-slate-900">
-                  {learnersTerm} Completion by Instructor
-                </h2>
-                <p className="text-sm text-slate-600">
-                  Use column filters to find who finished lessons, modules, and each {sectionTerm.toLowerCase()}.
-                </p>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-lg font-semibold text-slate-900">
+                    {learnersTerm} Completion by Instructor
+                  </h2>
+                  <HoverHelpTooltip
+                    text={`Use column filters to find who finished lessons, modules, and each ${sectionTerm.toLowerCase()}.`}
+                    className="shrink-0"
+                  />
+                </div>
               </div>
               {completionData.groups.length === 0 ? (
                 <div className="rounded-xl border border-dashed border-slate-200 px-4 py-8 text-sm text-slate-500">
@@ -593,12 +604,15 @@ export default function OrgAdminCompletionPage() {
 
             <section className="rounded-2xl border border-slate-200 bg-white p-4 md:p-5 shadow-sm">
               <div className="mb-4">
-                <h2 className="text-lg font-semibold text-slate-900">
-                  {sectionsTerm} Module and Lesson Drilldown
-                </h2>
-                <p className="text-sm text-slate-600">
-                  Expand each {sectionTerm.toLowerCase()} to view module and lesson completion percentages.
-                </p>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-lg font-semibold text-slate-900">
+                    {sectionsTerm} Module and Lesson Drilldown
+                  </h2>
+                  <HoverHelpTooltip
+                    text={`Expand each ${sectionTerm.toLowerCase()} to view module and lesson completion percentages.`}
+                    className="shrink-0"
+                  />
+                </div>
               </div>
               {completionData.batches.length === 0 ? (
                 <div className="rounded-xl border border-dashed border-slate-200 px-4 py-8 text-sm text-slate-500">

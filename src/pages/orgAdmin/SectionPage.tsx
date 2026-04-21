@@ -11,6 +11,7 @@ import { getTerm } from "../../lib/utils";
 import { exportToCSVUtil } from "../../lib/exportCsvUtils";
 import ExportModal from "../../components/orgAdmin/ExportModal";
 import TableEmptyState from "../../components/common/TableEmptyState";
+import HoverHelpTooltip from "../../components/common/HoverHelpTooltip";
 import ActionMenuButton from "../../components/orgAdmin/ActionMenuButton";
 import { ISection } from "../../types/interfaces";
 import { useCoursesForDropdown } from "../../hooks/useCourse";
@@ -448,20 +449,19 @@ export default function SectionPage() {
   return (
     <div className="pt-14 pb-6 px-6 lg:p-6">
       <div className="mb-6">
-        <h1 className="text-2xl md:text-3xl font-bold text-slate-900">
-          {pageTitle}
-        </h1>
-        <p className="mt-1 text-sm md:text-base text-slate-600">
-          {pageDescription}
-        </p>
+        <div className="flex items-center gap-2">
+          <h1 className="text-2xl md:text-3xl font-bold text-slate-900">
+            {pageTitle}
+          </h1>
+          <HoverHelpTooltip
+            text={pageDescription}
+            
+            className="shrink-0"
+          />
+        </div>
       </div>
 
       <div className="mt-6 mb-2">
-        <div className="flex justify-between mb-2">
-          <h2 className="text-xl md:text-2xl font-bold text-slate-900">
-            {sectionTerm} Summary
-          </h2>
-        </div>
         <div className="mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <StatsCards stats={batchSummaryStats} isLoading={isInitialSectionsLoading} />
         </div>

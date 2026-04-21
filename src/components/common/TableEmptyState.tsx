@@ -2,6 +2,7 @@ import React from "react";
 import { FaFileUpload } from "react-icons/fa";
 import Button from "./Button";
 import { useNavigate } from "react-router-dom";
+import HoverHelpTooltip from "./HoverHelpTooltip";
 
 interface TableEmptyStateProps {
   title: string;
@@ -509,14 +510,26 @@ const TableEmptyState: React.FC<TableEmptyStateProps> = ({
 
         {/* Title and Description */}
         <div className="mb-6 text-center">
-          <h3 className="mb-2 text-xl font-bold text-gray-800">
-            {isFiltered ? "No Results Found" : title}
-          </h3>
-          <p className="mx-auto max-w-lg text-gray-600">
-            {isFiltered
-              ? "Try adjusting your search or filter criteria to find what you're looking for."
-              : description}
-          </p>
+          <div className="mx-auto mb-2 flex w-full max-w-lg items-center justify-center gap-2">
+            <h3 className="text-xl font-bold text-gray-800">
+              {isFiltered ? "No Results Found" : title}
+            </h3>
+            {!isFiltered && (
+              <HoverHelpTooltip
+                text={description}
+                align="center"
+                label=""
+                className="shrink-0"
+              />
+            )}
+          </div>
+          {isFiltered ? (
+            <p className="mx-auto max-w-lg text-gray-600">
+              Try adjusting your search or filter criteria to find what you're looking for.
+            </p>
+          ) : (
+            <p className="mx-auto max-w-lg text-gray-500">Hover the ? icon for details.</p>
+          )}
         </div>
 
         {/* Actions - Only show actions if not in filtered state */}

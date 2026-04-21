@@ -10,6 +10,7 @@ import { useAuth } from "../../context/AuthContext";
 import { getTerm } from "../../lib/utils";
 import { SearchIcon } from "@/components/ui/search-icon";
 import { InfoIcon } from "@/components/ui/info-icon";
+import HoverHelpTooltip from "../../components/common/HoverHelpTooltip";
 
 type PerformanceStudentRow = {
   _id: string;
@@ -106,13 +107,16 @@ export default function AdminPerformancePage() {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-800">
-            Compliance Management
-          </h1>
-          <p className="text-gray-500 mt-1">
-            Oversee {learnerTerm.toLowerCase()} compliance indicators and risk levels across the
-            organization using lessons, attendance, and assessment outcomes.
-          </p>
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-bold text-gray-800">
+              Compliance Management
+            </h1>
+            <HoverHelpTooltip
+              text={`Oversee ${learnerTerm.toLowerCase()} compliance indicators and risk levels across the organization using lessons, attendance, and assessment outcomes.`}
+              
+              className="shrink-0"
+            />
+          </div>
         </div>
       </div>
 

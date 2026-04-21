@@ -7,6 +7,7 @@ import { Lightbulb } from "@/components/animate-ui/icons/lightbulb";
 import { SearchableSelect } from "../../components/SearchableSelect";
 import Button from "../../components/common/Button";
 import Dialog from "../../components/common/Dialog";
+import HoverHelpTooltip from "../../components/common/HoverHelpTooltip";
 import GroupedDataTable, {
   GroupedTableColumn,
   GroupedTableGroup,
@@ -516,11 +517,14 @@ export default function TnaSkillRoleSetupPage() {
           <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
             <div>
               <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">Configuration</p>
-              <h1 className="text-3xl font-bold text-slate-900 mt-1">Skill and Role</h1>
-              <p className="text-slate-600 mt-2 max-w-3xl">
-                Manage reusable skills and role standards here. Training Needs Analysis will only
-                handle employee profile inputs and execution.
-              </p>
+              <div className="mt-1 flex items-center gap-2">
+                <h1 className="text-3xl font-bold text-slate-900">Skill and Role</h1>
+                <HoverHelpTooltip
+                  text="Manage reusable skills and role standards here. Training Needs Analysis will only handle employee profile inputs and execution."
+                  
+                  className="shrink-0"
+                />
+              </div>
             </div>
             <Button
               variant="outline"
@@ -578,10 +582,14 @@ export default function TnaSkillRoleSetupPage() {
         {activeStep === "skill-library" && (
           <section id="skill-library" className={`${panelClassName} space-y-4`}>
             <div>
-              <h2 className="text-xl font-semibold text-slate-900">Skills</h2>
-              <p className="text-sm text-slate-600 mt-1">
-                Add standardized skills that can be reused by all role requirement profiles.
-              </p>
+              <div className="flex items-center gap-2">
+                <h2 className="text-xl font-semibold text-slate-900">Skills</h2>
+                <HoverHelpTooltip
+                  text="Add standardized skills that can be reused by all role requirement profiles."
+                  
+                  className="shrink-0"
+                />
+              </div>
             </div>
 
             <div className={sectionSurfaceClassName}>
@@ -699,10 +707,14 @@ export default function TnaSkillRoleSetupPage() {
                   <FaBriefcase className="h-4 w-4" />
                 </span>
                 <div>
-                  <h2 className="text-xl font-semibold text-slate-900">Role and Skills Configuration</h2>
-                  <p className="mt-1 text-sm text-slate-600">
-                    Set role expectations with required skill levels and per-skill passing thresholds.
-                  </p>
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-xl font-semibold text-slate-900">Role and Skills Configuration</h2>
+                    <HoverHelpTooltip
+                      text="Set role expectations with required skill levels and per-skill passing thresholds."
+                      
+                      className="shrink-0"
+                    />
+                  </div>
                 </div>
               </div>
 

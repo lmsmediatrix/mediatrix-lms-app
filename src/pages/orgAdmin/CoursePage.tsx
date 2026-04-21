@@ -25,6 +25,7 @@ import ActionMenuButton from "../../components/orgAdmin/ActionMenuButton";
 import { useCategoriesForDropdown } from "../../hooks/useCategory";
 import { useDebounce } from "../../hooks/useDebounce";
 import StatsCards from "../../components/common/StatsCards";
+import HoverHelpTooltip from "../../components/common/HoverHelpTooltip";
 import {
   GroupedTableColumn,
   GroupedTableGroup,
@@ -61,7 +62,6 @@ const LEVEL_OPTIONS = [
 export default function CoursePage() {
   const { currentUser } = useAuth();
   const isCorporate = currentUser.user.organization.type === "corporate";
-  const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
   const [filters, setFilters] = useState({
     status: searchParams.get("status") || "",
@@ -445,58 +445,18 @@ export default function CoursePage() {
 
   return (
     <div className=" pt-14 pb-6 px-6 lg:p-6">
-      <h1 className="text-2xl md:text-3xl font-bold text-slate-900">
-        Courses Overview
-      </h1>
-      <p className="text-slate-600 mt-1">
-        View and manage all courses linked to your sections and learning tracks.
-      </p>
+      <div className="flex items-center gap-2">
+        <h1 className="text-2xl md:text-3xl font-bold text-slate-900">
+          Courses Overview
+        </h1>
+        <HoverHelpTooltip
+          text="View and manage all courses linked to your sections and learning tracks."
+          
+          className="shrink-0"
+        />
+      </div>
 
       <div className="mt-6 mb-2">
-        <div className="flex justify-between mb-2">
-          <h2 className="text-xl md:text-2xl font-bold text-slate-900">
-            Course Summary
-          </h2>
-          <div className="relative">
-            <Button
-              variant="cancel"
-              onClick={() => setIsFilterOpen(!isFilterOpen)}
-              className="flex items-center gap-2"
-            >
-              <span className="capitalize flex justify-center items-center gap-2">
-                {archiveStatus === "only" ? "Archived Records" : "Active Records"}
-              </span>
-            </Button>
-            {isFilterOpen && (
-              <div className="absolute right-0 mt-2 w-44 bg-white rounded-md shadow-lg z-10">
-                <ul className="py-1">
-                  <li
-                    className={`px-4 py-2 hover:bg-gray-100 cursor-pointer text-sm ${
-                      archiveStatus === "none" ? "bg-gray-100 font-medium" : ""
-                    }`}
-                    onClick={() => {
-                      if (archiveStatus !== "none") toggleArchiveStatus();
-                      setIsFilterOpen(false);
-                    }}
-                  >
-                    Active Records
-                  </li>
-                  <li
-                    className={`px-4 py-2 hover:bg-gray-100 cursor-pointer text-sm ${
-                      archiveStatus === "only" ? "bg-gray-100 font-medium" : ""
-                    }`}
-                    onClick={() => {
-                      if (archiveStatus !== "only") toggleArchiveStatus();
-                      setIsFilterOpen(false);
-                    }}
-                  >
-                    Archived Records
-                  </li>
-                </ul>
-              </div>
-            )}
-          </div>
-        </div>
         <div className="mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <StatsCards stats={courseSummaryStats} isLoading={isLoading} />
         </div>

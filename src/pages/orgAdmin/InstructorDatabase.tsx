@@ -4,12 +4,11 @@ import UpsertInstructorModal from "../../components/instructor/UpsertInstructorM
 import { PlusIcon } from "@/components/ui/plus-icon";
 
 import { formatDateMMMDDYYY } from "../../lib/dateUtils";
-import { dateFilter, IInstructor } from "../../types/interfaces";
+import { IInstructor } from "../../types/interfaces";
 import { useMemo, useState, Suspense } from "react";
 import BulkImportInstructorModal from "../../components/instructor/BulkImportInstructorModal";
 import StatsCards from "../../components/common/StatsCards";
 import { generateStats } from "../../components/common/statUtils";
-import { CgChevronDown } from "react-icons/cg";
 import {
   useExportInstructorToCsv,
   useSearchInstructors,
@@ -21,6 +20,7 @@ import DeleteInstructorModal from "../../components/instructor/DeleteInstructorM
 import { exportToCSVUtil } from "../../lib/exportCsvUtils";
 import ExportModal from "../../components/orgAdmin/ExportModal";
 import TableEmptyState from "../../components/common/TableEmptyState";
+import HoverHelpTooltip from "../../components/common/HoverHelpTooltip";
 import ActionMenuButton from "../../components/orgAdmin/ActionMenuButton";
 import TableSkeletonClean from "../../components/skeleton/TableSkeletonClean";
 import { MdLockReset } from "react-icons/md";
@@ -50,8 +50,7 @@ export default function InstructorDatabase() {
   const orgType = currentUser.user.organization.type;
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
-  const [isFilterOpen, setIsFilterOpen] = useState(false);
-  const [selectedPeriod, setSelectedPeriod] = useState<dateFilter>("month");
+  const selectedPeriod = "month";
   const [resetUserPassword, setResetUserPassword] =
     useState<IInstructor | null>(null);
   const [filters, setFilters] = useState({
@@ -205,18 +204,6 @@ export default function InstructorDatabase() {
     { width: "20%" }, // Created At
     { width: "10%", alignment: "center" as const }, // Actions
   ];
-
-  const TIME_PERIODS = [
-    { display: "Today", value: "today" },
-    { display: "This Week", value: "week" },
-    { display: "This Month", value: "month" },
-    { display: "This Year", value: "year" },
-  ] as const;
-
-  const handleFilterSelect = (period: dateFilter) => {
-    setSelectedPeriod(period);
-    setIsFilterOpen(false);
-  };
 
   const instructorRows = useMemo(
     () => ((teachersData?.instructors || []) as IInstructor[]),
@@ -423,60 +410,20 @@ export default function InstructorDatabase() {
     <div className="pt-14 pb-6 px-6 lg:p-6">
       {/* Page Header */}
       <div className="mb-6">
-        <h1 className="text-2xl md:text-3xl font-bold text-slate-900">
-          {pageTitle}
-        </h1>
-        <p className="mt-1 text-sm md:text-base text-slate-600">
-          {pageDescription}
-        </p>
+        <div className="flex items-center gap-2">
+          <h1 className="text-2xl md:text-3xl font-bold text-slate-900">
+            {pageTitle}
+          </h1>
+          <HoverHelpTooltip
+            text={pageDescription}
+            
+            className="shrink-0"
+          />
+        </div>
       </div>
 
       {/* Summary Cards Section */}
       <div className="mb-2">
-        <div className="flex justify-between mb-2">
-          <h2 className="text-xl md:text-2xl font-bold text-slate-900">
-            Instructor Summary
-          </h2>
-          <div className="relative">
-            <Button
-              variant="cancel"
-              onClick={() => setIsFilterOpen(!isFilterOpen)}
-              className="flex items-center gap-2"
-            >
-              <span className="capitalize flex justify-center items-center gap-2">
-                {selectedPeriod === "week"
-                  ? "This Week"
-                  : selectedPeriod === "month"
-                  ? "This Month"
-                  : selectedPeriod === "year"
-                  ? "This Year"
-                  : selectedPeriod}
-                <CgChevronDown />
-              </span>
-            </Button>
-            {isFilterOpen && (
-              <div className="absolute right-0 mt-2 w-32 bg-white rounded-md shadow-lg z-10">
-                <ul className="py-1">
-                  {TIME_PERIODS.map((period) => (
-                    <li
-                      key={period.value}
-                      className={`px-4 py-2 hover:bg-gray-100 cursor-pointer text-sm ${
-                        selectedPeriod === period.value
-                          ? "bg-gray-100 font-medium"
-                          : ""
-                      }`}
-                      onClick={() =>
-                        handleFilterSelect(period.value as dateFilter)
-                      }
-                    >
-                      {period.display}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-          </div>
-        </div>
         <Suspense
           fallback={
             <div className="mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
