@@ -237,9 +237,9 @@ export default function AdminPerformancePage() {
             </thead>
             <tbody className="divide-y divide-gray-200">
               {filteredStudents.length > 0 ? (
-                filteredStudents.map((student) => (
+                filteredStudents.map((student, index) => (
                   <tr
-                    key={student._id}
+                    key={`${student._id}-${student.section || "unknown-section"}-${index}`}
                     className="hover:bg-gray-50 transition-colors"
                   >
                     <td className="px-6 py-4 whitespace-nowrap">

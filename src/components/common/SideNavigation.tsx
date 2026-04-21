@@ -34,6 +34,26 @@ interface AnimIconHandle {
   stopAnimation: () => void;
 }
 
+const FORWARD_REF_SYMBOL = Symbol.for("react.forward_ref");
+const MEMO_SYMBOL = Symbol.for("react.memo");
+
+const isAnimatedIconRefCompatible = (
+  Icon: React.ComponentType<{ size?: number }>,
+): Icon is React.ForwardRefExoticComponent<
+  { size?: number } & React.RefAttributes<AnimIconHandle>
+> => {
+  const maybeIcon = Icon as unknown as {
+    $$typeof?: symbol;
+    type?: { $$typeof?: symbol };
+  };
+
+  return (
+    maybeIcon.$$typeof === FORWARD_REF_SYMBOL ||
+    (maybeIcon.$$typeof === MEMO_SYMBOL &&
+      maybeIcon.type?.$$typeof === FORWARD_REF_SYMBOL)
+  );
+};
+
 function AnimatedNavIcon({
   Icon,
   isHovered,
@@ -46,11 +66,13 @@ function AnimatedNavIcon({
   size?: number;
 }) {
   const iconRef = useRef<AnimIconHandle>(null);
+  const isRefCompatible = isAnimatedIconRefCompatible(Icon);
 
   useEffect(() => {
+    if (!isRefCompatible) return;
     if (isHovered) iconRef.current?.startAnimation();
     else iconRef.current?.stopAnimation();
-  }, [isHovered]);
+  }, [isHovered, isRefCompatible]);
 
   const IconWithRef = Icon as React.ForwardRefExoticComponent<
     { size?: number } & React.RefAttributes<AnimIconHandle>
@@ -58,7 +80,11 @@ function AnimatedNavIcon({
 
   return (
     <span className={`shrink-0 transition-colors ${isActive ? "text-primary" : "text-gray-500"}`}>
-      <IconWithRef ref={iconRef} size={size} />
+      {isRefCompatible ? (
+        <IconWithRef ref={iconRef} size={size} />
+      ) : (
+        <Icon size={size} />
+      )}
     </span>
   );
 }
