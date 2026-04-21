@@ -1002,14 +1002,63 @@ export default function TnaSkillRoleSetupPage() {
                               <Trash animateOnHover size={14} />
                             </button>
 
-                            <button
-                              type="button"
-                              aria-label="View required skills"
-                              className={`group ${secondaryIconButtonClassName}`}
-                              onClick={() => setRequiredSkillsPreviewRole(roleRequirement)}
-                            >
-                              <Lightbulb animateOnHover size={14} />
-                            </button>
+                            <div className="group/required-skills-preview relative">
+                              <button
+                                type="button"
+                                aria-label="Preview required skills"
+                                className={`group ${secondaryIconButtonClassName}`}
+                              >
+                                <Lightbulb animateOnHover size={14} />
+                              </button>
+
+                              <div className="pointer-events-none invisible absolute right-0 top-full z-20 mt-2 w-[340px] max-w-[70vw] translate-y-1 rounded-xl border border-slate-200 bg-white p-3 shadow-xl opacity-0 transition-all duration-150 group-hover/required-skills-preview:visible group-hover/required-skills-preview:translate-y-0 group-hover/required-skills-preview:opacity-100 group-focus-within/required-skills-preview:visible group-focus-within/required-skills-preview:translate-y-0 group-focus-within/required-skills-preview:opacity-100">
+                                <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                                  Required Skills | {String(roleRequirement?.jobRole || "Role")}
+                                </p>
+                                <p className="mt-1 text-xs text-slate-700">
+                                  Pre-test threshold: {Number(roleRequirement.preAssessmentThreshold) || 70}% |
+                                  Skills: {roleRequiredSkills.length}
+                                </p>
+
+                                {roleRequiredSkills.length === 0 ? (
+                                  <p className="mt-2 text-xs text-slate-500">No required skills configured.</p>
+                                ) : (
+                                  <div className="mt-2 max-h-48 overflow-y-auto rounded-md border border-slate-200">
+                                    <table className="w-full min-w-[300px]">
+                                      <thead className="sticky top-0 bg-slate-100/95">
+                                        <tr className="text-left text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+                                          <th className="px-2 py-1.5 w-9">#</th>
+                                          <th className="px-2 py-1.5">Skill</th>
+                                          <th className="px-2 py-1.5 w-16">Lvl</th>
+                                          <th className="px-2 py-1.5 w-16">Thr</th>
+                                        </tr>
+                                      </thead>
+                                      <tbody className="divide-y divide-slate-200 bg-white">
+                                        {roleRequiredSkills.map((skillItem: any, index: number) => {
+                                          const preview = getRequiredSkillPreview(skillItem);
+                                          return (
+                                            <tr
+                                              key={`${String(roleRequirement?._id || "role-preview")}-${preview.name}-${index}`}
+                                            >
+                                              <td className="px-2 py-1.5 text-xs text-slate-500">{index + 1}</td>
+                                              <td className="px-2 py-1.5 text-xs font-medium text-slate-800">
+                                                {preview.name}
+                                              </td>
+                                              <td className="px-2 py-1.5 text-xs text-slate-700">
+                                                {preview.level}
+                                              </td>
+                                              <td className="px-2 py-1.5 text-xs text-slate-700">
+                                                {preview.passingThreshold}%
+                                              </td>
+                                            </tr>
+                                          );
+                                        })}
+                                      </tbody>
+                                    </table>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
                           </div>
 
                           <p className="text-sm font-semibold text-slate-900">
@@ -1049,6 +1098,8 @@ export default function TnaSkillRoleSetupPage() {
         title={`Required Skills${requiredSkillsPreviewRole?.jobRole ? ` • ${String(requiredSkillsPreviewRole.jobRole)}` : ""}`}
         backdrop="blur"
         size="lg"
+        usePortal
+        portalSelector="#admin-main-content"
       >
         <div className="space-y-4">
           <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
@@ -1100,6 +1151,8 @@ export default function TnaSkillRoleSetupPage() {
         title={deleteTarget?.type === "skill" ? "Delete Skill" : "Delete Role Standard"}
         backdrop="blur"
         size="md"
+        usePortal
+        portalSelector="#admin-main-content"
       >
         <div className="space-y-4">
           <p className="text-gray-700">

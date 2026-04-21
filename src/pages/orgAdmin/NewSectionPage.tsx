@@ -10,14 +10,16 @@ import { useNavigate } from "react-router-dom";
 import Button from "../../components/common/Button";
 import { toast } from "react-toastify";
 import { ICourse, IInstructor } from "../../types/interfaces";
-import { getMaxDate } from "../../lib/maxDateUtils";
+import { getMaxDate, getMinDate } from "../../lib/maxDateUtils";
 import { useCreateSection, useGenerateCode } from "../../hooks/useSection";
 import { useAuth } from "../../context/AuthContext";
 import { getTerm } from "../../lib/utils";
+import { calculateDurationMinutes } from "../../lib/dateUtils";
 import { SearchableSelect } from "../../components/SearchableSelect";
 import { useDebounce } from "../../hooks/useDebounce";
 import { useInfiniteCoursesForDropdown } from "../../hooks/useCourse";
 import { useInfiniteInstructorsForDropdown } from "../../hooks/useInstructor";
+import TimePickerDropdown from "../../components/common/TimePickerDropdown";
 
 // Define interfaces for better type safety
 interface ScheduleItem {
@@ -56,6 +58,7 @@ type SectionFormData = z.infer<typeof sectionSchema>;
 export default function NewSectionPage() {
   const navigate = useNavigate();
   const { currentUser } = useAuth();
+  const minDate = getMinDate();
   const orgType = currentUser.user.organization.type;
   const sectionTerm = getTerm("group", orgType);
   const sectionsTerm = getTerm("group", orgType, true);
@@ -126,7 +129,7 @@ export default function NewSectionPage() {
       code: "",
       course: "",
       instructor: "",
-      startDate: new Date().toISOString().split("T")[0],
+      startDate: minDate,
       endDate: "",
       schedules: [],
     },
@@ -199,8 +202,18 @@ export default function NewSectionPage() {
   };
 
   const timeOptions = generateTimeOptions();
+  const applySourceDay = selectedDays.find((selectedDay) => {
+    const schedule = schedules.find((s: ScheduleItem) => s.day === selectedDay);
+    if (!schedule?.startTime || !schedule?.endTime) return false;
+    return calculateDurationMinutes(schedule.startTime, schedule.endTime) > 0;
+  });
 
   const onSubmit = (data: SectionFormData) => {
+    if (new Date(data.endDate) < new Date(data.startDate)) {
+      toast.error("End date cannot be earlier than start date");
+      return;
+    }
+
     // Validate that all selected days have start and end times
     const missingTimeDays = selectedDays.filter((day) => {
       const schedule = schedules.find((s: ScheduleItem) => s.day === day);
@@ -211,6 +224,22 @@ export default function NewSectionPage() {
       setInvalidDays(missingTimeDays);
       toast.error(
         `Please select start and end times for: ${missingTimeDays.join(", ")}`
+      );
+      return;
+    }
+
+    const invalidTimeRangeDays = selectedDays.filter((day) => {
+      const schedule = schedules.find((s: ScheduleItem) => s.day === day);
+      if (!schedule?.startTime || !schedule?.endTime) return false;
+      return calculateDurationMinutes(schedule.startTime, schedule.endTime) <= 0;
+    });
+
+    if (invalidTimeRangeDays.length > 0) {
+      setInvalidDays(invalidTimeRangeDays);
+      toast.error(
+        `End time must be later than start time for: ${invalidTimeRangeDays.join(
+          ", "
+        )}`
       );
       return;
     }
@@ -300,6 +329,17 @@ export default function NewSectionPage() {
     // Clear invalid day if both times are set
     const schedule = updatedSchedules.find((s) => s.day === day);
     if (schedule?.startTime && schedule?.endTime) {
+      const isTimeRangeValid =
+        calculateDurationMinutes(schedule.startTime, schedule.endTime) > 0;
+
+      if (isTimeRangeValid) {
+        setInvalidDays((prev) => prev.filter((d) => d !== day));
+      } else {
+        setInvalidDays((prev) =>
+          prev.includes(day) ? prev : [...prev, day]
+        );
+      }
+    } else {
       setInvalidDays((prev) => prev.filter((d) => d !== day));
     }
   };
@@ -503,11 +543,15 @@ export default function NewSectionPage() {
                 <input
                   {...register("startDate")}
                   type="date"
+                  min={minDate}
                   max={getMaxDate()}
                   className={`w-full px-3 py-2 border ${
                     errors.startDate ? "border-red-500" : "border-gray-300"
                   } rounded-lg focus:ring-2 focus:ring-[#60B2F0] focus:border-transparent`}
                   onChange={(e) => {
+                    if (new Date(e.target.value) < new Date(minDate)) {
+                      e.target.value = minDate;
+                    }
                     if (new Date(e.target.value) > new Date(getMaxDate())) {
                       e.target.value = getMaxDate();
                     }
@@ -560,6 +604,8 @@ export default function NewSectionPage() {
                   (day) => {
                     const schedule =
                       schedules.find((s: any) => s.day === day) || {};
+                    const currentStartTime = (schedule as any).startTime;
+                    const currentEndTime = (schedule as any).endTime;
                     return (
                       <div
                         key={day}
@@ -588,68 +634,68 @@ export default function NewSectionPage() {
                               <label className="text-xs text-gray-500">
                                 Start
                               </label>
-                              <select
-                                value={(schedule as any).startTime || ""}
-                                onChange={(e) =>
+                              <TimePickerDropdown
+                                value={currentStartTime || ""}
+                                onChange={(value) =>
                                   updateScheduleTime(
                                     day,
                                     "startTime",
-                                    e.target.value
+                                    value
                                   )
                                 }
-                                className={`text-xs sm:text-sm px-1 sm:px-2 py-1 border ${
+                                options={timeOptions}
+                                isOptionDisabled={(option) =>
+                                  Boolean(
+                                    currentEndTime &&
+                                      calculateDurationMinutes(
+                                        option,
+                                        currentEndTime
+                                      ) <= 0
+                                  )
+                                }
+                                placeholder="Start"
+                                hasError={
                                   invalidDays.includes(day) &&
-                                  !(schedule as any).startTime
-                                    ? "border-red-500"
-                                    : "border-gray-300"
-                                } rounded-lg focus:ring-2 focus:ring-[#60B2F0] focus:border-transparent w-full sm:w-auto`}
-                              >
-                                <option value="">Start</option>
-                                {timeOptions.map((time) => (
-                                  <option key={time} value={time}>
-                                    {time}
-                                  </option>
-                                ))}
-                              </select>
+                                  !currentStartTime
+                                }
+                                className="w-full sm:w-auto text-xs sm:text-sm"
+                              />
                             </div>
                             <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1 sm:gap-2">
                               <label className="text-xs text-gray-500">
                                 End
                               </label>
-                              <select
-                                value={(schedule as any).endTime || ""}
-                                onChange={(e) =>
+                              <TimePickerDropdown
+                                value={currentEndTime || ""}
+                                onChange={(value) =>
                                   updateScheduleTime(
                                     day,
                                     "endTime",
-                                    e.target.value
+                                    value
                                   )
                                 }
-                                className={`text-xs sm:text-sm px-1 sm:px-2 py-1 border ${
+                                options={timeOptions}
+                                isOptionDisabled={(option) =>
+                                  Boolean(
+                                    currentStartTime &&
+                                      calculateDurationMinutes(
+                                        currentStartTime,
+                                        option
+                                      ) <= 0
+                                  )
+                                }
+                                placeholder="End"
+                                hasError={
                                   invalidDays.includes(day) &&
-                                  !(schedule as any).endTime
-                                    ? "border-red-500"
-                                    : "border-gray-300"
-                                } rounded-lg focus:ring-2 focus:ring-[#60B2F0] focus:border-transparent w-full sm:w-auto`}
-                              >
-                                <option value="">End</option>
-                                {timeOptions.map((time) => (
-                                  <option key={time} value={time}>
-                                    {time}
-                                  </option>
-                                ))}
-                              </select>
+                                  !currentEndTime
+                                }
+                                className="w-full sm:w-auto text-xs sm:text-sm"
+                              />
                             </div>
-                            {(schedule as any).startTime &&
-                              (schedule as any).endTime && (
+                            {day === applySourceDay && (
                                 <button
                                   type="button"
                                   onClick={() => {
-                                    const currentStartTime = (schedule as any)
-                                      .startTime;
-                                    const currentEndTime = (schedule as any)
-                                      .endTime;
-
                                     selectedDays.forEach((selectedDay) => {
                                       if (selectedDay !== day) {
                                         setValue(
@@ -670,7 +716,7 @@ export default function NewSectionPage() {
                                       }
                                     });
                                   }}
-                                  className="w-full mt-2 text-xs text-primary hover:text-primary-dark transition-colors"
+                                  className="mt-2 inline-flex w-full items-center justify-center rounded-md border border-primary/30 bg-primary/5 px-2 py-1.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/10 focus:outline-none focus:ring-2 focus:ring-primary/25"
                                 >
                                   Apply to all
                                 </button>
