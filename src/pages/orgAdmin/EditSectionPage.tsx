@@ -156,10 +156,10 @@ const SectionEditPage = () => {
                     </div>
                     <div>
                       <h3 className="text-gray-600 mb-1 text-sm sm:text-base">
-                        {sectionTerm} Name
+                        Course
                       </h3>
                       <p className="font-semibold text-base sm:text-lg break-words">
-                        {section.name}
+                        {section.course?.title || "No course assigned"}
                       </p>
                     </div>
                   </div>
