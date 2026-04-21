@@ -107,6 +107,13 @@ const parseList = (value: string): string[] =>
     .map((item) => item.trim())
     .filter(Boolean);
 
+const isTnaEligibleLearnerRole = (role: unknown): boolean => {
+  const normalizedRole = String(role || "")
+    .trim()
+    .toLowerCase();
+  return normalizedRole === "employee" || normalizedRole === "student";
+};
+
 const parsePrefillEmployeeSkills = (value: string): PrefillEmployeeSkill[] => {
   if (!value.trim()) return [];
   try {
@@ -252,7 +259,8 @@ export default function TnaPage() {
 
   const employees = useMemo(() => {
     const response = studentsQuery.data as { students?: any[] } | undefined;
-    return Array.isArray(response?.students) ? response.students : [];
+    const students = Array.isArray(response?.students) ? response.students : [];
+    return students.filter((student) => isTnaEligibleLearnerRole(student?.role));
   }, [studentsQuery.data]);
 
   const roleRequirements = useMemo(() => {

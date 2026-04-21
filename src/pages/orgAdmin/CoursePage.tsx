@@ -443,6 +443,14 @@ export default function CoursePage() {
     toggleArchiveStatus,
   ]);
 
+  const hasActiveFilters = Boolean(
+    debouncedSearchTerm ||
+      filters.status ||
+      filters.level ||
+      (!isCorporate && filters.category) ||
+      archiveStatus !== "none",
+  );
+
   return (
     <div className=" pt-14 pb-6 px-6 lg:p-6">
       <div className="flex items-center gap-2">
@@ -544,19 +552,13 @@ export default function CoursePage() {
         <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
           Error loading courses
         </div>
-      ) : courseRows.length === 0 ? (
+      ) : courseRows.length === 0 && !hasActiveFilters ? (
         <TableEmptyState
           title="Create Your First Course"
           description="Start by creating a course. You'll need courses before you can create sections."
           colSpan={isCorporate ? 5 : 6}
           type="course"
-          isFiltered={Boolean(
-            debouncedSearchTerm ||
-              filters.status ||
-              filters.level ||
-              (!isCorporate && filters.category) ||
-              archiveStatus !== "none",
-          )}
+          isFiltered={false}
         />
       ) : (
         <GroupedDataTable

@@ -149,6 +149,7 @@ export const useSearchStudents = (
           "firstName",
           "lastName",
           "email",
+          "role",
           "studentId",
           "subrole",
           "person",
