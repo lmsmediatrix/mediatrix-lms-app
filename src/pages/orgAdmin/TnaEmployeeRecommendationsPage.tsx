@@ -22,6 +22,7 @@ type EmployeeOption = {
   firstName?: string;
   lastName?: string;
   email?: string;
+  role?: string;
 };
 
 type RecommendationCourse = {
@@ -98,6 +99,13 @@ const getRecommendationStatusFilterValue = (
 ): RecommendationStatusFilter => {
   if (!recommendation) return "no-status";
   return normalizeStatus(recommendation.status);
+};
+
+const isTnaEligibleLearnerRole = (role: unknown): boolean => {
+  const normalizedRole = String(role || "")
+    .trim()
+    .toLowerCase();
+  return normalizedRole === "employee" || normalizedRole === "student";
 };
 
 const formatLatestTnaDateTime = (dateValue?: string) => {
@@ -186,7 +194,8 @@ export default function TnaEmployeeRecommendationsPage() {
 
   const employees = useMemo(() => {
     const response = studentsQuery.data as { students?: EmployeeOption[] } | undefined;
-    return Array.isArray(response?.students) ? response.students : [];
+    const students = Array.isArray(response?.students) ? response.students : [];
+    return students.filter((student) => isTnaEligibleLearnerRole(student?.role));
   }, [studentsQuery.data]);
 
   const recommendations = useMemo(() => {

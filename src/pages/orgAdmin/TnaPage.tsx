@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "react-toastify";
+import { z } from "zod";
 import Button from "../../components/common/Button";
 import GroupedDataTable, {
   GroupedTableColumn,
@@ -106,6 +107,47 @@ const parseList = (value: string): string[] =>
     .split(/[\n,]/g)
     .map((item) => item.trim())
     .filter(Boolean);
+
+const skillPayloadSchema = z.object({
+  skillId: z.string().trim().min(1, "Skill is required"),
+  currentLevel: z.number().min(0).max(5),
+});
+
+const saveEmployeeSkillsFormSchema = z.object({
+  employeeId: z.string().trim().min(1, "Employee is required"),
+  jobRole: z.string().trim().min(1, "Job role is required. Configure role standards in Skill and Role."),
+  skills: z.array(skillPayloadSchema).min(1, "Add at least one skill"),
+});
+
+const runAnalysisFormSchema = z.object({
+  employeeId: z.string().trim().min(1, "Employee is required"),
+  jobRole: z.string().trim().min(1, "Job role is required"),
+  preAssessmentScore: z
+    .number()
+    .min(0, "Pre-assessment score must be between 0 and 100")
+    .max(100, "Pre-assessment score must be between 0 and 100")
+    .optional(),
+  performanceGaps: z.array(z.string().trim().min(1).max(200)),
+  managerRecommendations: z.array(z.string().trim().min(1).max(200)),
+  employeeRequests: z.array(z.string().trim().min(1).max(200)),
+  complianceRequirements: z.array(
+    z.object({
+      title: z.string().trim().min(2).max(200),
+      courseId: z.string().trim().optional(),
+      mandatory: z.boolean(),
+    })
+  ),
+});
+
+const getFirstZodIssueMessage = (error: z.ZodError): string =>
+  error.issues[0]?.message || "Please check the form inputs.";
+
+const isTnaEligibleLearnerRole = (role: unknown): boolean => {
+  const normalizedRole = String(role || "")
+    .trim()
+    .toLowerCase();
+  return normalizedRole === "employee" || normalizedRole === "student";
+};
 
 const parsePrefillEmployeeSkills = (value: string): PrefillEmployeeSkill[] => {
   if (!value.trim()) return [];
@@ -252,7 +294,8 @@ export default function TnaPage() {
 
   const employees = useMemo(() => {
     const response = studentsQuery.data as { students?: any[] } | undefined;
-    return Array.isArray(response?.students) ? response.students : [];
+    const students = Array.isArray(response?.students) ? response.students : [];
+    return students.filter((student) => isTnaEligibleLearnerRole(student?.role));
   }, [studentsQuery.data]);
 
   const roleRequirements = useMemo(() => {
@@ -985,18 +1028,23 @@ export default function TnaPage() {
   const recommendationsStatus = getStepStatusMeta("recommendations");
 
   const saveEmployeeSkills = async () => {
-    if (!employeeId) return toast.error(`${employeeTerm} is required`);
-    if (!analyzeJobRole.trim()) {
-      return toast.error("Job role is required. Configure role standards in Skill and Role.");
+    const payloadSkills = employeeSkills
+      .filter((item) => String(item.skillId || "").trim())
+      .map((item) => ({
+        skillId: String(item.skillId || "").trim(),
+        currentLevel: Number(item.level),
+      }));
+    const validationResult = saveEmployeeSkillsFormSchema.safeParse({
+      employeeId: String(employeeId || "").trim(),
+      jobRole: String(analyzeJobRole || "").trim(),
+      skills: payloadSkills,
+    });
+    if (!validationResult.success) {
+      return toast.error(getFirstZodIssueMessage(validationResult.error));
     }
     if (hasAssignedRole && isChangingAssignedRole && !isRoleEditMode) {
       return toast.error("Click 'Edit Assigned Role' first before changing this employee role.");
     }
-    const payloadSkills = employeeSkills.filter((item) => item.skillId).map((item) => ({
-      skillId: item.skillId,
-      currentLevel: Number(item.level),
-    }));
-    if (payloadSkills.length === 0) return toast.error("Add at least one skill");
     if (hasAnyInProgressSkillTraining) {
       return toast.error(
         "Cannot save employee skill levels while skill training is in progress. Complete or close in-progress training first."
@@ -1009,10 +1057,10 @@ export default function TnaPage() {
     try {
       await toast.promise(
         upsertEmployeeSkillMutation.mutateAsync({
-          employeeId,
-          jobRole: analyzeJobRole.trim(),
+          employeeId: validationResult.data.employeeId,
+          jobRole: validationResult.data.jobRole,
           allowRoleChange: isRoleEditMode && isChangingAssignedRole,
-          skills: payloadSkills,
+          skills: validationResult.data.skills,
         }),
         {
           pending: "Saving employee skills...",
@@ -1029,8 +1077,29 @@ export default function TnaPage() {
   };
 
   const runAnalysis = async () => {
-    if (!analyzeEmployeeId) return toast.error(`${employeeTerm} is required`);
-    if (!analyzeJobRole.trim()) return toast.error("Job role is required");
+    const preAssessmentScore = score.trim() ? Number(score) : undefined;
+    if (typeof preAssessmentScore === "number" && !Number.isFinite(preAssessmentScore)) {
+      return toast.error("Pre-assessment score must be a valid number");
+    }
+    const complianceRequirements = compliance
+      .filter((item) => item.title.trim())
+      .map((item) => ({
+        title: item.title.trim(),
+        courseId: item.courseId ? item.courseId.trim() : undefined,
+        mandatory: item.mandatory,
+      }));
+    const validationResult = runAnalysisFormSchema.safeParse({
+      employeeId: String(analyzeEmployeeId || "").trim(),
+      jobRole: String(analyzeJobRole || "").trim(),
+      preAssessmentScore,
+      performanceGaps: parseList(performanceGaps),
+      managerRecommendations: parseList(managerRecommendations),
+      employeeRequests: parseList(employeeRequests),
+      complianceRequirements,
+    });
+    if (!validationResult.success) {
+      return toast.error(getFirstZodIssueMessage(validationResult.error));
+    }
     if (hasAnyInProgressSkillTraining) {
       return toast.error(
         "Cannot run analysis while skill training is in progress. Complete or close in-progress training first."
@@ -1043,21 +1112,15 @@ export default function TnaPage() {
     try {
       await toast.promise(
         analyzeTnaMutation.mutateAsync({
-          employeeId: analyzeEmployeeId,
-          jobRole: analyzeJobRole.trim(),
-          preAssessment: score.trim()
-            ? { score: Number(score), threshold: analyzeThreshold }
+          employeeId: validationResult.data.employeeId,
+          jobRole: validationResult.data.jobRole,
+          preAssessment: typeof validationResult.data.preAssessmentScore === "number"
+            ? { score: validationResult.data.preAssessmentScore, threshold: analyzeThreshold }
             : undefined,
-          performanceGaps: parseList(performanceGaps),
-          managerRecommendations: parseList(managerRecommendations),
-          employeeRequests: parseList(employeeRequests),
-          complianceRequirements: compliance
-            .filter((item) => item.title.trim())
-            .map((item) => ({
-              title: item.title.trim(),
-              courseId: item.courseId || undefined,
-              mandatory: item.mandatory,
-            })),
+          performanceGaps: validationResult.data.performanceGaps,
+          managerRecommendations: validationResult.data.managerRecommendations,
+          employeeRequests: validationResult.data.employeeRequests,
+          complianceRequirements: validationResult.data.complianceRequirements,
         }),
         {
           pending: "Running TNA analysis...",
