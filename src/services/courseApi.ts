@@ -109,9 +109,13 @@ class CourseService extends APIService {
       );
       return response.data;
     } catch (error: any) {
+      const responseMessage =
+        error?.response?.data?.message ||
+        error?.response?.data?.error ||
+        error?.data?.message;
       throw new Error(
-        error?.message ||
-          error?.data?.message ||
+        responseMessage ||
+          error?.message ||
           "Error archiving course"
       );
     }

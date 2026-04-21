@@ -14,7 +14,22 @@ interface OverallProgressProps {
 }
 
 export default function OverallProgress({ data }: OverallProgressProps) {
-  const percent = data?.percent ?? 0;
+  const totalLessons = Math.max(0, data?.totalLessons ?? 0);
+  const totalAssessments = Math.max(0, data?.totalAssessments ?? 0);
+  const completedLessons = Math.min(
+    Math.max(0, data?.completedLessons ?? 0),
+    totalLessons,
+  );
+  const completedAssessments = Math.min(
+    Math.max(0, data?.completedAssessments ?? 0),
+    totalAssessments,
+  );
+  const totalItems = totalLessons + totalAssessments;
+  const completedItems = completedLessons + completedAssessments;
+  const percent =
+    totalItems > 0
+      ? Math.min(100, Math.max(0, Math.round((completedItems / totalItems) * 100)))
+      : 0;
   const radius = 54;
   const circumference = 2 * Math.PI * radius;
   const offset = circumference - (percent / 100) * circumference;
@@ -76,7 +91,7 @@ export default function OverallProgress({ data }: OverallProgressProps) {
             </div>
             <div>
               <p className="text-sm font-semibold text-gray-800">
-                {data?.completedLessons ?? 0}/{data?.totalLessons ?? 0}
+                {completedLessons}/{totalLessons}
               </p>
               <p className="text-xs text-gray-500">Lessons</p>
             </div>
@@ -87,7 +102,7 @@ export default function OverallProgress({ data }: OverallProgressProps) {
             </div>
             <div>
               <p className="text-sm font-semibold text-gray-800">
-                {data?.completedAssessments ?? 0}/{data?.totalAssessments ?? 0}
+                {completedAssessments}/{totalAssessments}
               </p>
               <p className="text-xs text-gray-500">Assessments</p>
             </div>

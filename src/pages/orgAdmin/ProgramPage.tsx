@@ -5,6 +5,7 @@ import { usePrograms } from "../../hooks/useProgram";
 import { useMemo, useState } from "react";
 import { useAuth } from "../../context/AuthContext";
 import TableEmptyState from "../../components/common/TableEmptyState";
+import HoverHelpTooltip from "../../components/common/HoverHelpTooltip";
 import UpsertProgramModal from "../../components/orgAdmin/UpsertProgramModal";
 import ViewProgramModal from "../../components/orgAdmin/ViewProgramModal";
 import DeleteProgramModal from "../../components/orgAdmin/DeleteProgramModal";
@@ -192,10 +193,14 @@ export default function ProgramPage() {
 
   return (
     <div className="pt-14 pb-6 px-6 lg:p-6">
-      <h1 className="text-3xl font-bold">Programs</h1>
-      <p className="text-gray-400">
-        Organize and manage your {learnersTerm.toLowerCase()} programs.
-      </p>{" "}
+      <div className="flex items-center gap-2">
+        <h1 className="text-3xl font-bold">Programs</h1>
+        <HoverHelpTooltip
+          text={`Organize and manage your ${learnersTerm.toLowerCase()} programs.`}
+          
+          className="shrink-0"
+        />
+      </div>
       <div className="flex flex-col gap-4 py-6 md:flex-row md:items-center md:justify-between">
         {/* Search and Filter */}
         <div className="flex flex-col gap-3 md:flex-row md:flex-1 md:items-center md:gap-2 md:min-w-0">

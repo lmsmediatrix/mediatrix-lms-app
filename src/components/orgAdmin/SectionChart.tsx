@@ -14,6 +14,7 @@ import {
   type ScriptableContext,
 } from "chart.js";
 import { Bar } from "react-chartjs-2";
+import HoverHelpTooltip from "../common/HoverHelpTooltip";
 
 ChartJS.register(
   CategoryScale,
@@ -275,13 +276,13 @@ export default function SectionChart({
     >
       <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
         <div>
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
-            Enrollment Overview
-          </p>
-          <h2 className="font-bold text-xl text-slate-900">{learnerLabel} Enrollment</h2>
-          <p className="text-slate-600 text-sm">
-            Number of {learnerLabel.toLowerCase()} enrolled in each {xAxisLabel.toLowerCase()}.
-          </p>
+          <div className="flex items-center gap-2">
+            <h2 className="font-bold text-xl text-slate-900">{learnerLabel} Enrollment</h2>
+            <HoverHelpTooltip
+              text={`Number of ${learnerLabel.toLowerCase()} enrolled in each ${xAxisLabel.toLowerCase()}.`}
+              className="shrink-0"
+            />
+          </div>
         </div>
         <div className="grid grid-cols-3 gap-2 text-xs w-full md:w-auto md:min-w-[300px]">
           <div className="rounded-xl border border-[color:color-mix(in_srgb,var(--color-primary,#2563eb)_22%,white)] bg-[color:color-mix(in_srgb,var(--color-primary,#2563eb)_8%,white)] px-3 py-2">

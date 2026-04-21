@@ -6,6 +6,7 @@ import GroupedDataTable, {
   GroupedTableColumn,
   GroupedTableGroup,
 } from "../../components/common/GroupedDataTable";
+import HoverHelpTooltip from "../../components/common/HoverHelpTooltip";
 import { SearchableSelect } from "../../components/SearchableSelect";
 import { useAuth } from "../../context/AuthContext";
 import { useCourses } from "../../hooks/useCourse";
@@ -1084,11 +1085,14 @@ export default function TnaPage() {
           <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
             <div>
               <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">Corporate Workflow</p>
-              <h1 className="text-3xl font-bold text-slate-900 mt-1">Training Needs Analysis</h1>
-              <p className="text-slate-600 mt-2 max-w-3xl">
-                This flow is focused on employee role and level capture, analysis, and recommendation
-                tracking. Skills and role standards are configured in a separate Configuration page.
-              </p>
+              <div className="mt-1 flex items-center gap-2">
+                <h1 className="text-3xl font-bold text-slate-900">Training Needs Analysis</h1>
+                <HoverHelpTooltip
+                  text="This flow is focused on employee role and level capture, analysis, and recommendation tracking. Skills and role standards are configured in a separate Configuration page."
+                  
+                  className="shrink-0"
+                />
+              </div>
             </div>
             <Button
               variant="outline"
@@ -1197,10 +1201,14 @@ export default function TnaPage() {
                     {employeeSkillsStatus.label}
                   </span>
                 </div>
-                <h2 className="text-xl font-semibold text-slate-900">Capture {employeeTerm} Role and Skills</h2>
-                <p className="text-sm text-slate-600 mt-1">
-                  Assign role for new {employeeTerm.toLowerCase()} profiles, or edit existing role assignment.
-                </p>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-xl font-semibold text-slate-900">Capture {employeeTerm} Role and Skills</h2>
+                  <HoverHelpTooltip
+                    text={`Assign role for new ${employeeTerm.toLowerCase()} profiles, or edit existing role assignment.`}
+                    
+                    className="shrink-0"
+                  />
+                </div>
               </div>
               <Button
                 variant="outline"
@@ -1221,10 +1229,13 @@ export default function TnaPage() {
                 }`}
               >
                 <p className={fieldLabelClassName}>Flow A</p>
-                <p className="mt-1 text-sm font-semibold text-slate-900">Assign Role (New Profile)</p>
-                <p className="mt-1 text-xs text-slate-600">
-                  Select employee, choose role, auto-fill skills, then save levels.
-                </p>
+                <div className="mt-1 flex items-center gap-2">
+                  <p className="text-sm font-semibold text-slate-900">Assign Role (New Profile)</p>
+                  <HoverHelpTooltip
+                    text="Select employee, choose role, auto-fill skills, then save levels."
+                    className="shrink-0"
+                  />
+                </div>
               </div>
               <div
                 className={`rounded-xl border p-3.5 ${
@@ -1234,10 +1245,13 @@ export default function TnaPage() {
                 }`}
               >
                 <p className={fieldLabelClassName}>Flow B</p>
-                <p className="mt-1 text-sm font-semibold text-slate-900">Update Assigned Role</p>
-                <p className="mt-1 text-xs text-slate-600">
-                  For existing profiles, click edit role, change role, then save updated levels.
-                </p>
+                <div className="mt-1 flex items-center gap-2">
+                  <p className="text-sm font-semibold text-slate-900">Update Assigned Role</p>
+                  <HoverHelpTooltip
+                    text="For existing profiles, click edit role, change role, then save updated levels."
+                    className="shrink-0"
+                  />
+                </div>
               </div>
             </div>
 
@@ -1476,10 +1490,14 @@ export default function TnaPage() {
                     {analyzeStatus.label}
                   </span>
                 </div>
-                <h2 className="text-xl font-semibold text-slate-900">Run TNA Analysis</h2>
-                <p className="text-sm text-slate-600 mt-1">
-                  Combine role standards, skill gaps, and optional signals to generate recommendations.
-                </p>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-xl font-semibold text-slate-900">Run TNA Analysis</h2>
+                  <HoverHelpTooltip
+                    text="Combine role standards, skill gaps, and optional signals to generate recommendations."
+                    
+                    className="shrink-0"
+                  />
+                </div>
               </div>
               <Button
                 variant="outline"
@@ -1553,12 +1571,13 @@ export default function TnaPage() {
             <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <p className="text-sm font-semibold text-slate-900">Role Standard Preview</p>
-                  <p className="text-xs text-slate-500">
-                    {analyzeJobRole.trim()
-                      ? `Selected role: ${analyzeJobRole}`
-                      : "Select a job role to view required skills and levels."}
-                  </p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-semibold text-slate-900">Role Standard Preview</p>
+                    <HoverHelpTooltip
+                      text="Select a job role to view required skills and levels."
+                      className="shrink-0"
+                    />
+                  </div>
                 </div>
                 <span className="inline-flex h-fit items-center rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-700">
                   Pre-assessment threshold: {analyzeThreshold}%
@@ -1641,10 +1660,13 @@ export default function TnaPage() {
 
             <div className="rounded-xl border border-slate-200 p-3 space-y-3">
               <div>
-                <p className="text-sm font-semibold text-slate-900">Compliance Signals</p>
-                <p className="text-xs text-slate-500">
-                  Add mandatory or optional compliance training requirements.
-                </p>
+                <div className="flex items-center gap-2">
+                  <p className="text-sm font-semibold text-slate-900">Compliance Signals</p>
+                  <HoverHelpTooltip
+                    text="Add mandatory or optional compliance training requirements."
+                    className="shrink-0"
+                  />
+                </div>
               </div>
               {compliance.map((item, index) => (
                 <div
@@ -1733,10 +1755,14 @@ export default function TnaPage() {
                     {recommendationsStatus.label}
                   </span>
                 </div>
-                <h2 className="text-xl font-semibold text-slate-900">Track Recommendations</h2>
-                <p className="text-sm text-slate-600 mt-1">
-                  Review generated recommendations and move each one through assignment and completion.
-                </p>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-xl font-semibold text-slate-900">Track Recommendations</h2>
+                  <HoverHelpTooltip
+                    text="Review generated recommendations and move each one through assignment and completion."
+                    
+                    className="shrink-0"
+                  />
+                </div>
               </div>
               <div className="flex flex-col sm:flex-row sm:flex-wrap md:justify-end gap-2">
                 <Button

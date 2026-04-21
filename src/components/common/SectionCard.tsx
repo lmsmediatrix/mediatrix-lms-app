@@ -9,7 +9,7 @@ interface SectionCardProps {
   course: {
     _id: string;
     thumbnail?: string;
-  };
+  } | null;
   instructor?: string;
   status: string;
   updatedAt?: string;
@@ -59,7 +59,7 @@ const SectionCard = ({
     >
       {/* Image section */}
       <div className="h-[200px] w-full overflow-hidden rounded-t-lg relative group">
-        {course.thumbnail ? (
+        {course?.thumbnail ? (
           <img
             src={course.thumbnail}
             alt={name || "Section"}

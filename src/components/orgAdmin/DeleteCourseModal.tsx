@@ -20,6 +20,17 @@ export default function DeleteCourseModal({
   const archiveCourse = useArchiveCourse();
   const [cascadeBatches, setCascadeBatches] = useState(true);
 
+  const formatScheduleDate = (dateValue?: string) => {
+    if (!dateValue) return "N/A";
+    const parsed = new Date(dateValue);
+    if (Number.isNaN(parsed.getTime())) return "N/A";
+    return parsed.toLocaleDateString("en-US", {
+      month: "numeric",
+      day: "numeric",
+      year: "numeric",
+    });
+  };
+
   const { data: archiveImpactData, isLoading: isArchiveImpactLoading } = useCourseArchiveImpact(
     courseId,
     { enabled: isOpen && Boolean(courseId) }
@@ -35,8 +46,17 @@ export default function DeleteCourseModal({
   const activeBatchCount = Number(
     archiveImpact?.activeBatchCount ?? archiveImpact?.activeSectionCount ?? 0
   );
+  const currentlyActiveBatchCount = Number(
+    archiveImpact?.currentlyActiveBatchCount ??
+      archiveImpact?.currentlyActiveSectionCount ??
+      0
+  );
+  const hasBlockingActiveSections = Boolean(archiveImpact?.hasBlockingActiveSections);
   const activeProgramCount = Number(archiveImpact?.activeProgramCount ?? 0);
   const impactedSections = Array.isArray(archiveImpact?.sections) ? archiveImpact.sections : [];
+  const currentlyActiveSections = Array.isArray(archiveImpact?.currentlyActiveSections)
+    ? archiveImpact.currentlyActiveSections
+    : [];
   const impactedPrograms = Array.isArray(archiveImpact?.programs) ? archiveImpact.programs : [];
 
   const handleDelete = () => {
@@ -87,25 +107,54 @@ export default function DeleteCourseModal({
 
         {isArchiveImpactLoading ? (
           <p className="text-sm text-gray-500">
-            Checking linked batches and programs...
+            Checking where this course is currently being used...
           </p>
+        ) : hasBlockingActiveSections ? (
+          <div className="rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-900">
+            <p className="font-semibold">
+              You can't archive this course yet.
+            </p>
+            <p className="mt-1">
+              It is still running in {currentlyActiveBatchCount} batch
+              {currentlyActiveBatchCount > 1 ? "es" : ""}. You can archive it after these schedules end:
+            </p>
+            {currentlyActiveSections.length > 0 && (
+              <ul className="mt-2 list-disc pl-5">
+                {currentlyActiveSections.slice(0, 5).map((section: any) => (
+                  <li key={section._id}>
+                    {(section.code || "No Code").trim()} -{" "}
+                    {(section.name || "Unnamed Section").trim()}{" "}
+                    <span className="font-medium">
+                      (
+                      {`${formatScheduleDate(section.scheduleStartDate)} - ${formatScheduleDate(
+                        section.scheduleEndDate
+                      )}`}
+                      )
+                    </span>
+                  </li>
+                ))}
+                {currentlyActiveSections.length > 5 && (
+                  <li>...and {currentlyActiveSections.length - 5} more</li>
+                )}
+              </ul>
+            )}
+          </div>
         ) : activeBatchCount > 0 || activeProgramCount > 0 ? (
           <div className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">
             {activeBatchCount > 0 && (
               <p className="font-medium">
-                This course is linked to {activeBatchCount} active batch
+                This course is used in {activeBatchCount} active batch
                 {activeBatchCount > 1 ? "es" : ""}.
               </p>
             )}
             {activeProgramCount > 0 && (
               <p className="mt-1 font-medium">
-                This course is referenced by {activeProgramCount} active program
+                This course is included in {activeProgramCount} active program
                 {activeProgramCount > 1 ? "s" : ""}.
               </p>
             )}
             <p className="mt-1">
-              Review the impact before archiving. You can cascade active batches
-              below.
+              You can still continue. We can also archive the active batches below.
             </p>
             {impactedSections.length > 0 && (
               <ul className="mt-2 list-disc pl-5">
@@ -141,7 +190,7 @@ export default function DeleteCourseModal({
           </p>
         )}
 
-        {activeBatchCount > 0 && (
+        {activeBatchCount > 0 && !hasBlockingActiveSections && (
           <label className="flex items-start gap-2 text-sm text-gray-700">
             <input
               type="checkbox"
@@ -150,7 +199,7 @@ export default function DeleteCourseModal({
               className="mt-0.5"
             />
             <span>
-              Cascade archive active batches linked to this course (recommended).
+              Also archive active batches that use this course (recommended).
             </span>
           </label>
         )}
@@ -168,7 +217,7 @@ export default function DeleteCourseModal({
             type="button"
             onClick={handleDelete}
             className="bg-red-600 text-white hover:bg-red-700"
-            disabled={archiveCourse.isPending || isArchiveImpactLoading}
+            disabled={archiveCourse.isPending || isArchiveImpactLoading || hasBlockingActiveSections}
           >
             {archiveCourse.isPending ? "Archiving..." : "Archive Course"}
           </Button>

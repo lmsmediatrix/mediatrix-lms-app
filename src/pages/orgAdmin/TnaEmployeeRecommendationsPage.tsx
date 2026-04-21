@@ -5,6 +5,7 @@ import { toast } from "react-toastify";
 import ActionMenuButton from "../../components/orgAdmin/ActionMenuButton";
 import Button from "../../components/common/Button";
 import Dialog from "../../components/common/Dialog";
+import HoverHelpTooltip from "../../components/common/HoverHelpTooltip";
 import { useAuth } from "../../context/AuthContext";
 import {
   GroupedTableColumn,
@@ -547,12 +548,16 @@ export default function TnaEmployeeRecommendationsPage() {
               <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
                 TNA Dashboard
               </p>
-              <h1 className="text-2xl font-bold text-slate-900">
-                {employeeTerm} TNA Recommendations
-              </h1>
-              <p className="text-sm text-slate-600 mt-1">
-                View who has TNA results, plus detailed skill gaps and training recommendations.
-              </p>
+              <div className="mt-1 flex items-center gap-2">
+                <h1 className="text-2xl font-bold text-slate-900">
+                  {employeeTerm} TNA Recommendations
+                </h1>
+                <HoverHelpTooltip
+                  text="View who has TNA results, plus detailed skill gaps and training recommendations."
+                  
+                  className="shrink-0"
+                />
+              </div>
             </div>
           </div>
 
@@ -579,10 +584,14 @@ export default function TnaEmployeeRecommendationsPage() {
             <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
               All {employeesTerm}
             </p>
-            <h2 className="text-xl font-semibold text-slate-900">Employee TNA Summary Table</h2>
-            <p className="text-sm text-slate-500 mt-1">
-              One row per employee. Click a row (or view) to open full skill gaps and recommendations.
-            </p>
+            <div className="mt-1 flex items-center gap-2">
+              <h2 className="text-xl font-semibold text-slate-900">Employee TNA Summary Table</h2>
+              <HoverHelpTooltip
+                text="One row per employee. Click a row (or view) to open full skill gaps and recommendations."
+                
+                className="shrink-0"
+              />
+            </div>
           </div>
         </div>
 
@@ -646,7 +655,7 @@ export default function TnaEmployeeRecommendationsPage() {
       {viewDetails && (
         <div className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-900/45 p-4">
           <div className="w-full max-w-5xl rounded-2xl border border-slate-200 bg-white shadow-2xl max-h-[88vh] overflow-hidden">
-            <div className="flex items-start justify-between gap-3 border-b border-slate-200 px-5 py-4">
+            <div className="flex items-center gap-2 border-b border-slate-200 px-5 py-4">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
                   {selectedRecommendation ? "TNA Recommendation Details" : "TNA Status"}
@@ -680,10 +689,10 @@ export default function TnaEmployeeRecommendationsPage() {
               {!selectedRecommendation ? (
                 <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-6">
                   <p className="text-sm font-semibold text-slate-800">No TNA record available yet</p>
-                  <p className="text-sm text-slate-600 mt-1">
-                    Run TNA analysis for this employee to generate skill gaps and training
-                    recommendations.
-                  </p>
+                  <HoverHelpTooltip
+                    text="Run TNA analysis for this employee to generate skill gaps and training recommendations."
+                    className="mt-1"
+                  />
                 </div>
               ) : (
                 <>
