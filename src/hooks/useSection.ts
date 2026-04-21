@@ -189,7 +189,7 @@ export const useInfiniteInstructorSections = (
         .populate([
           {
             path: "course",
-            select: "thumbnail",
+            select: "title thumbnail",
           },
         ])
         .limit(limit)
@@ -286,7 +286,7 @@ export const useInfiniteStudentSections = (
         .populate([
           {
             path: "course",
-            select: "thumbnail",
+            select: "title thumbnail",
           },
           {
             path: "instructor",
@@ -533,7 +533,7 @@ export const useSearchSectionByCode = (sectionCode: string) => {
         .populate([
           {
             path: "course",
-            select: "thumbnail",
+            select: "title thumbnail",
           },
           {
             path: "instructor",

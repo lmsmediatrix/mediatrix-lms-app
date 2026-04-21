@@ -1,4 +1,5 @@
 import React, { useLayoutEffect } from "react";
+import { createPortal } from "react-dom";
 import { motion, AnimatePresence, type Variants } from "framer-motion";
 
 // First, create a type for the size options
@@ -28,6 +29,8 @@ export interface DialogProps {
   position?: "center" | "top";
   backdrop?: "none" | "blur" | "dark" | "darkBlur";
   animation?: "pop";
+  usePortal?: boolean;
+  portalSelector?: string;
 }
 
 const sizeClasses: Record<DialogSize, string> = {
@@ -89,6 +92,8 @@ export default function Dialog({
   position = "center",
   backdrop = "none",
   animation,
+  usePortal = false,
+  portalSelector,
 }: DialogProps) {
   useLayoutEffect(() => {
     if (isOpen) {
@@ -119,11 +124,18 @@ export default function Dialog({
     }
   }, [isOpen, onClose]);
 
-  return (
+  const useScopedPortal =
+    usePortal &&
+    typeof portalSelector === "string" &&
+    portalSelector.trim().length > 0 &&
+    portalSelector !== "body";
+  const positionClass = useScopedPortal ? "absolute" : "fixed";
+
+  const dialogMarkup = (
     <AnimatePresence>
       {isOpen && (
         <div
-          className={`fixed inset-0 z-50 flex items-center justify-center ${
+          className={`${positionClass} inset-0 z-50 flex items-center justify-center ${
             backdrop === "dark"
               ? "bg-black bg-opacity-70"
               : backdrop === "blur"
@@ -135,7 +147,7 @@ export default function Dialog({
         >
           {/* Backdrop */}
           <motion.div
-            className={`fixed inset-0 ${backdropClasses[backdrop]}`}
+            className={`${positionClass} inset-0 ${backdropClasses[backdrop]}`}
             onClick={onClose}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -144,7 +156,7 @@ export default function Dialog({
           />
 
           {/* Dialog position wrapper */}
-          <div className={`fixed inset-0 overflow-y-auto`}>
+          <div className={`${positionClass} inset-0 overflow-y-auto`}>
             <div
               className={`flex min-h-full justify-center p-4 ${positionClasses[position]}`}
             >
@@ -212,4 +224,19 @@ export default function Dialog({
       )}
     </AnimatePresence>
   );
+
+  if (!usePortal) {
+    return dialogMarkup;
+  }
+
+  if (typeof document === "undefined") {
+    return null;
+  }
+
+  const portalHost =
+    typeof portalSelector === "string" && portalSelector.trim().length > 0
+      ? document.querySelector(portalSelector)
+      : null;
+
+  return createPortal(dialogMarkup, portalHost ?? document.body);
 }

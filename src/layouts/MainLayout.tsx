@@ -55,7 +55,8 @@ const MainLayout = () => {
           />
         )}
         <main
-          className={`min-h-0 flex-1 transition-all duration-300 ${
+          id="admin-main-content"
+          className={`relative min-h-0 flex-1 transition-all duration-300 ${
             isSideNav
               ? `${isCollapsed ? "lg:ml-[92px]" : "lg:ml-[262px]"} overflow-hidden rounded-2xl border border-white/70 bg-white/70 shadow-[0_24px_60px_-36px_rgba(15,23,42,0.4)] backdrop-blur`
               : "no-scrollbar overflow-y-auto overflow-x-hidden bg-gray-50"
