@@ -48,13 +48,13 @@ export default function CategoryPage() {
 
   const [searchParams, setSearchParams] = useSearchParams();
   const [selectedStatus, setSelectedStatus] = useState<string>(
-    searchParams.get("status") || "" // No default filter
+    searchParams.get("status") || "", // No default filter
   );
   const [archiveStatus, setArchiveStatus] = useState<"only" | "none">(
-    (searchParams.get("archiveStatus") as "only" | "none") || "none"
+    (searchParams.get("archiveStatus") as "only" | "none") || "none",
   );
   const [searchTerm, setSearchTerm] = useState(
-    searchParams.get("search") || ""
+    searchParams.get("search") || "",
   );
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
 
@@ -130,7 +130,7 @@ export default function CategoryPage() {
   ];
 
   const categoryRows = useMemo(
-    () => ((data?.categories || []) as CategoryTableRow[]),
+    () => (data?.categories || []) as CategoryTableRow[],
     [data?.categories],
   );
 
@@ -157,7 +157,9 @@ export default function CategoryPage() {
         sortAccessor: (row) => row.name || "",
         filterAccessor: (row) => row.name || "",
         className: "min-w-[260px]",
-        render: (row) => <span className="font-semibold text-slate-900">{row.name}</span>,
+        render: (row) => (
+          <span className="font-semibold text-slate-900">{row.name}</span>
+        ),
       },
       {
         key: "status",
@@ -187,7 +189,8 @@ export default function CategoryPage() {
         filterable: true,
         filterPlaceholder: "Search date",
         sortAccessor: (row) => new Date(row.createdAt || 0).getTime(),
-        filterAccessor: (row) => new Date(row.createdAt || "").toLocaleDateString(),
+        filterAccessor: (row) =>
+          new Date(row.createdAt || "").toLocaleDateString(),
         className: "min-w-[170px]",
         render: (row) => (
           <span className="text-sm text-slate-600">
@@ -238,7 +241,6 @@ export default function CategoryPage() {
         <h1 className="text-3xl font-bold">Categories</h1>
         <HoverHelpTooltip
           text="Organize and manage your course categories."
-          
           className="shrink-0"
         />
       </div>
@@ -357,7 +359,9 @@ export default function CategoryPage() {
           description="Start by creating a category. Categories help organize your courses."
           colSpan={4}
           type="category"
-          isFiltered={Boolean(searchTerm || selectedStatus || archiveStatus !== "none")}
+          isFiltered={Boolean(
+            searchTerm || selectedStatus || archiveStatus !== "none",
+          )}
         />
       ) : (
         <GroupedDataTable

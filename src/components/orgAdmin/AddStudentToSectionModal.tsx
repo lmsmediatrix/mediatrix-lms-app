@@ -39,23 +39,24 @@ export default function AddStudentToSectionModal({
 
   const addStudentsToSection = useAddStudentsToSection();
 
-  const { data: studentsData, isLoading: isLoadingStudents } = useSearchStudents({
-    organizationId: currentUser?.user?.organization?._id,
-    searchTerm: debouncedSearchTerm,
-    filter:
-      selectedProgram !== "All Programs"
-        ? { key: "program", value: selectedProgram }
-        : { key: "role", value: "student" },
-    limit: 50,
-    archiveStatus: "none",
-  });
+  const { data: studentsData, isLoading: isLoadingStudents } =
+    useSearchStudents({
+      organizationId: currentUser?.user?.organization?._id,
+      searchTerm: debouncedSearchTerm,
+      filter:
+        selectedProgram !== "All Programs"
+          ? { key: "program", value: selectedProgram }
+          : { key: "role", value: "student" },
+      limit: 50,
+      archiveStatus: "none",
+    });
 
   const { data: programsData } = useProgramsForDropdown({
     organizationId: currentUser?.user?.organization?._id,
   });
 
   const students = (studentsData?.students || []).filter(
-    (student: IStudent) => !sectionStudentIds.includes(student._id)
+    (student: IStudent) => !sectionStudentIds.includes(student._id),
   );
   const totalStudents = students.length;
 
@@ -80,7 +81,7 @@ export default function AddStudentToSectionModal({
   useEffect(() => {
     if (students.length > 0) {
       const allSelected = students.every((student: IStudent) =>
-        selectedStudents.includes(student._id)
+        selectedStudents.includes(student._id),
       );
       setSelectAll(allSelected);
     }
@@ -103,9 +104,12 @@ export default function AddStudentToSectionModal({
             setSelectedProgram("All Programs");
           },
           onError: (error) => {
-            console.error(`Error adding ${learnerTerm.toLowerCase()}s to ${sectionTerm.toLowerCase()}:`, error);
+            console.error(
+              `Error adding ${learnerTerm.toLowerCase()}s to ${sectionTerm.toLowerCase()}:`,
+              error,
+            );
           },
-        }
+        },
       ),
       {
         pending: `Adding ${selectedStudents.length} ${learnerTerm}${
@@ -119,7 +123,7 @@ export default function AddStudentToSectionModal({
             return (data as { message: string }).message;
           },
         },
-      }
+      },
     );
   };
 
@@ -251,7 +255,7 @@ export default function AddStudentToSectionModal({
                   onClick={() =>
                     handleStudentSelect(
                       student._id,
-                      !selectedStudents.includes(student._id)
+                      !selectedStudents.includes(student._id),
                     )
                   }
                 >
@@ -324,7 +328,7 @@ export default function AddStudentToSectionModal({
             <div className="flex flex-wrap gap-2">
               {selectedStudents.map((studentId) => {
                 const student = students.find(
-                  (s: IStudent) => s._id === studentId
+                  (s: IStudent) => s._id === studentId,
                 );
                 if (!student) return null;
 

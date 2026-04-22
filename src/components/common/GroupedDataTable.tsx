@@ -237,7 +237,9 @@ export default function GroupedDataTable<T extends object>({
   const [filtersByGroup, setFiltersByGroup] = useState<
     Record<string, Record<string, string>>
   >({});
-  const [collapsedByGroup, setCollapsedByGroup] = useState<Record<string, boolean>>({});
+  const [collapsedByGroup, setCollapsedByGroup] = useState<
+    Record<string, boolean>
+  >({});
 
   useEffect(() => {
     setCollapsedByGroup((prev) => {
@@ -250,13 +252,19 @@ export default function GroupedDataTable<T extends object>({
   }, [groups, defaultGroupsCollapsed]);
 
   const getSortState = (groupKey: string) =>
-    sortByGroup[groupKey] || { key: firstSortableColumn, direction: "asc" as SortDirection };
+    sortByGroup[groupKey] || {
+      key: firstSortableColumn,
+      direction: "asc" as SortDirection,
+    };
 
   const getFiltersState = (groupKey: string) => filtersByGroup[groupKey] || {};
 
   const toggleSort = (groupKey: string, key: string) => {
     setSortByGroup((prev) => {
-      const current = prev[groupKey] || { key: firstSortableColumn, direction: "asc" as SortDirection };
+      const current = prev[groupKey] || {
+        key: firstSortableColumn,
+        direction: "asc" as SortDirection,
+      };
       if (current.key === key) {
         return {
           ...prev,
@@ -299,7 +307,9 @@ export default function GroupedDataTable<T extends object>({
       {groups.map((group) => {
         const sortState = getSortState(group.key);
         const groupFilters = getFiltersState(group.key);
-        const isCollapsed = collapsibleGroups ? Boolean(collapsedByGroup[group.key]) : false;
+        const isCollapsed = collapsibleGroups
+          ? Boolean(collapsedByGroup[group.key])
+          : false;
 
         const filteredRows = showColumnFilters
           ? group.rows.filter((row) =>
@@ -309,7 +319,9 @@ export default function GroupedDataTable<T extends object>({
                   return true;
                 }
                 const filterValue = (
-                  column.filterValue ?? groupFilters[column.key] ?? ""
+                  column.filterValue ??
+                  groupFilters[column.key] ??
+                  ""
                 )
                   .trim()
                   .toLowerCase();
@@ -344,9 +356,13 @@ export default function GroupedDataTable<T extends object>({
           if (typeof aValue === "number" && typeof bValue === "number") {
             comparison = aValue - bValue;
           } else {
-            comparison = String(aValue ?? "").localeCompare(String(bValue ?? ""), undefined, {
-              sensitivity: "base",
-            });
+            comparison = String(aValue ?? "").localeCompare(
+              String(bValue ?? ""),
+              undefined,
+              {
+                sensitivity: "base",
+              },
+            );
           }
 
           return sortState.direction === "asc" ? comparison : -comparison;
@@ -356,8 +372,12 @@ export default function GroupedDataTable<T extends object>({
         const totalPages = showPagination
           ? Math.max(1, Math.ceil(sortedRows.length / pageSize))
           : 1;
-        const currentPage = showPagination ? Math.min(requestedPage, totalPages) : 1;
-        const pageStartIndex = showPagination ? (currentPage - 1) * pageSize : 0;
+        const currentPage = showPagination
+          ? Math.min(requestedPage, totalPages)
+          : 1;
+        const pageStartIndex = showPagination
+          ? (currentPage - 1) * pageSize
+          : 0;
         const pagedRows = showPagination
           ? sortedRows.slice(pageStartIndex, pageStartIndex + pageSize)
           : sortedRows;
@@ -404,7 +424,9 @@ export default function GroupedDataTable<T extends object>({
                     aria-expanded={!isCollapsed}
                     aria-controls={`group-content-${group.key}`}
                   >
-                    <span className="text-sm font-semibold text-gray-800">{group.title}</span>
+                    <span className="text-sm font-semibold text-gray-800">
+                      {group.title}
+                    </span>
                     <span className="flex items-center gap-2">
                       {group.badgeText && (
                         <span
@@ -431,7 +453,9 @@ export default function GroupedDataTable<T extends object>({
                   </button>
                 ) : (
                   <>
-                    <span className="text-sm font-semibold text-gray-800">{group.title}</span>
+                    <span className="text-sm font-semibold text-gray-800">
+                      {group.title}
+                    </span>
                     {group.badgeText && (
                       <span
                         className="text-xs font-medium px-2.5 py-0.5 rounded-full border"
@@ -453,154 +477,195 @@ export default function GroupedDataTable<T extends object>({
             )}
 
             {!isCollapsed && (
-              <div id={`group-content-${group.key}`} className="bg-white overflow-x-auto">
+              <div
+                id={`group-content-${group.key}`}
+                className="bg-white overflow-x-auto"
+              >
                 <table className={`w-full ${tableMinWidthClassName}`}>
-                <thead>
-                  <tr
-                    className="border-b"
-                    style={{
-                      backgroundColor: "color-mix(in srgb, var(--color-primary, #3b82f6) 5%, white 95%)",
-                      borderColor: "color-mix(in srgb, var(--color-primary, #3b82f6) 12%, white 88%)",
-                    }}
-                  >
-                    {columns.map((column) => {
-                      const alignClass = column.align === "right" ? "text-right" : "text-left";
-                      return (
-                        <th
-                          key={column.key}
-                          className={`px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider ${alignClass} ${column.className || ""}`}
-                        >
-                          {column.sortable ? (
-                            <button
-                              type="button"
-                              onClick={() => toggleSort(group.key, column.key)}
-                              className="inline-flex items-center gap-1 hover:text-gray-700"
-                            >
-                              {column.label}
-                              <span className="text-[10px]">
-                                {getSortIndicator(
-                                  sortState.key,
-                                  sortState.direction,
-                                  column.key,
-                                )}
-                              </span>
-                            </button>
-                          ) : (
-                            column.label
-                          )}
-                        </th>
-                      );
-                    })}
-                  </tr>
-                  {showColumnFilters && (
+                  <thead>
                     <tr
                       className="border-b"
                       style={{
-                        borderColor: "color-mix(in srgb, var(--color-primary, #3b82f6) 8%, white 92%)",
-                        backgroundColor: "white",
+                        backgroundColor:
+                          "color-mix(in srgb, var(--color-primary, #3b82f6) 5%, white 95%)",
+                        borderColor:
+                          "color-mix(in srgb, var(--color-primary, #3b82f6) 12%, white 88%)",
                       }}
                     >
                       {columns.map((column) => {
-                        const alignClass = column.align === "right" ? "text-right" : "text-left";
+                        const alignClass =
+                          column.align === "right" ? "text-right" : "text-left";
                         return (
-                          <th key={`${column.key}-search`} className={`px-5 py-2 ${alignClass}`}>
-                            {column.filterable ? (
-                              column.filterVariant === "select" ? (
-                                <TableFilterSelect
-                                  value={column.filterValue ?? groupFilters[column.key] ?? ""}
-                                  options={column.filterOptions || []}
-                                  placeholder={
-                                    column.filterSelectAllLabel ||
-                                    column.filterPlaceholder ||
-                                    `All ${column.label}`
-                                  }
-                                  onChange={(nextValue) => {
-                                    if (column.onFilterChange) {
-                                      column.onFilterChange(nextValue);
-                                    }
-                                    if (column.filterValue === undefined) {
-                                      updateFilter(group.key, column.key, nextValue);
-                                    }
-                                  }}
-                                />
-                              ) : (
-                                <input
-                                  type="text"
-                                  value={column.filterValue ?? groupFilters[column.key] ?? ""}
-                                  onChange={(e) => {
-                                    const nextValue = e.target.value;
-                                    if (column.onFilterChange) {
-                                      column.onFilterChange(nextValue);
-                                    }
-                                    if (column.filterValue === undefined) {
-                                      updateFilter(group.key, column.key, nextValue);
-                                    }
-                                  }}
-                                  placeholder={column.filterPlaceholder || `Search ${column.label.toLowerCase()}`}
-                                  className="w-full rounded-lg border border-gray-200 px-3 py-1.5 text-xs text-gray-700 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/20"
-                                />
-                              )
-                            ) : null}
+                          <th
+                            key={column.key}
+                            className={`px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider ${alignClass} ${column.className || ""}`}
+                          >
+                            {column.sortable ? (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  toggleSort(group.key, column.key)
+                                }
+                                className="inline-flex items-center gap-1 hover:text-gray-700"
+                              >
+                                {column.label}
+                                <span className="text-[10px]">
+                                  {getSortIndicator(
+                                    sortState.key,
+                                    sortState.direction,
+                                    column.key,
+                                  )}
+                                </span>
+                              </button>
+                            ) : (
+                              column.label
+                            )}
                           </th>
                         );
                       })}
                     </tr>
-                  )}
-                </thead>
-
-                <tbody
-                  className="divide-y"
-                  style={{
-                    borderColor: "color-mix(in srgb, var(--color-primary, #3b82f6) 8%, white 92%)",
-                  }}
-                >
-                  {pagedRows.length === 0 ? (
-                    <tr>
-                      <td
-                        colSpan={columns.length}
-                        className="px-5 py-8 text-center text-sm text-gray-500"
-                      >
-                        {emptyFilteredText}
-                      </td>
-                    </tr>
-                  ) : (
-                    pagedRows.map((row, index) => (
+                    {showColumnFilters && (
                       <tr
-                        key={rowKey(row, index)}
-                        className={`transition-colors hover:brightness-[0.98] ${onRowClick ? "cursor-pointer" : ""}`}
-                        style={{ backgroundColor: "white" }}
-                        onClick={(event) => triggerRowClick(row, event)}
-                        onKeyDown={(event) => {
-                          if (event.key === "Enter" || event.key === " ") {
-                            event.preventDefault();
-                            triggerRowClick(row, event);
-                          }
+                        className="border-b"
+                        style={{
+                          borderColor:
+                            "color-mix(in srgb, var(--color-primary, #3b82f6) 8%, white 92%)",
+                          backgroundColor: "white",
                         }}
-                        tabIndex={onRowClick ? 0 : undefined}
-                        onMouseEnter={(e) =>
-                          ((e.currentTarget as HTMLTableRowElement).style.backgroundColor =
-                            "color-mix(in srgb, var(--color-primary, #3b82f6) 4%, white 96%)")
-                        }
-                        onMouseLeave={(e) =>
-                          ((e.currentTarget as HTMLTableRowElement).style.backgroundColor =
-                            "white")
-                        }
                       >
                         {columns.map((column) => {
-                          const alignClass = column.align === "right" ? "text-right" : "text-left";
+                          const alignClass =
+                            column.align === "right"
+                              ? "text-right"
+                              : "text-left";
                           return (
-                            <td
-                              key={`${rowKey(row, index)}-${column.key}`}
-                              className={`px-5 py-4 ${alignClass} ${column.className || ""}`}
+                            <th
+                              key={`${column.key}-search`}
+                              className={`px-5 py-2 ${alignClass}`}
                             >
-                              {column.render(row)}
-                            </td>
+                              {column.filterable ? (
+                                column.filterVariant === "select" ? (
+                                  <TableFilterSelect
+                                    value={
+                                      column.filterValue ??
+                                      groupFilters[column.key] ??
+                                      ""
+                                    }
+                                    options={column.filterOptions || []}
+                                    placeholder={
+                                      column.filterSelectAllLabel ||
+                                      column.filterPlaceholder ||
+                                      `All ${column.label}`
+                                    }
+                                    onChange={(nextValue) => {
+                                      if (column.onFilterChange) {
+                                        column.onFilterChange(nextValue);
+                                      }
+                                      if (column.filterValue === undefined) {
+                                        updateFilter(
+                                          group.key,
+                                          column.key,
+                                          nextValue,
+                                        );
+                                      }
+                                    }}
+                                  />
+                                ) : (
+                                  <input
+                                    type="text"
+                                    value={
+                                      column.filterValue ??
+                                      groupFilters[column.key] ??
+                                      ""
+                                    }
+                                    onChange={(e) => {
+                                      const nextValue = e.target.value;
+                                      if (column.onFilterChange) {
+                                        column.onFilterChange(nextValue);
+                                      }
+                                      if (column.filterValue === undefined) {
+                                        updateFilter(
+                                          group.key,
+                                          column.key,
+                                          nextValue,
+                                        );
+                                      }
+                                    }}
+                                    placeholder={
+                                      column.filterPlaceholder ||
+                                      `Search ${column.label.toLowerCase()}`
+                                    }
+                                    className="w-full rounded-lg border border-gray-200 px-3 py-1.5 text-xs text-gray-700 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/20"
+                                  />
+                                )
+                              ) : null}
+                            </th>
                           );
                         })}
                       </tr>
-                    ))
-                  )}
-                </tbody>
+                    )}
+                  </thead>
+
+                  <tbody
+                    className="divide-y"
+                    style={{
+                      borderColor:
+                        "color-mix(in srgb, var(--color-primary, #3b82f6) 8%, white 92%)",
+                    }}
+                  >
+                    {pagedRows.length === 0 ? (
+                      <tr>
+                        <td
+                          colSpan={columns.length}
+                          className="px-5 py-8 text-center text-sm text-gray-500"
+                        >
+                          {emptyFilteredText}
+                        </td>
+                      </tr>
+                    ) : (
+                      pagedRows.map((row, index) => (
+                        <tr
+                          key={rowKey(row, index)}
+                          className={`transition-colors hover:brightness-[0.98] ${onRowClick ? "cursor-pointer" : ""}`}
+                          style={{ backgroundColor: "white" }}
+                          onClick={(event) => triggerRowClick(row, event)}
+                          onKeyDown={(event) => {
+                            if (event.key === "Enter" || event.key === " ") {
+                              event.preventDefault();
+                              triggerRowClick(row, event);
+                            }
+                          }}
+                          tabIndex={onRowClick ? 0 : undefined}
+                          onMouseEnter={(e) =>
+                            ((
+                              e.currentTarget as HTMLTableRowElement
+                            ).style.backgroundColor =
+                              "color-mix(in srgb, var(--color-primary, #3b82f6) 4%, white 96%)")
+                          }
+                          onMouseLeave={(e) =>
+                            ((
+                              e.currentTarget as HTMLTableRowElement
+                            ).style.backgroundColor = "white")
+                          }
+                        >
+                          {columns.map((column) => {
+                            const alignClass =
+                              column.align === "right"
+                                ? "text-right"
+                                : "text-left";
+                            return (
+                              <td
+                                key={`${rowKey(row, index)}-${column.key}`}
+                                className={`px-5 py-4 ${alignClass} ${column.className || ""}`}
+                              >
+                                {column.render(row)}
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
                 </table>
               </div>
             )}

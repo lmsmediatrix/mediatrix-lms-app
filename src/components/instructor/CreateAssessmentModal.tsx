@@ -1,4 +1,9 @@
-import { FaDownload, FaLightbulb, FaPlus, FaRegMinusSquare } from "react-icons/fa";
+import {
+  FaDownload,
+  FaLightbulb,
+  FaPlus,
+  FaRegMinusSquare,
+} from "react-icons/fa";
 import Button from "../common/Button";
 import Dialog from "../common/Dialog";
 import { AiOutlineDelete, AiOutlineEdit } from "react-icons/ai";
@@ -179,7 +184,9 @@ export default function CreateAssessmentModal({
   const isLessonPreselected =
     !isEditMode &&
     !!prefilledLessonId &&
-    availableLessons.some((lesson: { _id: string }) => lesson._id === prefilledLessonId);
+    availableLessons.some(
+      (lesson: { _id: string }) => lesson._id === prefilledLessonId,
+    );
   const isModuleAssessmentDraft = Boolean(prefillData?.moduleId);
   const draftKey = `assessment-draft-${sectionId || sectionCode}`;
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
@@ -254,7 +261,8 @@ export default function CreateAssessmentModal({
   }, [questionsList, setValue]);
 
   useEffect(() => {
-    if (!isOpen || isEditMode || !isLessonPreselected || !prefilledLessonId) return;
+    if (!isOpen || isEditMode || !isLessonPreselected || !prefilledLessonId)
+      return;
     setValue("lesson", prefilledLessonId, {
       shouldDirty: true,
       shouldValidate: true,
@@ -294,7 +302,9 @@ export default function CreateAssessmentModal({
         prefillData.questionsToDisplay || prefillData.questions?.length || 1,
     });
 
-    setQuestionsList(Array.isArray(prefillData.questions) ? prefillData.questions : []);
+    setQuestionsList(
+      Array.isArray(prefillData.questions) ? prefillData.questions : [],
+    );
     setCsvFile(null);
   }, [isOpen, isEditMode, prefillData, reset]);
 
@@ -308,7 +318,9 @@ export default function CreateAssessmentModal({
       reset({
         title: data.title,
         lesson: selectedLessonId || "",
-        assessmentType: normalizeAssessmentType(data.assessmentType || data.type),
+        assessmentType: normalizeAssessmentType(
+          data.assessmentType || data.type,
+        ),
         startDate: new Date(data.startDate || data.dueDate)
           .toISOString()
           .split("T")[0],
@@ -346,15 +358,20 @@ export default function CreateAssessmentModal({
   }, [data, isPending, reset]);
 
   const onSubmit = async (data: AssignmentFormData) => {
-    if (data.gradeMethod === "auto" && questionsList.some((q) => q.type === "essay")) {
+    if (
+      data.gradeMethod === "auto" &&
+      questionsList.some((q) => q.type === "essay")
+    ) {
       toast.error(
-        "Automatically Graded assessments cannot include essay questions. Switch to Manually or Mixed grading, or remove the essay question(s)."
+        "Automatically Graded assessments cannot include essay questions. Switch to Manually or Mixed grading, or remove the essay question(s).",
       );
       return;
     }
 
     if (!resolvedSectionId) {
-      toast.error("Section ID is missing. Please reopen this section and try again.");
+      toast.error(
+        "Section ID is missing. Please reopen this section and try again.",
+      );
       return;
     }
 
@@ -580,11 +597,19 @@ export default function CreateAssessmentModal({
                 }
               >
                 <option value="">Select lesson</option>
-                {availableLessons.map((lesson: { _id: string; title: string; moduleTitle?: string }) => (
-                  <option key={lesson._id} value={lesson._id}>
-                    {lesson.moduleTitle ? `${lesson.moduleTitle} - ${lesson.title}` : lesson.title}
-                  </option>
-                ))}
+                {availableLessons.map(
+                  (lesson: {
+                    _id: string;
+                    title: string;
+                    moduleTitle?: string;
+                  }) => (
+                    <option key={lesson._id} value={lesson._id}>
+                      {lesson.moduleTitle
+                        ? `${lesson.moduleTitle} - ${lesson.title}`
+                        : lesson.title}
+                    </option>
+                  ),
+                )}
               </select>
               {errors.lesson && (
                 <p className="mt-1 text-sm text-red-600">
@@ -593,7 +618,8 @@ export default function CreateAssessmentModal({
               )}
               {availableLessons.length === 0 && (
                 <p className="mt-1 text-sm text-amber-700">
-                  Add at least one lesson in this section before creating an assessment.
+                  Add at least one lesson in this section before creating an
+                  assessment.
                 </p>
               )}
               {isModuleAssessmentDraft && (

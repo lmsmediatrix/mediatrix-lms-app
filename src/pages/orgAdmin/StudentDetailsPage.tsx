@@ -106,7 +106,8 @@ function SectionsDisplayGeneric({
           <span>{sectionTerm} Enrollments</span>
         </h3>
         <p className="text-gray-600 text-sm mb-4">
-          No active {sectionTerm.toLowerCase()} enrollments for this {learnerTerm.toLowerCase()}.
+          No active {sectionTerm.toLowerCase()} enrollments for this{" "}
+          {learnerTerm.toLowerCase()}.
         </p>
         <Button variant="outline" onClick={onManageEnrollments}>
           Manage Enrollments
@@ -130,7 +131,7 @@ function SectionsDisplayGeneric({
       {sections.map((section: Section) => {
         const totalLessons = (section.modules || []).reduce(
           (sum: number, module: Module) => sum + (module.lessons?.length || 0),
-          0
+          0,
         );
         const enrollmentStatus = section.status
           ? section.status.charAt(0).toUpperCase() + section.status.slice(1)
@@ -149,8 +150,12 @@ function SectionsDisplayGeneric({
           >
             <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-3">
               <div>
-                <h4 className="text-lg font-semibold text-gray-800">{section.name}</h4>
-                <p className="text-xs text-gray-500 mt-1">{section.code || "No Code"}</p>
+                <h4 className="text-lg font-semibold text-gray-800">
+                  {section.name}
+                </h4>
+                <p className="text-xs text-gray-500 mt-1">
+                  {section.code || "No Code"}
+                </p>
               </div>
               <span className="text-xs font-medium px-2.5 py-1 rounded bg-blue-100 text-blue-700 w-fit">
                 {enrollmentStatus}
@@ -163,7 +168,9 @@ function SectionsDisplayGeneric({
               </div>
               <div>
                 <p className="text-gray-500">Course</p>
-                <p className="font-medium text-gray-800">{section.course?.title || "N/A"}</p>
+                <p className="font-medium text-gray-800">
+                  {section.course?.title || "N/A"}
+                </p>
               </div>
               <div>
                 <p className="text-gray-500">Start Date</p>
@@ -174,9 +181,13 @@ function SectionsDisplayGeneric({
                 <p className="font-medium text-gray-800">{scheduleEnd}</p>
               </div>
             </div>
-            <p className="text-xs text-gray-500 mt-3">{totalLessons} lessons assigned</p>
+            <p className="text-xs text-gray-500 mt-3">
+              {totalLessons} lessons assigned
+            </p>
             {section.course?.description && (
-              <p className="text-sm text-gray-600 mt-2">{section.course.description}</p>
+              <p className="text-sm text-gray-600 mt-2">
+                {section.course.description}
+              </p>
             )}
           </div>
         );
@@ -200,15 +211,19 @@ export default function StudentDetailsPage() {
   const [activeTab, setActiveTab] = useState<ProfileTab>("overview");
   const [isArchiveModalOpen, setIsArchiveModalOpen] = useState(false);
 
-  const { data: sectionsData, isPending: isSectionsPending } = useStudentSections({
-    studentId,
-  });
+  const { data: sectionsData, isPending: isSectionsPending } =
+    useStudentSections({
+      studentId,
+    });
   const sections: Section[] = sectionsData?.sections || [];
 
   if (isPending) return <ProfilePageSkeleton />;
 
   const userData = data?.data as IStudent | undefined;
-  const isArchived = Boolean((userData as IStudent & { archive?: { status?: boolean } })?.archive?.status);
+  const isArchived = Boolean(
+    (userData as IStudent & { archive?: { status?: boolean } })?.archive
+      ?.status,
+  );
   const statusText = isArchived
     ? "Archived"
     : userData?.status
@@ -349,7 +364,7 @@ export default function StudentDetailsPage() {
     uniqueCourseCount: new Set(
       sections
         .map((section) => section.course?._id)
-        .filter((courseId): courseId is string => Boolean(courseId))
+        .filter((courseId): courseId is string => Boolean(courseId)),
     ).size,
   };
 
@@ -368,7 +383,6 @@ export default function StudentDetailsPage() {
             <h1 className="text-3xl font-bold">{learnerTerm} Details</h1>
             <HoverHelpTooltip
               text={`View ${learnerTerm.toLowerCase()} account information`}
-              
               className="shrink-0"
             />
           </div>
@@ -493,20 +507,32 @@ export default function StudentDetailsPage() {
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="rounded-lg border border-gray-200 p-4">
-                  <p className="text-xs text-gray-500 mb-1">{sectionTerm}s Enrolled</p>
-                  <p className="text-2xl font-semibold text-gray-800">{metrics.enrolledCount}</p>
+                  <p className="text-xs text-gray-500 mb-1">
+                    {sectionTerm}s Enrolled
+                  </p>
+                  <p className="text-2xl font-semibold text-gray-800">
+                    {metrics.enrolledCount}
+                  </p>
                 </div>
                 <div className="rounded-lg border border-gray-200 p-4">
-                  <p className="text-xs text-gray-500 mb-1">Completed Enrollments</p>
-                  <p className="text-2xl font-semibold text-gray-800">{metrics.completedCount}</p>
+                  <p className="text-xs text-gray-500 mb-1">
+                    Completed Enrollments
+                  </p>
+                  <p className="text-2xl font-semibold text-gray-800">
+                    {metrics.completedCount}
+                  </p>
                 </div>
                 <div className="rounded-lg border border-gray-200 p-4">
                   <p className="text-xs text-gray-500 mb-1">Courses Assigned</p>
-                  <p className="text-2xl font-semibold text-gray-800">{metrics.uniqueCourseCount}</p>
+                  <p className="text-2xl font-semibold text-gray-800">
+                    {metrics.uniqueCourseCount}
+                  </p>
                 </div>
                 <div className="rounded-lg border border-gray-200 p-4">
                   <p className="text-xs text-gray-500 mb-1">Lessons Assigned</p>
-                  <p className="text-2xl font-semibold text-gray-800">{metrics.lessonCount}</p>
+                  <p className="text-2xl font-semibold text-gray-800">
+                    {metrics.lessonCount}
+                  </p>
                 </div>
               </div>
             )}
@@ -515,9 +541,12 @@ export default function StudentDetailsPage() {
 
         {activeTab === "settings" && (
           <div className="p-6 border-t border-gray-100">
-            <h3 className="text-base font-medium text-gray-800 mb-2">Administrative Actions</h3>
+            <h3 className="text-base font-medium text-gray-800 mb-2">
+              Administrative Actions
+            </h3>
             <p className="text-sm text-gray-600 mb-4">
-              Manage enrollments, review performance, and control account status.
+              Manage enrollments, review performance, and control account
+              status.
             </p>
             <div className="flex flex-wrap gap-2">
               <Button
@@ -528,7 +557,9 @@ export default function StudentDetailsPage() {
               </Button>
               <Button
                 variant="outline"
-                onClick={() => navigate(`/${orgCode}/admin/performance/${studentId}`)}
+                onClick={() =>
+                  navigate(`/${orgCode}/admin/performance/${studentId}`)
+                }
               >
                 View Performance
               </Button>
@@ -542,7 +573,8 @@ export default function StudentDetailsPage() {
             </div>
             {!isArchived && (
               <p className="text-xs text-gray-500 mt-3">
-                Archiving will show section/batch impact and automatically detach active enrollments while preserving historical records.
+                Archiving will show section/batch impact and automatically
+                detach active enrollments while preserving historical records.
               </p>
             )}
           </div>

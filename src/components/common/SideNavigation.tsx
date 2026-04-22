@@ -6,10 +6,7 @@ import { SettingsIcon } from "@/components/ui/settings-icon";
 import { LogoutIcon } from "@/components/ui/logout-icon";
 import { PanelLeft } from "@/components/ui/panel-left";
 import { IoEllipsisVerticalSharp } from "react-icons/io5";
-import {
-  MdKeyboardArrowDown,
-  MdKeyboardArrowRight,
-} from "react-icons/md";
+import { MdKeyboardArrowDown, MdKeyboardArrowRight } from "react-icons/md";
 import { IoClose } from "react-icons/io5";
 import { useAuth } from "../../context/AuthContext";
 import { BASE_NAVIGATION } from "../../config/common";
@@ -79,7 +76,9 @@ function AnimatedNavIcon({
   >;
 
   return (
-    <span className={`shrink-0 transition-colors ${isActive ? "text-primary" : "text-gray-500"}`}>
+    <span
+      className={`shrink-0 transition-colors ${isActive ? "text-primary" : "text-gray-500"}`}
+    >
       {isRefCompatible ? (
         <IconWithRef ref={iconRef} size={size} />
       ) : (
@@ -114,7 +113,9 @@ function NavLinkItem({
       to={path}
       className={({ isActive }) =>
         `flex items-center gap-3 px-4 py-2 text-base rounded-lg transition-all ${
-          isActive ? "bg-gray-100 gap-4" : "text-gray-600 hover:bg-gray-100 hover:gap-4"
+          isActive
+            ? "bg-gray-100 gap-4"
+            : "text-gray-600 hover:bg-gray-100 hover:gap-4"
         } ${isSubmenu && (!isCollapsed || isMobileMenuOpen) ? "pl-4" : ""} ${
           isCollapsed && !isMobileMenuOpen ? "justify-center" : ""
         }`
@@ -127,7 +128,11 @@ function NavLinkItem({
       {({ isActive }) => (
         <>
           {item.ICON && !isSubmenu && (
-            <AnimatedNavIcon Icon={item.ICON} isHovered={isHovered} isActive={isActive} />
+            <AnimatedNavIcon
+              Icon={item.ICON}
+              isHovered={isHovered}
+              isActive={isActive}
+            />
           )}
           <AnimatePresence>
             {(!isCollapsed || isMobileMenuOpen) && (
@@ -244,7 +249,9 @@ export default function SideNavigation({
     role !== "SUPERADMIN" ? currentUser?.user.organization.type : undefined;
 
   const learnerTerm = orgType ? getTerm("learner", orgType) : "Student";
-  const groupTermPlural = orgType ? getTerm("group", orgType, true) : "Sections";
+  const groupTermPlural = orgType
+    ? getTerm("group", orgType, true)
+    : "Sections";
   const performancePath =
     role === "ADMIN" && code
       ? `/${code}/admin/performance-system`
@@ -259,7 +266,7 @@ export default function SideNavigation({
       setOpenMenus((prev) =>
         prev.includes(label)
           ? prev.filter((item) => item !== label)
-          : [...prev, label]
+          : [...prev, label],
       );
     }
   };
@@ -267,8 +274,7 @@ export default function SideNavigation({
   const transformItem = (item: NavItem) => {
     let displayName = item.LABEL;
     if (orgType === "corporate") {
-      if (item.LABEL === "Student")
-        displayName = learnerTerm;
+      if (item.LABEL === "Student") displayName = learnerTerm;
       if (item.LABEL === "Student Database")
         displayName = `${learnerTerm} Database`;
       if (item.LABEL === "Sections" || item.LABEL === "My Sections")
@@ -277,45 +283,48 @@ export default function SideNavigation({
     return { displayName };
   };
 
-  const renderNavItem = useCallback((item: NavItem, isSubmenu = false) => {
-    const isOpen = openMenus.includes(item.LABEL);
-    const { displayName } = transformItem(item);
-    const path = item.PATH
-      ? role !== "SUPERADMIN" && code && item.PATH.includes(":code")
-        ? item.PATH.replace(":code", code)
-        : item.PATH
-      : "#";
+  const renderNavItem = useCallback(
+    (item: NavItem, isSubmenu = false) => {
+      const isOpen = openMenus.includes(item.LABEL);
+      const { displayName } = transformItem(item);
+      const path = item.PATH
+        ? role !== "SUPERADMIN" && code && item.PATH.includes(":code")
+          ? item.PATH.replace(":code", code)
+          : item.PATH
+        : "#";
 
-    if (item.SUBMENU && !item.PATH) {
+      if (item.SUBMENU && !item.PATH) {
+        return (
+          <NavMenuButton
+            key={item.LABEL}
+            item={item}
+            displayName={displayName}
+            isOpen={isOpen}
+            isCollapsed={isCollapsed}
+            isMobileMenuOpen={isMobileMenuOpen}
+            onToggle={() => toggleSubmenu(item.LABEL)}
+          >
+            {item.SUBMENU.map((subItem) => renderNavItem(subItem, true))}
+          </NavMenuButton>
+        );
+      }
+
       return (
-        <NavMenuButton
-          key={item.LABEL}
+        <NavLinkItem
+          key={path}
           item={item}
+          path={path}
           displayName={displayName}
-          isOpen={isOpen}
+          isSubmenu={isSubmenu}
           isCollapsed={isCollapsed}
           isMobileMenuOpen={isMobileMenuOpen}
-          onToggle={() => toggleSubmenu(item.LABEL)}
-        >
-          {item.SUBMENU.map((subItem) => renderNavItem(subItem, true))}
-        </NavMenuButton>
+          onClose={() => setIsMobileMenuOpen(false)}
+        />
       );
-    }
-
-    return (
-      <NavLinkItem
-        key={path}
-        item={item}
-        path={path}
-        displayName={displayName}
-        isSubmenu={isSubmenu}
-        isCollapsed={isCollapsed}
-        isMobileMenuOpen={isMobileMenuOpen}
-        onClose={() => setIsMobileMenuOpen(false)}
-      />
-    );
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [openMenus, isCollapsed, isMobileMenuOpen, role, code, orgType]);
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    },
+    [openMenus, isCollapsed, isMobileMenuOpen, role, code, orgType],
+  );
 
   const navigateToHome = () => {
     const homePath =
@@ -418,7 +427,7 @@ export default function SideNavigation({
                 subItem.LABEL !== "Batch" &&
                 subItem.LABEL !== "Skill and Role" &&
                 subItem.LABEL !== "Training Needs" &&
-                subItem.LABEL !== "TNA Execution"
+                subItem.LABEL !== "TNA Execution",
             );
 
             if (schoolSubmenu.length === 0 && !item.PATH) {
@@ -430,7 +439,7 @@ export default function SideNavigation({
 
           const filteredSubmenu = item.SUBMENU.filter(
             (subItem: NavItem) =>
-              subItem.LABEL !== "Category" && subItem.LABEL !== "Faculty"
+              subItem.LABEL !== "Category" && subItem.LABEL !== "Faculty",
           );
 
           if (filteredSubmenu.length === 0 && !item.PATH) {
