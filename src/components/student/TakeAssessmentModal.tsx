@@ -14,8 +14,12 @@ export default function TakeAssessmentModal() {
 
   const assessmentId = searchParams.get("id");
   const { data: assessment, isPending } = useGetTakeAssessment(
-    assessmentId ? assessmentId : ""
+    assessmentId ? assessmentId : "",
   );
+
+  if (!assessmentId) {
+    return null;
+  }
 
   if (isPending) {
     return (
@@ -68,15 +72,39 @@ export default function TakeAssessmentModal() {
     );
   }
 
+  if (!assessment) {
+    return (
+      <Dialog
+        title="Assessment Unavailable"
+        backdrop="dark"
+        isOpen={!!assessmentId}
+        onClose={() => setSearchParams({ tab: "assessments" })}
+        size="full"
+        contentClassName="w-full md:w-[35vw] md:min-w-[450px]"
+      >
+        <p className="text-sm text-gray-700">
+          Unable to load this assessment right now.
+        </p>
+        <div className="flex justify-end gap-4 mt-6">
+          <Button
+            variant="cancel"
+            onClick={() => setSearchParams({ tab: "assessments" })}
+          >
+            Close
+          </Button>
+        </div>
+      </Dialog>
+    );
+  }
+
   const orgCode = currentUser.user.organization.code;
   const currentDate = new Date();
   const dueDate = new Date(assessment.endDate);
   const trimTime = (date: Date) => {
-  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
-};
+    return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  };
 
-const isAvailable = trimTime(currentDate) <= trimTime(dueDate);
-
+  const isAvailable = trimTime(currentDate) <= trimTime(dueDate);
 
   return (
     <Dialog
@@ -169,7 +197,7 @@ const isAvailable = trimTime(currentDate) <= trimTime(dueDate);
           variant="primary"
           onClick={() =>
             navigate(
-              `/${orgCode}/student/sections/${sectionCode}/assessment/${assessment._id}`
+              `/${orgCode}/student/sections/${sectionCode}/assessment/${assessment._id}`,
             )
           }
           disabled={assessment.remainingAttempts === 0 || !isAvailable}

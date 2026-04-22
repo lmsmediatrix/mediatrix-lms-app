@@ -10,34 +10,43 @@ import {
   type IconProps,
 } from '@/components/animate-ui/icons/icon';
 
-type TrashProps = IconProps<keyof typeof animations>;
+type PanelLeftProps = IconProps<keyof typeof animations>;
 
 const animations = {
   default: {
-    group: {
+    path1: {},
+    path2: {
       initial: {
-        y: 0,
+        x: 0,
       },
       animate: {
-        y: -1,
+        x: [-1, 0, -1],
         transition: {
-          duration: 0.3,
+          duration: 0.35,
           ease: 'easeInOut',
         },
       },
     },
-    path1: {},
-    path2: {},
     path3: {
       initial: {
-        y: 0,
-        d: 'M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6',
+        x: 0,
       },
       animate: {
-        y: 1,
-        d: 'M19 8v12c0 1-1 2-2 2H7c-1 0-2-1-2-2V8',
+        x: [-1, 0, -1],
         transition: {
-          duration: 0.3,
+          duration: 0.35,
+          ease: 'easeInOut',
+        },
+      },
+    },
+    path4: {
+      initial: {
+        x: 0,
+      },
+      animate: {
+        x: [-0.5, 0, -0.5],
+        transition: {
+          duration: 0.35,
           ease: 'easeInOut',
         },
       },
@@ -45,7 +54,7 @@ const animations = {
   } satisfies Record<string, Variants>,
 } as const;
 
-const IconComponent = React.forwardRef<SVGSVGElement, TrashProps>(
+const IconComponent = React.forwardRef<SVGSVGElement, PanelLeftProps>(
   ({ size, ...props }, ref) => {
     const { controls } = useAnimateIconContext();
     const variants = getVariants(animations);
@@ -59,28 +68,32 @@ const IconComponent = React.forwardRef<SVGSVGElement, TrashProps>(
         viewBox="0 0 24 24"
         fill="none"
         stroke="currentColor"
-        strokeWidth={2}
+        strokeWidth={2.4}
         strokeLinecap="round"
         strokeLinejoin="round"
         {...props}
       >
-        <motion.g variants={variants.group} initial="initial" animate={controls}>
-          <motion.path
-            d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"
-            variants={variants.path1}
-            initial="initial"
-            animate={controls}
-          />
-          <motion.path
-            d="M3 6h18"
-            variants={variants.path2}
-            initial="initial"
-            animate={controls}
-          />
-        </motion.g>
         <motion.path
-          d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"
+          d="M3 5c0-1.1.9-2 2-2h14c1.1 0 2 .9 2 2v14c0 1.1-.9 2-2 2H5c-1.1 0-2-.9-2-2z"
+          variants={variants.path1}
+          initial="initial"
+          animate={controls}
+        />
+        <motion.path
+          d="M9 3v18"
+          variants={variants.path2}
+          initial="initial"
+          animate={controls}
+        />
+        <motion.path
+          d="M5 9h2"
           variants={variants.path3}
+          initial="initial"
+          animate={controls}
+        />
+        <motion.path
+          d="M5 15h2"
+          variants={variants.path4}
           initial="initial"
           animate={controls}
         />
@@ -89,16 +102,16 @@ const IconComponent = React.forwardRef<SVGSVGElement, TrashProps>(
   },
 );
 
-IconComponent.displayName = 'TrashIconComponent';
+IconComponent.displayName = 'PanelLeftIconComponent';
 
-function Trash(props: TrashProps) {
+function PanelLeft(props: PanelLeftProps) {
   return <IconWrapper icon={IconComponent} {...props} />;
 }
 
 export {
   animations,
-  Trash,
-  Trash as TrashIcon,
-  type TrashProps,
-  type TrashProps as TrashIconProps,
+  PanelLeft,
+  PanelLeft as PanelLeftIcon,
+  type PanelLeftProps,
+  type PanelLeftProps as PanelLeftIconProps,
 };

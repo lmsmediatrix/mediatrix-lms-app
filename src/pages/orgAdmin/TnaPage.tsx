@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "react-toastify";
+import { z } from "zod";
 import Button from "../../components/common/Button";
 import GroupedDataTable, {
   GroupedTableColumn,
   GroupedTableGroup,
 } from "../../components/common/GroupedDataTable";
+import HoverHelpTooltip from "../../components/common/HoverHelpTooltip";
 import { SearchableSelect } from "../../components/SearchableSelect";
 import { useAuth } from "../../context/AuthContext";
 import { useCourses } from "../../hooks/useCourse";
@@ -26,10 +28,19 @@ type ComplianceRow = { title: string; courseId: string; mandatory: boolean };
 type RecommendationStatus = "pending" | "assigned" | "completed";
 type TrainingProgressStatus = "pending" | "in_progress" | "completed";
 type StepKey = "employee-skills" | "analyze" | "recommendations";
-type PrefillEmployeeSkill = { skillId?: string; skillName?: string; level?: number };
+type PrefillEmployeeSkill = {
+  skillId?: string;
+  skillName?: string;
+  level?: number;
+};
 type RecommendationRow = {
   _id: string;
-  employee?: { _id?: string; firstName?: string; lastName?: string; email?: string };
+  employee?: {
+    _id?: string;
+    firstName?: string;
+    lastName?: string;
+    email?: string;
+  };
   jobRole?: string;
   createdAt?: string;
   updatedAt?: string;
@@ -55,14 +66,18 @@ const FLOW_STEPS: Array<{
   {
     key: "analyze",
     title: "Run TNA Analysis",
-    description: "Compare gaps and include test, manager, compliance, and request signals.",
+    description:
+      "Compare gaps and include test, manager, compliance, and request signals.",
   },
   {
     key: "recommendations",
     title: "Track Recommendations",
-    description: "Review recommendations and move their status to assigned/completed.",
+    description:
+      "Review recommendations and move their status to assigned/completed.",
   },
 ];
+
+const TNA_ACTIVE_STEP_STORAGE_KEY = "tna_active_step";
 
 const STEP_GUIDANCE: Record<
   StepKey,
@@ -104,6 +119,53 @@ const parseList = (value: string): string[] =>
     .map((item) => item.trim())
     .filter(Boolean);
 
+const skillPayloadSchema = z.object({
+  skillId: z.string().trim().min(1, "Skill is required"),
+  currentLevel: z.number().min(0).max(5),
+});
+
+const saveEmployeeSkillsFormSchema = z.object({
+  employeeId: z.string().trim().min(1, "Employee is required"),
+  jobRole: z
+    .string()
+    .trim()
+    .min(
+      1,
+      "Job role is required. Configure role standards in Skill and Role.",
+    ),
+  skills: z.array(skillPayloadSchema).min(1, "Add at least one skill"),
+});
+
+const runAnalysisFormSchema = z.object({
+  employeeId: z.string().trim().min(1, "Employee is required"),
+  jobRole: z.string().trim().min(1, "Job role is required"),
+  preAssessmentScore: z
+    .number()
+    .min(0, "Pre-assessment score must be between 0 and 100")
+    .max(100, "Pre-assessment score must be between 0 and 100")
+    .optional(),
+  performanceGaps: z.array(z.string().trim().min(1).max(200)),
+  managerRecommendations: z.array(z.string().trim().min(1).max(200)),
+  employeeRequests: z.array(z.string().trim().min(1).max(200)),
+  complianceRequirements: z.array(
+    z.object({
+      title: z.string().trim().min(2).max(200),
+      courseId: z.string().trim().optional(),
+      mandatory: z.boolean(),
+    }),
+  ),
+});
+
+const getFirstZodIssueMessage = (error: z.ZodError): string =>
+  error.issues[0]?.message || "Please check the form inputs.";
+
+const isTnaEligibleLearnerRole = (role: unknown): boolean => {
+  const normalizedRole = String(role || "")
+    .trim()
+    .toLowerCase();
+  return normalizedRole === "employee" || normalizedRole === "student";
+};
+
 const parsePrefillEmployeeSkills = (value: string): PrefillEmployeeSkill[] => {
   if (!value.trim()) return [];
   try {
@@ -112,7 +174,11 @@ const parsePrefillEmployeeSkills = (value: string): PrefillEmployeeSkill[] => {
     return parsed
       .map((item) => {
         if (!item || typeof item !== "object") return null;
-        const raw = item as { skillId?: string; skillName?: string; level?: number };
+        const raw = item as {
+          skillId?: string;
+          skillName?: string;
+          level?: number;
+        };
         return {
           skillId: typeof raw.skillId === "string" ? raw.skillId : "",
           skillName: typeof raw.skillName === "string" ? raw.skillName : "",
@@ -153,7 +219,8 @@ const getErrorMessage = (error: unknown): string => {
       if (typeof candidate === "string" && candidate.trim()) return candidate;
       if (candidate && typeof candidate === "object") {
         const nestedMessage = (candidate as { message?: unknown }).message;
-        if (typeof nestedMessage === "string" && nestedMessage.trim()) return nestedMessage;
+        if (typeof nestedMessage === "string" && nestedMessage.trim())
+          return nestedMessage;
       }
     }
   }
@@ -193,14 +260,17 @@ const getRecommendationStatusMeta = (status: RecommendationStatus) => {
   };
 };
 
-const normalizeRoleValue = (value: string): string => value.trim().toLowerCase();
-const normalizeTrainingProgressStatus = (value?: string): TrainingProgressStatus => {
+const normalizeRoleValue = (value: string): string =>
+  value.trim().toLowerCase();
+const normalizeTrainingProgressStatus = (
+  value?: string,
+): TrainingProgressStatus => {
   if (value === "in_progress" || value === "completed") return value;
   return "pending";
 };
 
 const parseSkillLevelFromTrainingTitle = (
-  title: string
+  title: string,
 ): { skillName: string; targetLevel: number | null } => {
   const trimmedTitle = String(title || "").trim();
   if (!trimmedTitle) return { skillName: "", targetLevel: null };
@@ -228,14 +298,22 @@ export default function TnaPage() {
   const employeeTermPlural = getTerm("learner", orgType || "school", true);
 
   const skillsQuery = useGetTnaSkills({ limit: 200, skip: 0 });
-  const roleRequirementsQuery = useGetTnaRoleRequirements({ limit: 200, skip: 0 });
+  const roleRequirementsQuery = useGetTnaRoleRequirements({
+    limit: 200,
+    skip: 0,
+  });
   const studentsQuery = useSearchStudents({
     organizationId,
     limit: 200,
     skip: 0,
     archiveStatus: "none",
   });
-  const coursesQuery = useCourses({ organizationId, limit: 200, skip: 0, archiveStatus: "none" });
+  const coursesQuery = useCourses({
+    organizationId,
+    limit: 200,
+    skip: 0,
+    archiveStatus: "none",
+  });
   const recommendationsQuery = useGetTnaRecommendations({ limit: 50, skip: 0 });
   const employeeSkillsQuery = useGetTnaEmployeeSkills({ limit: 500, skip: 0 });
 
@@ -249,7 +327,10 @@ export default function TnaPage() {
 
   const employees = useMemo(() => {
     const response = studentsQuery.data as { students?: any[] } | undefined;
-    return Array.isArray(response?.students) ? response.students : [];
+    const students = Array.isArray(response?.students) ? response.students : [];
+    return students.filter((student) =>
+      isTnaEligibleLearnerRole(student?.role),
+    );
   }, [studentsQuery.data]);
 
   const roleRequirements = useMemo(() => {
@@ -284,16 +365,36 @@ export default function TnaPage() {
   const prefillEmployeeId = (searchParams.get("employeeId") || "").trim();
   const prefillStepParam = (searchParams.get("step") || "").trim();
   const prefillJobRole = (searchParams.get("jobRole") || "").trim();
-  const prefillEmployeeSkillsParam = (searchParams.get("employeeSkills") || "").trim();
+  const prefillEmployeeSkillsParam = (
+    searchParams.get("employeeSkills") || ""
+  ).trim();
 
-  const [activeStep, setActiveStep] = useState<StepKey>("employee-skills");
-  const [employeeId, setEmployeeId] = useState("");
-  const [employeeSkills, setEmployeeSkills] = useState<LevelRow[]>([{ skillId: "", level: 1 }]);
-
-  const selectedEmployeeRecommendationsQuery = useGetEmployeeTnaRecommendations(employeeId, {
-    limit: 200,
-    skip: 0,
+  const [activeStep, setActiveStep] = useState<StepKey>(() => {
+    if (typeof window === "undefined") return "employee-skills";
+    const storedStep = window.sessionStorage.getItem(
+      TNA_ACTIVE_STEP_STORAGE_KEY,
+    );
+    if (
+      storedStep === "employee-skills" ||
+      storedStep === "analyze" ||
+      storedStep === "recommendations"
+    ) {
+      return storedStep;
+    }
+    return "employee-skills";
   });
+  const [employeeId, setEmployeeId] = useState("");
+  const [employeeSkills, setEmployeeSkills] = useState<LevelRow[]>([
+    { skillId: "", level: 1 },
+  ]);
+
+  const selectedEmployeeRecommendationsQuery = useGetEmployeeTnaRecommendations(
+    employeeId,
+    {
+      limit: 200,
+      skip: 0,
+    },
+  );
 
   const [analyzeEmployeeId, setAnalyzeEmployeeId] = useState("");
   const [analyzeJobRole, setAnalyzeJobRole] = useState("");
@@ -306,14 +407,20 @@ export default function TnaPage() {
   ]);
   const [didApplyPrefillSkills, setDidApplyPrefillSkills] = useState(false);
   const [isRoleEditMode, setIsRoleEditMode] = useState(false);
+  const [hasCompletedAnalysis, setHasCompletedAnalysis] = useState(false);
 
-  const resolveRoleSkillRows = (jobRole: string, currentRows: LevelRow[] = []): LevelRow[] => {
+  const resolveRoleSkillRows = (
+    jobRole: string,
+    currentRows: LevelRow[] = [],
+  ): LevelRow[] => {
     const normalizedRole = jobRole.trim().toLowerCase();
     if (!normalizedRole) return [{ skillId: "", level: 1 }];
 
     const matchedRoleRequirement = roleRequirements.find(
       (roleRequirement) =>
-        String(roleRequirement?.jobRole || "").trim().toLowerCase() === normalizedRole
+        String(roleRequirement?.jobRole || "")
+          .trim()
+          .toLowerCase() === normalizedRole,
     );
 
     const requiredSkills = Array.isArray(matchedRoleRequirement?.requiredSkills)
@@ -326,7 +433,9 @@ export default function TnaPage() {
       const rowSkillId = String(row?.skillId || "").trim();
       if (!rowSkillId) continue;
       const rowLevel = Number(row?.level);
-      const normalizedLevel = Number.isFinite(rowLevel) ? Math.max(0, Math.min(5, rowLevel)) : 1;
+      const normalizedLevel = Number.isFinite(rowLevel)
+        ? Math.max(0, Math.min(5, rowLevel))
+        : 1;
       existingLevelBySkillId.set(rowSkillId, normalizedLevel);
     }
 
@@ -341,13 +450,20 @@ export default function TnaPage() {
           : String(rawSkillId?._id || "").trim();
 
       if (!resolvedSkillId) {
-        const skillName =
-          String(requiredSkill?.skillName || requiredSkill?.skill?.name || rawSkillId?.name || "")
-            .trim()
-            .toLowerCase();
+        const skillName = String(
+          requiredSkill?.skillName ||
+            requiredSkill?.skill?.name ||
+            rawSkillId?.name ||
+            "",
+        )
+          .trim()
+          .toLowerCase();
         if (skillName) {
           const matchedSkill = skills.find(
-            (skill) => String(skill?.name || "").trim().toLowerCase() === skillName
+            (skill) =>
+              String(skill?.name || "")
+                .trim()
+                .toLowerCase() === skillName,
           );
           resolvedSkillId = String(matchedSkill?._id || "").trim();
         }
@@ -366,6 +482,7 @@ export default function TnaPage() {
   };
 
   const applyRoleSkillsToEmployee = (jobRole: string) => {
+    setHasCompletedAnalysis(false);
     setAnalyzeJobRole(jobRole);
     setEmployeeSkills((previous) => {
       const next = resolveRoleSkillRows(jobRole, previous);
@@ -379,33 +496,43 @@ export default function TnaPage() {
     const normalizedRoleName = normalizeRoleValue(roleName);
     if (!normalizedRoleName) return "";
     const matchedRoleOption = roleOptions.find(
-      (roleOption) => normalizeRoleValue(roleOption) === normalizedRoleName
+      (roleOption) => normalizeRoleValue(roleOption) === normalizedRoleName,
     );
     return matchedRoleOption || "";
   };
 
-  const resolveSuggestedRoleForEmployee = (selectedEmployeeId: string): string => {
+  const resolveSuggestedRoleForEmployee = (
+    selectedEmployeeId: string,
+  ): string => {
     const normalizedEmployeeId = String(selectedEmployeeId || "").trim();
     if (!normalizedEmployeeId) return "";
 
-    const savedEmployeeSkillRole = employeeSkillAssignments.find((employeeSkillItem) => {
-      const employeeSkillEmployeeId = String(employeeSkillItem?.employee?._id || employeeSkillItem?.employee || "")
-        .trim();
-      return employeeSkillEmployeeId === normalizedEmployeeId;
-    });
-    const savedRole = resolveRoleOption(String(savedEmployeeSkillRole?.jobRole || ""));
+    const savedEmployeeSkillRole = employeeSkillAssignments.find(
+      (employeeSkillItem) => {
+        const employeeSkillEmployeeId = String(
+          employeeSkillItem?.employee?._id || employeeSkillItem?.employee || "",
+        ).trim();
+        return employeeSkillEmployeeId === normalizedEmployeeId;
+      },
+    );
+    const savedRole = resolveRoleOption(
+      String(savedEmployeeSkillRole?.jobRole || ""),
+    );
     if (savedRole) return savedRole;
 
     const matchedEmployee = employees.find(
-      (employee) => String(employee?._id || "").trim() === normalizedEmployeeId
+      (employee) => String(employee?._id || "").trim() === normalizedEmployeeId,
     );
-    const subroleBasedRole = resolveRoleOption(String(matchedEmployee?.subrole || ""));
+    const subroleBasedRole = resolveRoleOption(
+      String(matchedEmployee?.subrole || ""),
+    );
     if (subroleBasedRole) return subroleBasedRole;
 
     return "";
   };
 
   const applyEmployeeSelection = (selectedEmployeeId: string) => {
+    setHasCompletedAnalysis(false);
     setEmployeeId(selectedEmployeeId);
     setAnalyzeEmployeeId(selectedEmployeeId);
     setIsRoleEditMode(false);
@@ -426,7 +553,7 @@ export default function TnaPage() {
     return (
       employeeSkillAssignments.find((employeeSkillItem) => {
         const employeeSkillEmployeeId = String(
-          employeeSkillItem?.employee?._id || employeeSkillItem?.employee || ""
+          employeeSkillItem?.employee?._id || employeeSkillItem?.employee || "",
         ).trim();
         return employeeSkillEmployeeId === normalizedSelectedEmployeeId;
       }) || null
@@ -434,18 +561,32 @@ export default function TnaPage() {
   }, [employeeId, employeeSkillAssignments]);
 
   const selectedEmployeeRecommendations = useMemo(() => {
-    const response = selectedEmployeeRecommendationsQuery.data as { data?: RecommendationRow[] } | undefined;
+    const response = selectedEmployeeRecommendationsQuery.data as
+      | { data?: RecommendationRow[] }
+      | undefined;
     return Array.isArray(response?.data) ? response.data : [];
   }, [selectedEmployeeRecommendationsQuery.data]);
+
+  useEffect(() => {
+    if (selectedEmployeeRecommendations.length > 0) {
+      setHasCompletedAnalysis(true);
+    }
+  }, [selectedEmployeeRecommendations.length]);
 
   const skillTrainingProgressByName = useMemo(() => {
     const map = new Map<
       string,
-      Array<{ title: string; status: TrainingProgressStatus; targetLevel: number | null }>
+      Array<{
+        title: string;
+        status: TrainingProgressStatus;
+        targetLevel: number | null;
+      }>
     >();
 
     const sortedRecommendations = [...selectedEmployeeRecommendations].sort(
-      (a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
+      (a, b) =>
+        new Date(b.createdAt || 0).getTime() -
+        new Date(a.createdAt || 0).getTime(),
     );
 
     for (const recommendation of sortedRecommendations) {
@@ -455,7 +596,9 @@ export default function TnaPage() {
 
       for (const training of trainings) {
         if (String(training?.reasonType || "").trim() !== "skill_gap") continue;
-        const status = normalizeTrainingProgressStatus(training?.progressStatus);
+        const status = normalizeTrainingProgressStatus(
+          training?.progressStatus,
+        );
         if (status !== "pending" && status !== "in_progress") continue;
 
         const title = String(training?.title || "").trim();
@@ -465,7 +608,10 @@ export default function TnaPage() {
 
         const items = map.get(normalizedSkillName) || [];
         const hasDuplicate = items.some(
-          (item) => item.title === title && item.status === status && item.targetLevel === parsed.targetLevel
+          (item) =>
+            item.title === title &&
+            item.status === status &&
+            item.targetLevel === parsed.targetLevel,
         );
         if (!hasDuplicate) {
           items.push({
@@ -490,12 +636,15 @@ export default function TnaPage() {
     return map;
   }, [selectedEmployeeRecommendations]);
 
-  const selectedEmployeeAssignedRole = String(selectedEmployeeAssignment?.jobRole || "").trim();
+  const selectedEmployeeAssignedRole = String(
+    selectedEmployeeAssignment?.jobRole || "",
+  ).trim();
   const hasAssignedRole = Boolean(selectedEmployeeAssignedRole);
   const isChangingAssignedRole =
     hasAssignedRole &&
     Boolean(analyzeJobRole.trim()) &&
-    normalizeRoleValue(selectedEmployeeAssignedRole) !== normalizeRoleValue(analyzeJobRole);
+    normalizeRoleValue(selectedEmployeeAssignedRole) !==
+      normalizeRoleValue(analyzeJobRole);
 
   const cancelRoleEditMode = () => {
     if (!employeeId) {
@@ -515,22 +664,31 @@ export default function TnaPage() {
     return (
       roleRequirements.find(
         (roleRequirement) =>
-          String(roleRequirement?.jobRole || "").trim().toLowerCase() === normalizedRole
+          String(roleRequirement?.jobRole || "")
+            .trim()
+            .toLowerCase() === normalizedRole,
       ) || null
     );
   }, [analyzeJobRole, roleRequirements]);
 
   const selectedAnalyzeRoleSkills = useMemo(() => {
     if (!selectedAnalyzeRoleRequirement) return [];
-    if (!Array.isArray(selectedAnalyzeRoleRequirement.requiredSkills)) return [];
-    return selectedAnalyzeRoleRequirement.requiredSkills.filter((skillItem: any) =>
-      Boolean(skillItem?.skillName)
+    if (!Array.isArray(selectedAnalyzeRoleRequirement.requiredSkills))
+      return [];
+    return selectedAnalyzeRoleRequirement.requiredSkills.filter(
+      (skillItem: any) => Boolean(skillItem?.skillName),
     );
   }, [selectedAnalyzeRoleRequirement]);
 
   const analyzeThreshold = useMemo(() => {
-    const roleThreshold = Number(selectedAnalyzeRoleRequirement?.preAssessmentThreshold);
-    if (Number.isFinite(roleThreshold) && roleThreshold >= 0 && roleThreshold <= 100) {
+    const roleThreshold = Number(
+      selectedAnalyzeRoleRequirement?.preAssessmentThreshold,
+    );
+    if (
+      Number.isFinite(roleThreshold) &&
+      roleThreshold >= 0 &&
+      roleThreshold <= 100
+    ) {
       return roleThreshold;
     }
     return 70;
@@ -538,13 +696,14 @@ export default function TnaPage() {
 
   useEffect(() => {
     if (!employeeId && employees.length > 0) setEmployeeId(employees[0]._id);
-    if (!analyzeEmployeeId && employees.length > 0) setAnalyzeEmployeeId(employees[0]._id);
+    if (!analyzeEmployeeId && employees.length > 0)
+      setAnalyzeEmployeeId(employees[0]._id);
   }, [employees, employeeId, analyzeEmployeeId]);
 
   useEffect(() => {
     if (!prefillEmployeeId || employees.length === 0) return;
     const hasMatchingEmployee = employees.some(
-      (employee) => String(employee?._id || "") === prefillEmployeeId
+      (employee) => String(employee?._id || "") === prefillEmployeeId,
     );
     if (!hasMatchingEmployee) return;
     setEmployeeId(prefillEmployeeId);
@@ -553,11 +712,20 @@ export default function TnaPage() {
 
   useEffect(() => {
     if (!prefillStepParam) return;
-    const validSteps = new Set<StepKey>(["employee-skills", "analyze", "recommendations"]);
+    const validSteps = new Set<StepKey>([
+      "employee-skills",
+      "analyze",
+      "recommendations",
+    ]);
     if (validSteps.has(prefillStepParam as StepKey)) {
       setActiveStep(prefillStepParam as StepKey);
     }
   }, [prefillStepParam]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.sessionStorage.setItem(TNA_ACTIVE_STEP_STORAGE_KEY, activeStep);
+  }, [activeStep]);
 
   useEffect(() => {
     if (!prefillJobRole) return;
@@ -579,7 +747,9 @@ export default function TnaPage() {
   useEffect(() => {
     if (didApplyPrefillSkills) return;
 
-    const parsedPrefillSkills = parsePrefillEmployeeSkills(prefillEmployeeSkillsParam);
+    const parsedPrefillSkills = parsePrefillEmployeeSkills(
+      prefillEmployeeSkillsParam,
+    );
     if (parsedPrefillSkills.length === 0) {
       setDidApplyPrefillSkills(true);
       return;
@@ -590,12 +760,17 @@ export default function TnaPage() {
     const normalized = parsedPrefillSkills
       .map((prefillSkill) => {
         const requestedSkillId = String(prefillSkill.skillId || "").trim();
-        const requestedSkillName = String(prefillSkill.skillName || "").trim().toLowerCase();
+        const requestedSkillName = String(prefillSkill.skillName || "")
+          .trim()
+          .toLowerCase();
 
         let resolvedSkillId = requestedSkillId;
         if (!resolvedSkillId && requestedSkillName) {
           const matchedSkill = skills.find(
-            (skill) => String(skill?.name || "").trim().toLowerCase() === requestedSkillName
+            (skill) =>
+              String(skill?.name || "")
+                .trim()
+                .toLowerCase() === requestedSkillName,
           );
           resolvedSkillId = String(matchedSkill?._id || "").trim();
         }
@@ -626,19 +801,54 @@ export default function TnaPage() {
       "employee-skills":
         Boolean(employeeId) &&
         Boolean(analyzeJobRole.trim()) &&
-        employeeSkills.some((skill) => Boolean(skill.skillId)),
-      analyze: recommendations.length > 0,
-      recommendations: recommendations.length > 0,
+        employeeSkills.some((skill) =>
+          Boolean(String(skill.skillId || "").trim()),
+        ),
+      analyze: hasCompletedAnalysis,
+      recommendations: hasCompletedAnalysis,
     }),
-    [employeeId, analyzeJobRole, employeeSkills, recommendations.length]
+    [employeeId, analyzeJobRole, employeeSkills, hasCompletedAnalysis],
   );
+
+  const stepEnabledByStep = useMemo<Record<StepKey, boolean>>(() => {
+    const hasReachedAnalyze =
+      activeStep === "analyze" || activeStep === "recommendations";
+    const hasReachedRecommendations = activeStep === "recommendations";
+
+    return {
+      "employee-skills": true,
+      analyze:
+        completionByStep["employee-skills"] ||
+        hasReachedAnalyze ||
+        hasCompletedAnalysis,
+      recommendations:
+        (completionByStep["employee-skills"] && completionByStep.analyze) ||
+        hasReachedRecommendations ||
+        hasCompletedAnalysis,
+    };
+  }, [completionByStep, activeStep, hasCompletedAnalysis]);
+
+  const goToStep = (stepKey: StepKey) => {
+    if (stepEnabledByStep[stepKey]) {
+      setActiveStep(stepKey);
+      return;
+    }
+    if (stepKey === "analyze") {
+      toast.error("Complete Step 1 fields first before moving to Step 2.");
+      return;
+    }
+    if (stepKey === "recommendations") {
+      toast.error("Complete Step 2 first by running TNA analysis.");
+    }
+  };
 
   const pendingRecommendations = useMemo(
     () =>
       recommendations.filter(
-        (recommendation) => normalizeStatus(recommendation.status) === "pending"
+        (recommendation) =>
+          normalizeStatus(recommendation.status) === "pending",
       ).length,
-    [recommendations]
+    [recommendations],
   );
 
   const skillSelectOptions = useMemo(
@@ -647,7 +857,7 @@ export default function TnaPage() {
         value: String(skill._id || ""),
         label: String(skill.name || "Unnamed skill"),
       })),
-    [skills]
+    [skills],
   );
 
   const employeeSelectOptions = useMemo(
@@ -655,14 +865,17 @@ export default function TnaPage() {
       employees.map((employee) => {
         const firstName = String(employee.firstName || "").trim();
         const lastName = String(employee.lastName || "").trim();
-        const fullName = `${firstName} ${lastName}`.trim() || employee.email || "Unnamed employee";
+        const fullName =
+          `${firstName} ${lastName}`.trim() ||
+          employee.email ||
+          "Unnamed employee";
         return {
           value: String(employee._id || ""),
           label: fullName,
           description: employee.email || undefined,
         };
       }),
-    [employees]
+    [employees],
   );
 
   const roleSelectOptions = useMemo(
@@ -671,7 +884,7 @@ export default function TnaPage() {
         value: roleOption,
         label: roleOption,
       })),
-    [roleOptions]
+    [roleOptions],
   );
 
   const courseSelectOptions = useMemo(
@@ -680,7 +893,7 @@ export default function TnaPage() {
         value: String(course._id || ""),
         label: `${course.code ? `${course.code} - ` : ""}${course.title || "Untitled course"}`,
       })),
-    [courses]
+    [courses],
   );
 
   const recommendationStatusFilterOptions = useMemo(
@@ -689,7 +902,7 @@ export default function TnaPage() {
       { value: "assigned", label: "Assigned" },
       { value: "completed", label: "Completed" },
     ],
-    []
+    [],
   );
 
   const recommendationTableGroups = useMemo(
@@ -700,7 +913,7 @@ export default function TnaPage() {
         rows: recommendations as RecommendationRow[],
       },
     ],
-    [recommendations]
+    [recommendations],
   );
 
   const skillNameById = useMemo(() => {
@@ -716,15 +929,16 @@ export default function TnaPage() {
 
   const selectedEmployeeSkillTrainingSignals = useMemo(
     () =>
-      Array.from(skillTrainingProgressByName.entries()).flatMap(([skillName, items]) =>
-        items.map((item) => ({
-          skillName,
-          title: item.title,
-          status: item.status,
-          targetLevel: item.targetLevel,
-        }))
+      Array.from(skillTrainingProgressByName.entries()).flatMap(
+        ([skillName, items]) =>
+          items.map((item) => ({
+            skillName,
+            title: item.title,
+            status: item.status,
+            targetLevel: item.targetLevel,
+          })),
       ),
-    [skillTrainingProgressByName]
+    [skillTrainingProgressByName],
   );
 
   const getInProgressSkillLevelConflicts = (rows: LevelRow[]) => {
@@ -736,8 +950,12 @@ export default function TnaPage() {
       const skillName = String(skillNameById.get(skillId) || "").trim();
       if (!skillName) continue;
 
-      const signals = (skillTrainingProgressByName.get(normalizeRoleValue(skillName)) || []).filter(
-        (signal) => signal.status === "in_progress" && typeof signal.targetLevel === "number"
+      const signals = (
+        skillTrainingProgressByName.get(normalizeRoleValue(skillName)) || []
+      ).filter(
+        (signal) =>
+          signal.status === "in_progress" &&
+          typeof signal.targetLevel === "number",
       );
       if (signals.length === 0) continue;
 
@@ -751,7 +969,7 @@ export default function TnaPage() {
 
       if (!blockedSignal) continue;
       conflicts.push(
-        `${skillName}: level ${currentLevel} conflicts with active "${blockedSignal.title}" (in progress).`
+        `${skillName}: level ${currentLevel} conflicts with active "${blockedSignal.title}" (in progress).`,
       );
     }
 
@@ -761,9 +979,10 @@ export default function TnaPage() {
   const hasAnyInProgressSkillTraining = useMemo(
     () =>
       selectedEmployeeSkillTrainingSignals.some(
-        (signal) => normalizeTrainingProgressStatus(signal.status) === "in_progress"
+        (signal) =>
+          normalizeTrainingProgressStatus(signal.status) === "in_progress",
       ),
-    [selectedEmployeeSkillTrainingSignals]
+    [selectedEmployeeSkillTrainingSignals],
   );
 
   const recommendationTableColumns = useMemo(
@@ -777,7 +996,10 @@ export default function TnaPage() {
         sortAccessor: (row) => {
           const firstName = String(row.employee?.firstName || "").trim();
           const lastName = String(row.employee?.lastName || "").trim();
-          const fullName = `${firstName} ${lastName}`.trim() || row.employee?.email || "Unknown employee";
+          const fullName =
+            `${firstName} ${lastName}`.trim() ||
+            row.employee?.email ||
+            "Unknown employee";
           return fullName;
         },
         filterAccessor: (row) => {
@@ -790,11 +1012,16 @@ export default function TnaPage() {
         render: (row) => {
           const firstName = String(row.employee?.firstName || "").trim();
           const lastName = String(row.employee?.lastName || "").trim();
-          const fullName = `${firstName} ${lastName}`.trim() || row.employee?.email || "Unknown employee";
+          const fullName =
+            `${firstName} ${lastName}`.trim() ||
+            row.employee?.email ||
+            "Unknown employee";
           return (
             <div className="space-y-0.5">
               <p className="text-sm font-semibold text-slate-900">{fullName}</p>
-              <p className="text-xs text-slate-500">{row.employee?.email || "--"}</p>
+              <p className="text-xs text-slate-500">
+                {row.employee?.email || "--"}
+              </p>
             </div>
           );
         },
@@ -808,7 +1035,9 @@ export default function TnaPage() {
         sortAccessor: (row) => row.jobRole || "",
         filterAccessor: (row) => row.jobRole || "",
         className: "min-w-[170px]",
-        render: (row) => <span className="text-sm text-slate-700">{row.jobRole || "--"}</span>,
+        render: (row) => (
+          <span className="text-sm text-slate-700">{row.jobRole || "--"}</span>
+        ),
       },
       {
         key: "created",
@@ -816,7 +1045,8 @@ export default function TnaPage() {
         sortable: true,
         filterable: true,
         filterPlaceholder: "Search date",
-        sortAccessor: (row) => (row.createdAt ? new Date(row.createdAt).getTime() : 0),
+        sortAccessor: (row) =>
+          row.createdAt ? new Date(row.createdAt).getTime() : 0,
         filterAccessor: (row) =>
           row.createdAt ? new Date(row.createdAt).toLocaleString() : "",
         className: "min-w-[180px]",
@@ -832,8 +1062,10 @@ export default function TnaPage() {
         sortable: true,
         filterable: true,
         filterPlaceholder: "Search count",
-        sortAccessor: (row) => (Array.isArray(row.skillGaps) ? row.skillGaps.length : 0),
-        filterAccessor: (row) => String(Array.isArray(row.skillGaps) ? row.skillGaps.length : 0),
+        sortAccessor: (row) =>
+          Array.isArray(row.skillGaps) ? row.skillGaps.length : 0,
+        filterAccessor: (row) =>
+          String(Array.isArray(row.skillGaps) ? row.skillGaps.length : 0),
         align: "right",
         className: "min-w-[120px]",
         render: (row) => (
@@ -849,14 +1081,22 @@ export default function TnaPage() {
         filterable: true,
         filterPlaceholder: "Search count",
         sortAccessor: (row) =>
-          Array.isArray(row.recommendedTrainings) ? row.recommendedTrainings.length : 0,
+          Array.isArray(row.recommendedTrainings)
+            ? row.recommendedTrainings.length
+            : 0,
         filterAccessor: (row) =>
-          String(Array.isArray(row.recommendedTrainings) ? row.recommendedTrainings.length : 0),
+          String(
+            Array.isArray(row.recommendedTrainings)
+              ? row.recommendedTrainings.length
+              : 0,
+          ),
         align: "right",
         className: "min-w-[130px]",
         render: (row) => (
           <span className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-700">
-            {Array.isArray(row.recommendedTrainings) ? row.recommendedTrainings.length : 0}
+            {Array.isArray(row.recommendedTrainings)
+              ? row.recommendedTrainings.length
+              : 0}
           </span>
         ),
       },
@@ -886,7 +1126,7 @@ export default function TnaPage() {
         },
       },
     ],
-    [recommendationStatusFilterOptions]
+    [recommendationStatusFilterOptions],
   );
 
   const getStepStatusMeta = (stepKey: StepKey) => {
@@ -918,42 +1158,52 @@ export default function TnaPage() {
     "w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 placeholder:text-slate-400 shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition duration-200 focus:outline-none focus:border-[color:var(--color-primary,#2563eb)] focus:ring-2 focus:ring-[color:color-mix(in_srgb,var(--color-primary,#2563eb)_18%,transparent)]";
   const panelClassName =
     "rounded-2xl border border-slate-200 bg-white p-4 md:p-6 shadow-[0_14px_40px_-24px_rgba(15,23,42,0.35)]";
-  const fieldLabelClassName = "text-xs font-semibold uppercase tracking-wider text-slate-500";
+  const fieldLabelClassName =
+    "text-xs font-semibold uppercase tracking-wider text-slate-500";
   const fieldHintClassName = "mt-1 text-xs text-slate-500";
-  const sectionSurfaceClassName = "rounded-xl border border-slate-200 bg-white p-3.5";
+  const sectionSurfaceClassName =
+    "rounded-xl border border-slate-200 bg-white p-3.5";
   const employeeSkillsStatus = getStepStatusMeta("employee-skills");
   const analyzeStatus = getStepStatusMeta("analyze");
   const recommendationsStatus = getStepStatusMeta("recommendations");
 
   const saveEmployeeSkills = async () => {
-    if (!employeeId) return toast.error(`${employeeTerm} is required`);
-    if (!analyzeJobRole.trim()) {
-      return toast.error("Job role is required. Configure role standards in Skill and Role.");
+    const payloadSkills = employeeSkills
+      .filter((item) => String(item.skillId || "").trim())
+      .map((item) => ({
+        skillId: String(item.skillId || "").trim(),
+        currentLevel: Number(item.level),
+      }));
+    const validationResult = saveEmployeeSkillsFormSchema.safeParse({
+      employeeId: String(employeeId || "").trim(),
+      jobRole: String(analyzeJobRole || "").trim(),
+      skills: payloadSkills,
+    });
+    if (!validationResult.success) {
+      return toast.error(getFirstZodIssueMessage(validationResult.error));
     }
     if (hasAssignedRole && isChangingAssignedRole && !isRoleEditMode) {
-      return toast.error("Click 'Edit Assigned Role' first before changing this employee role.");
-    }
-    const payloadSkills = employeeSkills.filter((item) => item.skillId).map((item) => ({
-      skillId: item.skillId,
-      currentLevel: Number(item.level),
-    }));
-    if (payloadSkills.length === 0) return toast.error("Add at least one skill");
-    if (hasAnyInProgressSkillTraining) {
       return toast.error(
-        "Cannot save employee skill levels while skill training is in progress. Complete or close in-progress training first."
+        "Click 'Edit Assigned Role' first before changing this employee role.",
       );
     }
-    const inProgressConflicts = getInProgressSkillLevelConflicts(employeeSkills);
+    if (hasAnyInProgressSkillTraining) {
+      return toast.error(
+        "Cannot save employee skill levels while skill training is in progress. Complete or close in-progress training first.",
+      );
+    }
+    const inProgressConflicts =
+      getInProgressSkillLevelConflicts(employeeSkills);
     if (inProgressConflicts.length > 0) {
       return toast.error(inProgressConflicts[0]);
     }
     try {
       await toast.promise(
         upsertEmployeeSkillMutation.mutateAsync({
-          employeeId,
-          jobRole: analyzeJobRole.trim(),
+          employeeId: validationResult.data.employeeId,
+          jobRole: validationResult.data.jobRole,
           allowRoleChange: isRoleEditMode && isChangingAssignedRole,
-          skills: payloadSkills,
+          skills: validationResult.data.skills,
         }),
         {
           pending: "Saving employee skills...",
@@ -961,7 +1211,7 @@ export default function TnaPage() {
           error: {
             render: ({ data }) => getErrorMessage(data),
           },
-        }
+        },
       );
       setAnalyzeEmployeeId(employeeId);
       setIsRoleEditMode(false);
@@ -970,35 +1220,58 @@ export default function TnaPage() {
   };
 
   const runAnalysis = async () => {
-    if (!analyzeEmployeeId) return toast.error(`${employeeTerm} is required`);
-    if (!analyzeJobRole.trim()) return toast.error("Job role is required");
+    const preAssessmentScore = score.trim() ? Number(score) : undefined;
+    if (
+      typeof preAssessmentScore === "number" &&
+      !Number.isFinite(preAssessmentScore)
+    ) {
+      return toast.error("Pre-assessment score must be a valid number");
+    }
+    const complianceRequirements = compliance
+      .filter((item) => item.title.trim())
+      .map((item) => ({
+        title: item.title.trim(),
+        courseId: item.courseId ? item.courseId.trim() : undefined,
+        mandatory: item.mandatory,
+      }));
+    const validationResult = runAnalysisFormSchema.safeParse({
+      employeeId: String(analyzeEmployeeId || "").trim(),
+      jobRole: String(analyzeJobRole || "").trim(),
+      preAssessmentScore,
+      performanceGaps: parseList(performanceGaps),
+      managerRecommendations: parseList(managerRecommendations),
+      employeeRequests: parseList(employeeRequests),
+      complianceRequirements,
+    });
+    if (!validationResult.success) {
+      return toast.error(getFirstZodIssueMessage(validationResult.error));
+    }
     if (hasAnyInProgressSkillTraining) {
       return toast.error(
-        "Cannot run analysis while skill training is in progress. Complete or close in-progress training first."
+        "Cannot run analysis while skill training is in progress. Complete or close in-progress training first.",
       );
     }
-    const inProgressConflicts = getInProgressSkillLevelConflicts(employeeSkills);
+    const inProgressConflicts =
+      getInProgressSkillLevelConflicts(employeeSkills);
     if (inProgressConflicts.length > 0) {
       return toast.error(inProgressConflicts[0]);
     }
     try {
       await toast.promise(
         analyzeTnaMutation.mutateAsync({
-          employeeId: analyzeEmployeeId,
-          jobRole: analyzeJobRole.trim(),
-          preAssessment: score.trim()
-            ? { score: Number(score), threshold: analyzeThreshold }
-            : undefined,
-          performanceGaps: parseList(performanceGaps),
-          managerRecommendations: parseList(managerRecommendations),
-          employeeRequests: parseList(employeeRequests),
-          complianceRequirements: compliance
-            .filter((item) => item.title.trim())
-            .map((item) => ({
-              title: item.title.trim(),
-              courseId: item.courseId || undefined,
-              mandatory: item.mandatory,
-            })),
+          employeeId: validationResult.data.employeeId,
+          jobRole: validationResult.data.jobRole,
+          preAssessment:
+            typeof validationResult.data.preAssessmentScore === "number"
+              ? {
+                  score: validationResult.data.preAssessmentScore,
+                  threshold: analyzeThreshold,
+                }
+              : undefined,
+          performanceGaps: validationResult.data.performanceGaps,
+          managerRecommendations: validationResult.data.managerRecommendations,
+          employeeRequests: validationResult.data.employeeRequests,
+          complianceRequirements: validationResult.data.complianceRequirements,
         }),
         {
           pending: "Running TNA analysis...",
@@ -1006,8 +1279,9 @@ export default function TnaPage() {
           error: {
             render: ({ data }) => getErrorMessage(data),
           },
-        }
+        },
       );
+      setHasCompletedAnalysis(true);
       setActiveStep("recommendations");
     } catch {}
   };
@@ -1024,16 +1298,22 @@ export default function TnaPage() {
         <div className="flex flex-col gap-5">
           <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">Corporate Workflow</p>
-              <h1 className="text-3xl font-bold text-slate-900 mt-1">Training Needs Analysis</h1>
-              <p className="text-slate-600 mt-2 max-w-3xl">
-                This flow is focused on employee role and level capture, analysis, and recommendation
-                tracking. Skills and role standards are configured in a separate Configuration page.
+              <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">
+                Corporate Workflow
               </p>
+              <div className="mt-1 flex items-center gap-2">
+                <h1 className="text-3xl font-bold text-slate-900">
+                  Training Needs Analysis
+                </h1>
+                <HoverHelpTooltip
+                  text="This flow is focused on employee role and level capture, analysis, and recommendation tracking. Skills and role standards are configured in a separate Configuration page."
+                  className="shrink-0"
+                />
+              </div>
             </div>
             <Button
               variant="outline"
-              className="h-10 w-full md:w-auto"
+              className="h-10 w-full sm:w-[200px] md:shrink-0 text-center whitespace-nowrap"
               onClick={() => navigate(`/${orgCode}/admin/tna/configuration`)}
             >
               Open Skill and Role
@@ -1042,24 +1322,50 @@ export default function TnaPage() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
             <div className="rounded-xl border border-slate-200 bg-white/80 p-4">
-              <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Skill Library</p>
-              <p className="text-2xl font-bold text-slate-900 mt-2">{skills.length}</p>
-              <p className="text-xs text-slate-500 mt-1">Reusable skills available</p>
+              <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                Skill Library
+              </p>
+              <p className="text-2xl font-bold text-slate-900 mt-2">
+                {skills.length}
+              </p>
+              <p className="text-xs text-slate-500 mt-1">
+                Reusable skills available
+              </p>
             </div>
             <div className="rounded-xl border border-slate-200 bg-white/80 p-4">
-              <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Role Standards</p>
-              <p className="text-2xl font-bold text-slate-900 mt-2">{roleOptions.length}</p>
-              <p className="text-xs text-slate-500 mt-1">Configured role profiles</p>
+              <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                Role Standards
+              </p>
+              <p className="text-2xl font-bold text-slate-900 mt-2">
+                {roleOptions.length}
+              </p>
+              <p className="text-xs text-slate-500 mt-1">
+                Configured role profiles
+              </p>
             </div>
             <div className="rounded-xl border border-slate-200 bg-white/80 p-4">
-              <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">{employeeTermPlural}</p>
-              <p className="text-2xl font-bold text-slate-900 mt-2">{employees.length}</p>
-              <p className="text-xs text-slate-500 mt-1">Profiles ready for TNA</p>
+              <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                {employeeTermPlural}
+              </p>
+              <p className="text-2xl font-bold text-slate-900 mt-2">
+                {employees.length}
+              </p>
+              <p className="text-xs text-slate-500 mt-1">
+                Profiles ready for TNA
+              </p>
             </div>
             <div className="rounded-xl border border-slate-200 bg-white/80 p-4">
-              <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Pending Actions</p>
-              <p className={`text-2xl font-bold mt-2 ${themeSecondaryTextClass}`}>{pendingRecommendations}</p>
-              <p className="text-xs text-slate-500 mt-1">Recommendations waiting assignment</p>
+              <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                Pending Actions
+              </p>
+              <p
+                className={`text-2xl font-bold mt-2 ${themeSecondaryTextClass}`}
+              >
+                {pendingRecommendations}
+              </p>
+              <p className="text-xs text-slate-500 mt-1">
+                Recommendations waiting assignment
+              </p>
             </div>
           </div>
         </div>
@@ -1067,56 +1373,78 @@ export default function TnaPage() {
 
       <section className="rounded-2xl border border-slate-200 bg-white p-3 md:p-4 shadow-[0_12px_36px_-24px_rgba(15,23,42,0.3)]">
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2">
-  {FLOW_STEPS.map((step, index) => {
-    const isActive = activeStep === step.key;
-    const stepGuide = STEP_GUIDANCE[step.key] || STEP_GUIDANCE["employee-skills"];
-    const hoverAlignClass = index >= FLOW_STEPS.length - 2 ? "right-0" : "left-0";
+          {FLOW_STEPS.map((step, index) => {
+            const isActive = activeStep === step.key;
+            const isStepEnabled = stepEnabledByStep[step.key];
+            const isStepLocked = !isStepEnabled && !isActive;
+            const stepGuide =
+              STEP_GUIDANCE[step.key] || STEP_GUIDANCE["employee-skills"];
+            const hoverAlignClass =
+              index >= FLOW_STEPS.length - 2 ? "right-0" : "left-0";
 
-    return (
-      <div key={`flow-chip-${step.key}`} className="relative group">
-        <button
-          type="button"
-          onClick={() => setActiveStep(step.key)}
-          className={`w-full rounded-xl border px-3 py-2 text-left transition-colors ${
-            isActive
-              ? "border-primary bg-primary/10 shadow-[0_10px_24px_-20px_rgba(37,99,235,0.9)]"
-              : "border-slate-200 bg-slate-50/70 hover:border-slate-300 hover:bg-white"
-          }`}
-        >
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-            Step {index + 1}
-          </p>
-          <p className="mt-0.5 flex items-center gap-2 text-sm font-medium text-slate-900">
-            <span className="h-1.5 w-1.5 rounded-full bg-slate-500" />
-            <span>{step.title}</span>
-          </p>
-        </button>
+            return (
+              <div key={`flow-chip-${step.key}`} className="relative group">
+                <button
+                  type="button"
+                  onClick={() => goToStep(step.key)}
+                  disabled={isStepLocked}
+                  className={`w-full rounded-xl border px-3 py-2 text-left transition-colors ${
+                    isActive
+                      ? "border-primary bg-primary/10 shadow-[0_10px_24px_-20px_rgba(37,99,235,0.9)]"
+                      : isStepLocked
+                        ? "border-slate-200 bg-slate-100/80 cursor-not-allowed"
+                        : "border-slate-200 bg-slate-50/70 hover:border-slate-300 hover:bg-white"
+                  }`}
+                >
+                  <p
+                    className={`text-[11px] font-semibold uppercase tracking-wide ${isStepLocked ? "text-slate-400" : "text-slate-500"}`}
+                  >
+                    Step {index + 1}
+                  </p>
+                  <p
+                    className={`mt-0.5 flex items-center gap-2 text-sm font-medium ${isStepLocked ? "text-slate-400" : "text-slate-900"}`}
+                  >
+                    <span
+                      className={`h-1.5 w-1.5 rounded-full ${isStepLocked ? "bg-slate-300" : "bg-slate-500"}`}
+                    />
+                    <span>{step.title}</span>
+                  </p>
+                </button>
 
-        <div
-          className={`pointer-events-none absolute ${hoverAlignClass} top-full z-30 mt-2 w-[320px] max-w-[calc(100vw-2rem)] rounded-xl border border-slate-200 bg-white/95 p-3 shadow-[0_20px_50px_-22px_rgba(15,23,42,0.45)] backdrop-blur-sm opacity-0 translate-y-1 transition-all duration-200 group-hover:opacity-100 group-hover:translate-y-0 group-focus-within:opacity-100 group-focus-within:translate-y-0`}
-        >
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-            Step {index + 1}
-          </p>
-          <p className="mt-1 text-sm font-semibold text-slate-900">{step.title}</p>
-          <p className="mt-1 text-xs leading-5 text-slate-600">{step.description}</p>
-          <div className="mt-2 space-y-1.5">
-            {stepGuide.checklist.map((item) => (
-              <div key={`${step.key}-${item}`} className="flex items-start gap-2">
-                <span className="mt-1 h-1.5 w-1.5 rounded-full bg-primary/80" />
-                <p className="text-xs leading-5 text-slate-700">{item}</p>
+                <div
+                  className={`pointer-events-none absolute ${hoverAlignClass} top-full z-30 mt-2 w-[320px] max-w-[calc(100vw-2rem)] rounded-xl border border-slate-200 bg-white/95 p-3 shadow-[0_20px_50px_-22px_rgba(15,23,42,0.45)] backdrop-blur-sm opacity-0 translate-y-1 transition-all duration-200 group-hover:opacity-100 group-hover:translate-y-0 group-focus-within:opacity-100 group-focus-within:translate-y-0`}
+                >
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                    Step {index + 1}
+                  </p>
+                  <p className="mt-1 text-sm font-semibold text-slate-900">
+                    {step.title}
+                  </p>
+                  <p className="mt-1 text-xs leading-5 text-slate-600">
+                    {step.description}
+                  </p>
+                  <div className="mt-2 space-y-1.5">
+                    {stepGuide.checklist.map((item) => (
+                      <div
+                        key={`${step.key}-${item}`}
+                        className="flex items-start gap-2"
+                      >
+                        <span className="mt-1 h-1.5 w-1.5 rounded-full bg-primary/80" />
+                        <p className="text-xs leading-5 text-slate-700">
+                          {item}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
-            ))}
-          </div>
+            );
+          })}
         </div>
-      </div>
-    );
-  })}
-</div>
       </section>
 
       <div className="space-y-6">
-          {activeStep === "employee-skills" && (
+        {activeStep === "employee-skills" && (
           <section
             id="employee-skills"
             className={`${panelClassName} space-y-4 ${
@@ -1133,12 +1461,22 @@ export default function TnaPage() {
                     {employeeSkillsStatus.label}
                   </span>
                 </div>
-                <h2 className="text-xl font-semibold text-slate-900">Capture {employeeTerm} Role and Skills</h2>
-                <p className="text-sm text-slate-600 mt-1">
-                  Assign role for new {employeeTerm.toLowerCase()} profiles, or edit existing role assignment.
-                </p>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-xl font-semibold text-slate-900">
+                    Capture {employeeTerm} Role and Skills
+                  </h2>
+                  <HoverHelpTooltip
+                    text={`Assign role for new ${employeeTerm.toLowerCase()} profiles, or edit existing role assignment.`}
+                    className="shrink-0"
+                  />
+                </div>
               </div>
-              <Button variant="outline" onClick={() => setActiveStep("analyze")} className="h-fit">
+              <Button
+                variant="outline"
+                onClick={() => goToStep("analyze")}
+                disabled={!stepEnabledByStep.analyze}
+                className="h-fit"
+              >
                 Next Step
               </Button>
             </div>
@@ -1152,10 +1490,15 @@ export default function TnaPage() {
                 }`}
               >
                 <p className={fieldLabelClassName}>Flow A</p>
-                <p className="mt-1 text-sm font-semibold text-slate-900">Assign Role (New Profile)</p>
-                <p className="mt-1 text-xs text-slate-600">
-                  Select employee, choose role, auto-fill skills, then save levels.
-                </p>
+                <div className="mt-1 flex items-center gap-2">
+                  <p className="text-sm font-semibold text-slate-900">
+                    Assign Role (New Profile)
+                  </p>
+                  <HoverHelpTooltip
+                    text="Select employee, choose role, auto-fill skills, then save levels."
+                    className="shrink-0"
+                  />
+                </div>
               </div>
               <div
                 className={`rounded-xl border p-3.5 ${
@@ -1165,10 +1508,15 @@ export default function TnaPage() {
                 }`}
               >
                 <p className={fieldLabelClassName}>Flow B</p>
-                <p className="mt-1 text-sm font-semibold text-slate-900">Update Assigned Role</p>
-                <p className="mt-1 text-xs text-slate-600">
-                  For existing profiles, click edit role, change role, then save updated levels.
-                </p>
+                <div className="mt-1 flex items-center gap-2">
+                  <p className="text-sm font-semibold text-slate-900">
+                    Update Assigned Role
+                  </p>
+                  <HoverHelpTooltip
+                    text="For existing profiles, click edit role, change role, then save updated levels."
+                    className="shrink-0"
+                  />
+                </div>
               </div>
             </div>
 
@@ -1179,7 +1527,9 @@ export default function TnaPage() {
                   <div className="mt-1 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                     <p className="text-sm text-slate-700">
                       Current assigned role:{" "}
-                      <span className="font-semibold text-slate-900">{selectedEmployeeAssignedRole}</span>
+                      <span className="font-semibold text-slate-900">
+                        {selectedEmployeeAssignedRole}
+                      </span>
                     </p>
                     {!isRoleEditMode ? (
                       <Button
@@ -1190,7 +1540,11 @@ export default function TnaPage() {
                         Edit Assigned Role
                       </Button>
                     ) : (
-                      <Button variant="cancel" className="h-9 px-3 text-sm" onClick={cancelRoleEditMode}>
+                      <Button
+                        variant="cancel"
+                        className="h-9 px-3 text-sm"
+                        onClick={cancelRoleEditMode}
+                      >
                         Cancel Role Edit
                       </Button>
                     )}
@@ -1201,39 +1555,55 @@ export default function TnaPage() {
                   </p>
                 )}
                 {hasAssignedRole && isRoleEditMode && (
-                  <p className={`mt-2 text-xs font-medium ${themeSecondaryTextClass}`}>
-                    Role edit mode is active. Saving will update this employee role assignment.
+                  <p
+                    className={`mt-2 text-xs font-medium ${themeSecondaryTextClass}`}
+                  >
+                    Role edit mode is active. Saving will update this employee
+                    role assignment.
                   </p>
                 )}
 
                 {employeeId && (
                   <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 p-2.5">
-                    <p className={fieldLabelClassName}>Active TNA Skill Training</p>
+                    <p className={fieldLabelClassName}>
+                      Active TNA Skill Training
+                    </p>
                     {selectedEmployeeRecommendationsQuery.isLoading ? (
-                      <p className="mt-1 text-xs text-slate-500">Checking training status...</p>
+                      <p className="mt-1 text-xs text-slate-500">
+                        Checking training status...
+                      </p>
                     ) : selectedEmployeeSkillTrainingSignals.length === 0 ? (
                       <p className="mt-1 text-xs text-slate-500">
-                        No pending or in-progress skill-level training from latest TNA run.
+                        No pending or in-progress skill-level training from
+                        latest TNA run.
                       </p>
                     ) : (
                       <div className="mt-2 flex flex-wrap gap-1.5">
-                        {selectedEmployeeSkillTrainingSignals.slice(0, 8).map((signal, index) => (
-                          <span
-                            key={`${signal.skillName}-${signal.title}-${index}`}
-                            className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${
-                              signal.status === "in_progress"
-                                ? themePrimarySoftBadgeClass
-                                : themeSecondarySoftBadgeClass
-                            }`}
-                          >
-                            {signal.skillName}{" "}
-                            {signal.targetLevel ? `L${signal.targetLevel}` : ""} ·{" "}
-                            {signal.status === "in_progress" ? "In Progress" : "Pending"}
-                          </span>
-                        ))}
+                        {selectedEmployeeSkillTrainingSignals
+                          .slice(0, 8)
+                          .map((signal, index) => (
+                            <span
+                              key={`${signal.skillName}-${signal.title}-${index}`}
+                              className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${
+                                signal.status === "in_progress"
+                                  ? themePrimarySoftBadgeClass
+                                  : themeSecondarySoftBadgeClass
+                              }`}
+                            >
+                              {signal.skillName}{" "}
+                              {signal.targetLevel
+                                ? `L${signal.targetLevel}`
+                                : ""}{" "}
+                              ·{" "}
+                              {signal.status === "in_progress"
+                                ? "In Progress"
+                                : "Pending"}
+                            </span>
+                          ))}
                         {selectedEmployeeSkillTrainingSignals.length > 8 && (
                           <span className="inline-flex items-center rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[11px] text-slate-600">
-                            +{selectedEmployeeSkillTrainingSignals.length - 8} more
+                            +{selectedEmployeeSkillTrainingSignals.length - 8}{" "}
+                            more
                           </span>
                         )}
                       </div>
@@ -1244,7 +1614,9 @@ export default function TnaPage() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div>
-                  <label className={fieldLabelClassName}>Select {employeeTerm}</label>
+                  <label className={fieldLabelClassName}>
+                    Select {employeeTerm}
+                  </label>
                   <div className="mt-1">
                     <SearchableSelect
                       options={employeeSelectOptions}
@@ -1269,8 +1641,8 @@ export default function TnaPage() {
                         roleRequirementsQuery.isLoading
                           ? "Loading role standards..."
                           : roleOptions.length > 0
-                          ? "Select job role"
-                          : "No role standards yet"
+                            ? "Select job role"
+                            : "No role standards yet"
                       }
                       loading={roleRequirementsQuery.isLoading}
                       emptyMessage="No role standards yet. Configure them in Skill and Role."
@@ -1280,13 +1652,16 @@ export default function TnaPage() {
                 </div>
               </div>
               <p className={fieldHintClassName}>
-                Use the same scale from the Level Guide. Skills and role standards are managed in Configuration.
+                Use the same scale from the Level Guide. Skills and role
+                standards are managed in Configuration.
               </p>
               {!roleRequirementsQuery.isLoading && roleOptions.length === 0 && (
                 <button
                   type="button"
                   className={`text-xs underline underline-offset-2 ${themeSecondaryTextClass}`}
-                  onClick={() => navigate(`/${orgCode}/admin/tna/configuration`)}
+                  onClick={() =>
+                    navigate(`/${orgCode}/admin/tna/configuration`)
+                  }
                 >
                   No role standards found. Open Skill and Role.
                 </button>
@@ -1301,12 +1676,18 @@ export default function TnaPage() {
                 <p className={`col-span-2 ${fieldLabelClassName}`}>Action</p>
               </div>
               {employeeSkills.map((item, index) => (
-                <div key={`employee-skill-${index}`} className="grid grid-cols-12 gap-2">
+                <div
+                  key={`employee-skill-${index}`}
+                  className="grid grid-cols-12 gap-2"
+                >
                   <div className="col-span-12 md:col-span-8">
                     {(() => {
-                      const selectedSkillName = normalizeRoleValue(skillNameById.get(item.skillId) || "");
+                      const selectedSkillName = normalizeRoleValue(
+                        skillNameById.get(item.skillId) || "",
+                      );
                       const matchedSignals = selectedSkillName
-                        ? skillTrainingProgressByName.get(selectedSkillName) || []
+                        ? skillTrainingProgressByName.get(selectedSkillName) ||
+                          []
                         : [];
                       const topSignal = matchedSignals[0] || null;
 
@@ -1334,7 +1715,10 @@ export default function TnaPage() {
                               }`}
                             >
                               Active training: {topSignal.title} (
-                              {topSignal.status === "in_progress" ? "In Progress" : "Pending"})
+                              {topSignal.status === "in_progress"
+                                ? "In Progress"
+                                : "Pending"}
+                              )
                             </p>
                           )}
                         </>
@@ -1348,7 +1732,10 @@ export default function TnaPage() {
                     value={item.level}
                     onChange={(event) => {
                       const next = [...employeeSkills];
-                      next[index] = { ...next[index], level: Number(event.target.value || 0) };
+                      next[index] = {
+                        ...next[index],
+                        level: Number(event.target.value || 0),
+                      };
                       setEmployeeSkills(next);
                     }}
                     className={`col-span-7 md:col-span-2 ${inputClassName}`}
@@ -1358,7 +1745,11 @@ export default function TnaPage() {
                     className="col-span-5 md:col-span-2 rounded-lg border border-red-200 text-red-600 text-sm hover:bg-red-50"
                     onClick={() => {
                       if (employeeSkills.length === 1) return;
-                      setEmployeeSkills(employeeSkills.filter((_, rowIndex) => rowIndex !== index));
+                      setEmployeeSkills(
+                        employeeSkills.filter(
+                          (_, rowIndex) => rowIndex !== index,
+                        ),
+                      );
                     }}
                   >
                     Remove
@@ -1366,14 +1757,20 @@ export default function TnaPage() {
                 </div>
               ))}
               <p className={fieldHintClassName}>
-                Enter the employee&apos;s actual current level, not the target role level.
+                Enter the employee&apos;s actual current level, not the target
+                role level.
               </p>
             </div>
 
             <div className="flex flex-wrap gap-2">
               <Button
                 variant="outline"
-                onClick={() => setEmployeeSkills([...employeeSkills, { skillId: "", level: 1 }])}
+                onClick={() =>
+                  setEmployeeSkills([
+                    ...employeeSkills,
+                    { skillId: "", level: 1 },
+                  ])
+                }
               >
                 Add Employee Skill
               </Button>
@@ -1390,9 +1787,9 @@ export default function TnaPage() {
               </Button>
             </div>
           </section>
-          )}
+        )}
 
-          {activeStep === "analyze" && (
+        {activeStep === "analyze" && (
           <section
             id="analyze"
             className={`${panelClassName} space-y-4 ${activeStep === "analyze" ? "ring-2 ring-primary/20" : ""}`}
@@ -1407,12 +1804,22 @@ export default function TnaPage() {
                     {analyzeStatus.label}
                   </span>
                 </div>
-                <h2 className="text-xl font-semibold text-slate-900">Run TNA Analysis</h2>
-                <p className="text-sm text-slate-600 mt-1">
-                  Combine role standards, skill gaps, and optional signals to generate recommendations.
-                </p>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-xl font-semibold text-slate-900">
+                    Run TNA Analysis
+                  </h2>
+                  <HoverHelpTooltip
+                    text="Combine role standards, skill gaps, and optional signals to generate recommendations."
+                    className="shrink-0"
+                  />
+                </div>
               </div>
-              <Button variant="outline" onClick={() => setActiveStep("recommendations")} className="h-fit">
+              <Button
+                variant="outline"
+                onClick={() => goToStep("recommendations")}
+                disabled={!stepEnabledByStep.recommendations}
+                className="h-fit"
+              >
                 Next Step
               </Button>
             </div>
@@ -1433,7 +1840,9 @@ export default function TnaPage() {
                       className="w-full"
                     />
                   </div>
-                  <p className={fieldHintClassName}>Choose who you want to assess now.</p>
+                  <p className={fieldHintClassName}>
+                    Choose who you want to assess now.
+                  </p>
                 </div>
                 <div>
                   <label className={fieldLabelClassName}>Job Role</label>
@@ -1446,22 +1855,26 @@ export default function TnaPage() {
                         roleRequirementsQuery.isLoading
                           ? "Loading role standards..."
                           : roleOptions.length > 0
-                          ? "Select job role"
-                          : "No role standards yet"
+                            ? "Select job role"
+                            : "No role standards yet"
                       }
                       loading={roleRequirementsQuery.isLoading}
                       emptyMessage="No role standards yet. Configure them in Skill and Role."
                       className="w-full"
                     />
                   </div>
-                  {!roleRequirementsQuery.isLoading && roleOptions.length === 0 && (
-                    <p className={`mt-1 text-xs ${themeSecondaryTextClass}`}>
-                      Define role standards in Configuration before running analysis.
-                    </p>
-                  )}
+                  {!roleRequirementsQuery.isLoading &&
+                    roleOptions.length === 0 && (
+                      <p className={`mt-1 text-xs ${themeSecondaryTextClass}`}>
+                        Define role standards in Configuration before running
+                        analysis.
+                      </p>
+                    )}
                 </div>
                 <div>
-                  <label className={fieldLabelClassName}>Pre-test Score (%)</label>
+                  <label className={fieldLabelClassName}>
+                    Pre-test Score (%)
+                  </label>
                   <input
                     type="number"
                     min={0}
@@ -1471,7 +1884,9 @@ export default function TnaPage() {
                     className={`${inputClassName} mt-1`}
                     placeholder="Optional"
                   />
-                  <p className={fieldHintClassName}>Leave empty if no pre-test was taken.</p>
+                  <p className={fieldHintClassName}>
+                    Leave empty if no pre-test was taken.
+                  </p>
                 </div>
               </div>
             </div>
@@ -1479,12 +1894,15 @@ export default function TnaPage() {
             <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <p className="text-sm font-semibold text-slate-900">Role Standard Preview</p>
-                  <p className="text-xs text-slate-500">
-                    {analyzeJobRole.trim()
-                      ? `Selected role: ${analyzeJobRole}`
-                      : "Select a job role to view required skills and levels."}
-                  </p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-semibold text-slate-900">
+                      Role Standard Preview
+                    </p>
+                    <HoverHelpTooltip
+                      text="Select a job role to view required skills and levels."
+                      className="shrink-0"
+                    />
+                  </div>
                 </div>
                 <span className="inline-flex h-fit items-center rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-700">
                   Pre-assessment threshold: {analyzeThreshold}%
@@ -1497,7 +1915,8 @@ export default function TnaPage() {
                 </p>
               ) : !selectedAnalyzeRoleRequirement ? (
                 <p className={`text-sm mt-3 ${themeSecondaryTextClass}`}>
-                  No saved role standards found for this role yet. Configure it in Skill and Role first.
+                  No saved role standards found for this role yet. Configure it
+                  in Skill and Role first.
                 </p>
               ) : selectedAnalyzeRoleSkills.length === 0 ? (
                 <p className="text-sm text-slate-500 mt-3">
@@ -1505,20 +1924,25 @@ export default function TnaPage() {
                 </p>
               ) : (
                 <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-2">
-                  {selectedAnalyzeRoleSkills.map((skillItem: any, index: number) => (
-                    <div
-                      key={`${skillItem.skill || skillItem.skillName || "skill"}-${index}`}
-                      className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
-                    >
-                      <p className="font-medium text-slate-900">{skillItem.skillName}</p>
-                      <p className="text-xs text-slate-500 mt-0.5">
-                        Required level: {Number(skillItem.requiredLevel) || 0}
-                      </p>
-                      <p className="text-xs text-slate-500 mt-0.5">
-                        Skill threshold: {Number(skillItem.passingThreshold) || 70}%
-                      </p>
-                    </div>
-                  ))}
+                  {selectedAnalyzeRoleSkills.map(
+                    (skillItem: any, index: number) => (
+                      <div
+                        key={`${skillItem.skill || skillItem.skillName || "skill"}-${index}`}
+                        className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
+                      >
+                        <p className="font-medium text-slate-900">
+                          {skillItem.skillName}
+                        </p>
+                        <p className="text-xs text-slate-500 mt-0.5">
+                          Required level: {Number(skillItem.requiredLevel) || 0}
+                        </p>
+                        <p className="text-xs text-slate-500 mt-0.5">
+                          Skill threshold:{" "}
+                          {Number(skillItem.passingThreshold) || 70}%
+                        </p>
+                      </div>
+                    ),
+                  )}
                 </div>
               )}
             </div>
@@ -1533,44 +1957,65 @@ export default function TnaPage() {
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 <div>
-                  <label className={fieldLabelClassName}>Performance Gaps</label>
+                  <label className={fieldLabelClassName}>
+                    Performance Gaps
+                  </label>
                   <textarea
                     value={performanceGaps}
                     onChange={(event) => setPerformanceGaps(event.target.value)}
                     className={`min-h-[88px] ${textareaClassName} mt-1`}
                     placeholder="Comma or new line separated"
                   />
-                  <p className={fieldHintClassName}>Examples: missed deadlines, low quality output.</p>
+                  <p className={fieldHintClassName}>
+                    Examples: missed deadlines, low quality output.
+                  </p>
                 </div>
                 <div>
-                  <label className={fieldLabelClassName}>Manager Recommendations</label>
+                  <label className={fieldLabelClassName}>
+                    Manager Recommendations
+                  </label>
                   <textarea
                     value={managerRecommendations}
-                    onChange={(event) => setManagerRecommendations(event.target.value)}
+                    onChange={(event) =>
+                      setManagerRecommendations(event.target.value)
+                    }
                     className={`min-h-[88px] ${textareaClassName} mt-1`}
                     placeholder="Comma or new line separated"
                   />
-                  <p className={fieldHintClassName}>Examples: mentor support, course focus areas.</p>
+                  <p className={fieldHintClassName}>
+                    Examples: mentor support, course focus areas.
+                  </p>
                 </div>
                 <div>
-                  <label className={fieldLabelClassName}>Employee Requests</label>
+                  <label className={fieldLabelClassName}>
+                    Employee Requests
+                  </label>
                   <textarea
                     value={employeeRequests}
-                    onChange={(event) => setEmployeeRequests(event.target.value)}
+                    onChange={(event) =>
+                      setEmployeeRequests(event.target.value)
+                    }
                     className={`min-h-[88px] ${textareaClassName} mt-1`}
                     placeholder="Comma or new line separated"
                   />
-                  <p className={fieldHintClassName}>Examples: requested topics or certifications.</p>
+                  <p className={fieldHintClassName}>
+                    Examples: requested topics or certifications.
+                  </p>
                 </div>
               </div>
             </div>
 
             <div className="rounded-xl border border-slate-200 p-3 space-y-3">
               <div>
-                <p className="text-sm font-semibold text-slate-900">Compliance Signals</p>
-                <p className="text-xs text-slate-500">
-                  Add mandatory or optional compliance training requirements.
-                </p>
+                <div className="flex items-center gap-2">
+                  <p className="text-sm font-semibold text-slate-900">
+                    Compliance Signals
+                  </p>
+                  <HoverHelpTooltip
+                    text="Add mandatory or optional compliance training requirements."
+                    className="shrink-0"
+                  />
+                </div>
               </div>
               {compliance.map((item, index) => (
                 <div
@@ -1581,7 +2026,10 @@ export default function TnaPage() {
                     value={item.title}
                     onChange={(event) => {
                       const next = [...compliance];
-                      next[index] = { ...next[index], title: event.target.value };
+                      next[index] = {
+                        ...next[index],
+                        title: event.target.value,
+                      };
                       setCompliance(next);
                     }}
                     className={`md:col-span-5 ${inputClassName}`}
@@ -1596,7 +2044,11 @@ export default function TnaPage() {
                         next[index] = { ...next[index], courseId: value };
                         setCompliance(next);
                       }}
-                      placeholder={coursesQuery.isLoading ? "Loading courses..." : "Optional course link"}
+                      placeholder={
+                        coursesQuery.isLoading
+                          ? "Loading courses..."
+                          : "Optional course link"
+                      }
                       loading={coursesQuery.isLoading}
                       emptyMessage="No courses available"
                       className="w-full"
@@ -1608,7 +2060,10 @@ export default function TnaPage() {
                       checked={item.mandatory}
                       onChange={(event) => {
                         const next = [...compliance];
-                        next[index] = { ...next[index], mandatory: event.target.checked };
+                        next[index] = {
+                          ...next[index],
+                          mandatory: event.target.checked,
+                        };
                         setCompliance(next);
                       }}
                     />
@@ -1619,7 +2074,9 @@ export default function TnaPage() {
                     className="md:col-span-1 rounded-lg border border-red-200 text-red-600 text-sm hover:bg-red-50 py-2"
                     onClick={() => {
                       if (compliance.length === 1) return;
-                      setCompliance(compliance.filter((_, rowIndex) => rowIndex !== index));
+                      setCompliance(
+                        compliance.filter((_, rowIndex) => rowIndex !== index),
+                      );
                     }}
                   >
                     Remove
@@ -1628,21 +2085,30 @@ export default function TnaPage() {
               ))}
               <Button
                 variant="outline"
-                onClick={() => setCompliance([...compliance, { title: "", courseId: "", mandatory: true }])}
+                onClick={() =>
+                  setCompliance([
+                    ...compliance,
+                    { title: "", courseId: "", mandatory: true },
+                  ])
+                }
               >
                 Add Compliance Requirement
               </Button>
             </div>
 
             <div className="flex justify-end">
-              <Button variant="primary" onClick={runAnalysis} isLoading={analyzeTnaMutation.isPending}>
+              <Button
+                variant="primary"
+                onClick={runAnalysis}
+                isLoading={analyzeTnaMutation.isPending}
+              >
                 Run TNA Analysis
               </Button>
             </div>
           </section>
-          )}
+        )}
 
-          {activeStep === "recommendations" && (
+        {activeStep === "recommendations" && (
           <section
             id="recommendations"
             className={`${panelClassName} space-y-4 ${
@@ -1659,34 +2125,42 @@ export default function TnaPage() {
                     {recommendationsStatus.label}
                   </span>
                 </div>
-                <h2 className="text-xl font-semibold text-slate-900">Track Recommendations</h2>
-                <p className="text-sm text-slate-600 mt-1">
-                  Review generated recommendations and move each one through assignment and completion.
-                </p>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-xl font-semibold text-slate-900">
+                    Track Recommendations
+                  </h2>
+                  <HoverHelpTooltip
+                    text="Review generated recommendations and move each one through assignment and completion."
+                    className="shrink-0"
+                  />
+                </div>
               </div>
               <div className="flex flex-col sm:flex-row sm:flex-wrap md:justify-end gap-2">
                 <Button
                   variant="outline"
                   onClick={() => navigate(`/${orgCode}/admin/tna/employees`)}
-                  className="h-10 px-4 text-sm text-center leading-tight"
+                  className="h-10 w-full sm:w-[200px] text-sm text-center leading-tight justify-center"
                 >
                   View Employee TNA Details
                 </Button>
                 <Button
                   variant="outline"
                   onClick={() => navigate(`/${orgCode}/admin/tna/execution`)}
-                  className="h-10 px-4 text-sm text-center leading-tight"
+                  className="h-10 w-full sm:w-[200px] text-sm text-center leading-tight justify-center"
                 >
-                  Deploy to Program and Batch
+                  Deploy to Program/Batch
                 </Button>
               </div>
             </div>
 
             {recommendationsQuery.isLoading ? (
-              <p className="text-sm text-slate-500">Loading recommendations...</p>
+              <p className="text-sm text-slate-500">
+                Loading recommendations...
+              </p>
             ) : recommendations.length === 0 ? (
               <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-5 text-sm text-slate-600">
-                No recommendations yet. Complete steps 1 and 2, then run analysis.
+                No recommendations yet. Complete steps 1 and 2, then run
+                analysis.
               </div>
             ) : (
               <GroupedDataTable
@@ -1700,9 +2174,8 @@ export default function TnaPage() {
               />
             )}
           </section>
-          )}
+        )}
       </div>
     </div>
   );
 }
-

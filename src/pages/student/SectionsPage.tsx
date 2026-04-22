@@ -17,11 +17,11 @@ interface Section {
   course: {
     _id: string;
     thumbnail: string;
-  };
+  } | null;
   instructor: {
     firstName: string;
     lastName: string;
-  };
+  } | null;
   modules?: Array<{
     _id: string;
     lessons: Array<{
@@ -204,7 +204,7 @@ export default function StudentSectionsPage() {
           <AnimatePresence>
             {allSections.map((section: Section, index: number) => (
               <motion.div
-                key={section._id}
+                key={section._id || `${section.code}-${index}`}
                 variants={cardVariants}
                 initial="hidden"
                 animate="visible"
@@ -218,9 +218,9 @@ export default function StudentSectionsPage() {
                   course={section.course}
                   status={section.status}
                   instructor={
-                    section.instructor.firstName +
-                    " " +
-                    section.instructor.lastName
+                    section.instructor
+                      ? `${section.instructor.firstName} ${section.instructor.lastName}`.trim()
+                      : "Unassigned Instructor"
                   }
                   progress={computeSectionProgress(section)}
                   onClick={() => handleSectionClick(section.code)}

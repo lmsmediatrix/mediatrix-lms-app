@@ -18,6 +18,7 @@ import { IoCalendarOutline } from "react-icons/io5";
 import { HiOutlinePencil } from "react-icons/hi";
 import CameraModal from "../instructor/CameraModal";
 import ImageCropper from "../../components/ImageCropper";
+import HoverHelpTooltip from "../../components/common/HoverHelpTooltip";
 
 const profileSchema = z.object({
   firstName: z
@@ -215,10 +216,14 @@ export default function AdminProfilePage() {
       {/* Header Section */}
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h1 className="text-3xl font-bold">Admin Profile</h1>
-          <p className="text-sm text-gray-500">
-            Manage your account information
-          </p>
+          <div className="flex items-center gap-2">
+            <h1 className="text-3xl font-bold">Admin Profile</h1>
+            <HoverHelpTooltip
+              text="Manage your account information"
+              
+              className="shrink-0"
+            />
+          </div>
         </div>
         <div className="relative">
           <button

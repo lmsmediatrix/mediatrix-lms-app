@@ -4,12 +4,11 @@ import UpsertInstructorModal from "../../components/instructor/UpsertInstructorM
 import { PlusIcon } from "@/components/ui/plus-icon";
 
 import { formatDateMMMDDYYY } from "../../lib/dateUtils";
-import { dateFilter, IInstructor } from "../../types/interfaces";
+import { IInstructor } from "../../types/interfaces";
 import { useMemo, useState, Suspense } from "react";
 import BulkImportInstructorModal from "../../components/instructor/BulkImportInstructorModal";
 import StatsCards from "../../components/common/StatsCards";
 import { generateStats } from "../../components/common/statUtils";
-import { CgChevronDown } from "react-icons/cg";
 import {
   useExportInstructorToCsv,
   useSearchInstructors,
@@ -21,11 +20,16 @@ import DeleteInstructorModal from "../../components/instructor/DeleteInstructorM
 import { exportToCSVUtil } from "../../lib/exportCsvUtils";
 import ExportModal from "../../components/orgAdmin/ExportModal";
 import TableEmptyState from "../../components/common/TableEmptyState";
+import HoverHelpTooltip from "../../components/common/HoverHelpTooltip";
 import ActionMenuButton from "../../components/orgAdmin/ActionMenuButton";
 import TableSkeletonClean from "../../components/skeleton/TableSkeletonClean";
 import { MdLockReset } from "react-icons/md";
-import { FiToggleLeft, FiToggleRight, FiUpload } from "react-icons/fi";
-import { FaFileExport } from "react-icons/fa6";
+import {
+  FiDownload,
+  FiToggleLeft,
+  FiToggleRight,
+  FiUpload,
+} from "react-icons/fi";
 import ResetUserPassword from "../../components/ResetUserPassword";
 import { useDebounce } from "../../hooks/useDebounce";
 import {
@@ -33,6 +37,7 @@ import {
   GroupedTableGroup,
   default as GroupedDataTable,
 } from "../../components/common/GroupedDataTable";
+import { PanelLeft } from "@/components/animate-ui/icons/panel-left";
 
 const EMPLOYMENT_TYPES = [
   "full_time",
@@ -50,18 +55,17 @@ export default function InstructorDatabase() {
   const orgType = currentUser.user.organization.type;
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
-  const [isFilterOpen, setIsFilterOpen] = useState(false);
-  const [selectedPeriod, setSelectedPeriod] = useState<dateFilter>("month");
+  const selectedPeriod = "month";
   const [resetUserPassword, setResetUserPassword] =
     useState<IInstructor | null>(null);
   const [filters, setFilters] = useState({
     employmentType: searchParams.get("employmentType") || "",
   });
   const [archiveStatus, setArchiveStatus] = useState<"only" | "none">(
-    (searchParams.get("archiveStatus") as "only" | "none") || "none"
+    (searchParams.get("archiveStatus") as "only" | "none") || "none",
   );
   const [searchTerm, setSearchTerm] = useState(
-    searchParams.get("search") || ""
+    searchParams.get("search") || "",
   );
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
 
@@ -70,6 +74,7 @@ export default function InstructorDatabase() {
     limit: 10,
   });
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+  const [isImportExportOpen, setIsImportExportOpen] = useState(false);
   const exportInstructor = useExportInstructorToCsv();
 
   const instructorTerm = getTerm("instructor", orgType);
@@ -90,16 +95,16 @@ export default function InstructorDatabase() {
     isPending: isTeachersPending,
     isFetching: isTeachersFetching,
   } = useSearchInstructors({
-      skip: skipLimit.skip,
-      limit: skipLimit.limit,
-      searchTerm: debouncedSearchTerm,
-      filter:
-        filtersArray.length > 0
-          ? filtersArray[0] // Use first filter for now, will need to update API to support multiple filters
-          : { key: "role", value: "instructor" },
-      organizationId: currentUser.user.organization._id,
-      archiveStatus,
-    });
+    skip: skipLimit.skip,
+    limit: skipLimit.limit,
+    searchTerm: debouncedSearchTerm,
+    filter:
+      filtersArray.length > 0
+        ? filtersArray[0] // Use first filter for now, will need to update API to support multiple filters
+        : { key: "role", value: "instructor" },
+    organizationId: currentUser.user.organization._id,
+    archiveStatus,
+  });
   const isInitialTeachersLoading = isTeachersPending && !teachersData;
 
   const modal = searchParams.get("modal");
@@ -111,7 +116,7 @@ export default function InstructorDatabase() {
 
   const handleFilterChange = (
     filterType: keyof typeof filters,
-    value: string
+    value: string,
   ) => {
     setFilters((prev) => ({ ...prev, [filterType]: value }));
     setSkipLimit((prev) => ({ ...prev, skip: 0 }));
@@ -205,20 +210,8 @@ export default function InstructorDatabase() {
     { width: "10%", alignment: "center" as const }, // Actions
   ];
 
-  const TIME_PERIODS = [
-    { display: "Today", value: "today" },
-    { display: "This Week", value: "week" },
-    { display: "This Month", value: "month" },
-    { display: "This Year", value: "year" },
-  ] as const;
-
-  const handleFilterSelect = (period: dateFilter) => {
-    setSelectedPeriod(period);
-    setIsFilterOpen(false);
-  };
-
   const instructorRows = useMemo(
-    () => ((teachersData?.instructors || []) as IInstructor[]),
+    () => (teachersData?.instructors || []) as IInstructor[],
     [teachersData?.instructors],
   );
 
@@ -244,7 +237,8 @@ export default function InstructorDatabase() {
         filterPlaceholder: `Search ${instructorTerm.toLowerCase()}`,
         filterValue: searchTerm,
         onFilterChange: handleSearchChange,
-        sortAccessor: (row) => `${row.firstName || ""} ${row.lastName || ""}`.trim(),
+        sortAccessor: (row) =>
+          `${row.firstName || ""} ${row.lastName || ""}`.trim(),
         filterAccessor: (row) =>
           `${row.firstName || ""} ${row.lastName || ""} ${row.email || ""}`.trim(),
         className: "min-w-[280px]",
@@ -326,8 +320,8 @@ export default function InstructorDatabase() {
               row.employmentType === "full_time"
                 ? "bg-blue-100 text-blue-800"
                 : row.employmentType === "part_time"
-                ? "bg-green-100 text-green-800"
-                : "bg-gray-100 text-gray-800"
+                  ? "bg-green-100 text-green-800"
+                  : "bg-gray-100 text-gray-800"
             }`}
           >
             {row.employmentType
@@ -348,7 +342,11 @@ export default function InstructorDatabase() {
         sortAccessor: (row) => new Date(row.createdAt || 0).getTime(),
         filterAccessor: (row) => formatDateMMMDDYYY(row.createdAt),
         className: "min-w-[160px]",
-        render: (row) => <span className="text-sm text-slate-600">{formatDateMMMDDYYY(row.createdAt)}</span>,
+        render: (row) => (
+          <span className="text-sm text-slate-600">
+            {formatDateMMMDDYYY(row.createdAt)}
+          </span>
+        ),
       },
       {
         key: "actions",
@@ -383,7 +381,8 @@ export default function InstructorDatabase() {
               },
               {
                 key: "archive-toggle",
-                label: archiveStatus === "only" ? "Show Active" : "Show Archived",
+                label:
+                  archiveStatus === "only" ? "Show Active" : "Show Archived",
                 icon:
                   archiveStatus === "only" ? (
                     <FiToggleLeft className="size-4" />
@@ -422,60 +421,16 @@ export default function InstructorDatabase() {
     <div className="pt-14 pb-6 px-6 lg:p-6">
       {/* Page Header */}
       <div className="mb-6">
-        <h1 className="text-2xl md:text-3xl font-bold text-slate-900">
-          {pageTitle}
-        </h1>
-        <p className="mt-1 text-sm md:text-base text-slate-600">
-          {pageDescription}
-        </p>
+        <div className="flex items-center gap-2">
+          <h1 className="text-2xl md:text-3xl font-bold text-slate-900">
+            {pageTitle}
+          </h1>
+          <HoverHelpTooltip text={pageDescription} className="shrink-0" />
+        </div>
       </div>
 
       {/* Summary Cards Section */}
       <div className="mb-2">
-        <div className="flex justify-between mb-2">
-          <h2 className="text-xl md:text-2xl font-bold text-slate-900">
-            Instructor Summary
-          </h2>
-          <div className="relative">
-            <Button
-              variant="cancel"
-              onClick={() => setIsFilterOpen(!isFilterOpen)}
-              className="flex items-center gap-2"
-            >
-              <span className="capitalize flex justify-center items-center gap-2">
-                {selectedPeriod === "week"
-                  ? "This Week"
-                  : selectedPeriod === "month"
-                  ? "This Month"
-                  : selectedPeriod === "year"
-                  ? "This Year"
-                  : selectedPeriod}
-                <CgChevronDown />
-              </span>
-            </Button>
-            {isFilterOpen && (
-              <div className="absolute right-0 mt-2 w-32 bg-white rounded-md shadow-lg z-10">
-                <ul className="py-1">
-                  {TIME_PERIODS.map((period) => (
-                    <li
-                      key={period.value}
-                      className={`px-4 py-2 hover:bg-gray-100 cursor-pointer text-sm ${
-                        selectedPeriod === period.value
-                          ? "bg-gray-100 font-medium"
-                          : ""
-                      }`}
-                      onClick={() =>
-                        handleFilterSelect(period.value as dateFilter)
-                      }
-                    >
-                      {period.display}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-          </div>
-        </div>
         <Suspense
           fallback={
             <div className="mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -494,33 +449,55 @@ export default function InstructorDatabase() {
 
       {/* Table Section */}
       <div className="flex flex-col gap-4 py-6 md:flex-row md:items-center md:justify-end">
-        <div className="flex gap-2 flex-shrink-0">
+        <div className="flex gap-2 flex-shrink-0 flex-wrap md:flex-nowrap md:items-center">
           <Button
             variant="primary"
             onClick={() => setSearchParams({ modal: "create-instructor" })}
-            className="whitespace-nowrap text-sm flex-1 md:flex-initial"
+            className="whitespace-nowrap text-sm h-[42px] flex-1 md:flex-initial"
           >
             <PlusIcon size={14} />
             <span className="hidden sm:inline">Add {instructorTerm}</span>
             <span className="sm:hidden">Add</span>
           </Button>
-          <Button
-            variant="outline"
-            onClick={() => setIsBulkImportOpen(true)}
-            className="whitespace-nowrap text-sm flex-1 md:flex-initial"
+          <div
+            className={`flex items-center gap-2 overflow-hidden transition-all duration-300 ease-out ${
+              isImportExportOpen
+                ? "max-w-[520px] opacity-100 translate-x-0"
+                : "max-w-0 opacity-0 -translate-x-2 pointer-events-none"
+            }`}
           >
-            <FiUpload className="size-4" />
-            <span className="hidden sm:inline">Bulk Upload</span>
-            <span className="sm:hidden">Upload</span>
-          </Button>
+            <Button
+              variant="outline"
+              onClick={() => setIsBulkImportOpen(true)}
+              className={`whitespace-nowrap text-sm h-[42px] transition-all duration-300 ${
+                isImportExportOpen ? "scale-100" : "scale-95"
+              }`}
+            >
+              <FiUpload className="size-4" />
+              <span>Import</span>
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => setIsExportModalOpen(true)}
+              className={`whitespace-nowrap text-sm h-[42px] transition-all duration-300 ${
+                isImportExportOpen ? "scale-100" : "scale-95"
+              }`}
+            >
+              <FiDownload className="size-4" />
+              <span>Export</span>
+            </Button>
+          </div>
           <Button
-            variant="outline"
-            onClick={() => setIsExportModalOpen(true)}
-            className="whitespace-nowrap text-sm flex-1 md:flex-initial"
+            variant={isImportExportOpen ? "outline" : "primary"}
+            onClick={() => setIsImportExportOpen((prev) => !prev)}
+            className="text-sm h-[42px] !px-4 md:!px-4"
           >
-            <FaFileExport className="size-4" />
-            <span className="hidden sm:inline">Export CSV</span>
-            <span className="sm:hidden">Export</span>
+            <PanelLeft
+              size={15}
+              animate={isImportExportOpen ? "default" : false}
+              animateOnHover
+            />
+            <span className="sr-only">Toggle import and export actions</span>
           </Button>
           {/* Archive Status Toggle Switch */}
           <div className="flex items-center gap-2">
@@ -549,24 +526,31 @@ export default function InstructorDatabase() {
       {isInitialTeachersLoading ? (
         <TableSkeletonClean columns={instructorTableColumns} rows={5} />
       ) : instructorRows.length === 0 &&
-        !(debouncedSearchTerm || filters.employmentType || archiveStatus !== "none") ? (
+        !(
+          debouncedSearchTerm ||
+          filters.employmentType ||
+          archiveStatus !== "none"
+        ) ? (
         <TableEmptyState
           title={`Add Your First ${instructorTerm}`}
           description={`Start by adding ${instructorsTerm.toLowerCase()} who will teach your courses.`}
-          primaryActionLabel={`Add ${instructorTerm}`}
-          primaryActionPath="?modal=create-instructor"
-          hidePrimaryAction
+          secondaryActionLabel="Bulk Import"
+          onSecondaryAction={() => setIsBulkImportOpen(true)}
           colSpan={orgType === "school" ? 5 : 4}
           type="instructor"
           isFiltered={false}
         />
       ) : (
-        <div className={`transition-opacity duration-200 ${isTeachersFetching ? "opacity-70" : "opacity-100"}`}>
+        <div
+          className={`transition-opacity duration-200 ${isTeachersFetching ? "opacity-70" : "opacity-100"}`}
+        >
           <GroupedDataTable
             groups={tableGroups}
             columns={tableColumns}
             rowKey={(row) => row._id}
-            tableMinWidthClassName={orgType === "school" ? "min-w-[1080px]" : "min-w-[900px]"}
+            tableMinWidthClassName={
+              orgType === "school" ? "min-w-[1080px]" : "min-w-[900px]"
+            }
             showPagination={false}
             cardless
             showGroupHeader={false}

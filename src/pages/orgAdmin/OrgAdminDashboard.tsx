@@ -22,6 +22,7 @@ import { useGetAllCourses } from "../../hooks/useCourse";
 import { useMemo, useState } from "react";
 import { ICourse } from "../../types/interfaces";
 import SectionAnalyticsSkeleton from "../../components/skeleton/SectionAnalyticsSkeleton";
+import HoverHelpTooltip from "../../components/common/HoverHelpTooltip";
 
 const iconMap = {
   FaBook: BookOpenIcon,
@@ -572,13 +573,15 @@ export default function OrgAdminDashboard() {
               <span className="inline-flex w-fit items-center rounded-full border border-blue-200 bg-blue-50 px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-blue-700">
                 Live Progress
               </span>
-              <h3 className="text-lg font-semibold text-slate-900">
-                Completion Progress
-              </h3>
-              <p className="text-sm text-slate-600 max-w-2xl">
-                Track progress by instructor, with completion across batches,
-                modules, and lessons.
-              </p>
+              <div className="flex items-center gap-2">
+                <h3 className="text-lg font-semibold text-slate-900">
+                  Completion Progress
+                </h3>
+                <HoverHelpTooltip
+                  text="Track progress by instructor, with completion across batches, modules, and lessons."
+                  className="shrink-0"
+                />
+              </div>
             </div>
             <button
               type="button"
@@ -812,12 +815,15 @@ export default function OrgAdminDashboard() {
           <div className="bg-white border rounded-xl p-6 mb-4">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
               <div>
-                <h2 className="text-2xl font-bold text-gray-800">
-                  {sectionTerm} Analytics
-                </h2>
-                <p className="text-gray-600">
-                  View metrics and status across all course {sectionsTerm.toLowerCase()}
-                </p>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-2xl font-bold text-gray-800">
+                    {sectionTerm} Analytics
+                  </h2>
+                  <HoverHelpTooltip
+                    text={`View metrics and status across all course ${sectionsTerm.toLowerCase()}`}
+                    className="shrink-0"
+                  />
+                </div>
               </div>
               <div className="w-full md:w-72">
                 <label

@@ -90,6 +90,55 @@ class CourseService extends APIService {
     }
   };
 
+  archiveCourse = async (
+    courseId: string,
+    options?: { confirm?: boolean; cascade?: boolean }
+  ) => {
+    try {
+      const query = new URLSearchParams();
+      if (options?.confirm) query.set("confirm", "true");
+      if (options?.cascade) query.set("cascade", "true");
+      const queryString = query.toString() ? `?${query.toString()}` : "";
+
+      const response = await apiClient.put(
+        `${BASE_URL}${COURSE.ARCHIVE.replace(":id", courseId)}${queryString}`,
+        {},
+        {
+          withCredentials: true,
+        }
+      );
+      return response.data;
+    } catch (error: any) {
+      const responseMessage =
+        error?.response?.data?.message ||
+        error?.response?.data?.error ||
+        error?.data?.message;
+      throw new Error(
+        responseMessage ||
+          error?.message ||
+          "Error archiving course"
+      );
+    }
+  };
+
+  getCourseArchiveImpact = async (courseId: string) => {
+    try {
+      const response = await apiClient.get(
+        `${BASE_URL}${COURSE.ARCHIVE_IMPACT.replace(":id", courseId)}`,
+        {
+          withCredentials: true,
+        }
+      );
+      return response.data;
+    } catch (error: any) {
+      throw new Error(
+        error?.message ||
+          error?.data?.message ||
+          "Error fetching course archive impact"
+      );
+    }
+  };
+
   searchCourse = async () => {
     try {
       const response = await apiClient.post(
