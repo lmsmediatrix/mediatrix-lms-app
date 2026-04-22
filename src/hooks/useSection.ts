@@ -114,10 +114,13 @@ export const useAdminSections = (apiParams?: SectionApiParams) => {
         .limit(apiParams?.limit || 10)
         .skip(apiParams?.skip || 0)
         .where({
-          ...((apiParams?.filters || []).reduce((acc, filter) => {
-            acc[filter.key] = filter.value;
-            return acc;
-          }, {} as Record<string, string>)),
+          ...(apiParams?.filters || []).reduce(
+            (acc, filter) => {
+              acc[filter.key] = filter.value;
+              return acc;
+            },
+            {} as Record<string, string>,
+          ),
           ...(apiParams?.filter
             ? { [apiParams.filter.key as string]: apiParams.filter.value }
             : {}),
@@ -189,7 +192,7 @@ export const useInfiniteInstructorSections = (
         .populate([
           {
             path: "course",
-            select: "thumbnail",
+            select: "title thumbnail",
           },
         ])
         .limit(limit)
@@ -231,7 +234,7 @@ export const useStudentSections = (
     queryFn: async () => {
       sectionService.resetQuery();
       return sectionService
-        .select(["code", "title", "name", "status"])
+        .select(["code", "title", "name", "status", "schedule"])
         .populate([
           {
             path: "course",
@@ -241,14 +244,14 @@ export const useStudentSections = (
             path: "instructor",
             select: "firstName lastName",
           },
-            {
-              path: "modules",
-              select: "_id lessons",
-              populate: {
-                path: "lessons",
-                select: "_id progress status",
-              },
+          {
+            path: "modules",
+            select: "_id lessons",
+            populate: {
+              path: "lessons",
+              select: "_id progress status",
             },
+          },
           {
             path: "assessments",
             select: "_id",
@@ -286,7 +289,7 @@ export const useInfiniteStudentSections = (
         .populate([
           {
             path: "course",
-            select: "thumbnail",
+            select: "title thumbnail",
           },
           {
             path: "instructor",
@@ -420,10 +423,13 @@ export const useExportSectionToCsv = () => {
         .limit(apiParams?.limit || 10)
         .skip(apiParams?.skip || 0)
         .where({
-          ...((apiParams?.filters || []).reduce((acc, filter) => {
-            acc[filter.key] = filter.value;
-            return acc;
-          }, {} as Record<string, string>)),
+          ...(apiParams?.filters || []).reduce(
+            (acc, filter) => {
+              acc[filter.key] = filter.value;
+              return acc;
+            },
+            {} as Record<string, string>,
+          ),
           ...(apiParams?.filter
             ? { [apiParams.filter.key as string]: apiParams.filter.value }
             : {}),
@@ -439,7 +445,15 @@ export const useAdminCompletionOverview = (organizationId?: string) => {
     queryFn: async () => {
       sectionService.resetQuery();
       return sectionService
-        .select(["_id", "code", "name", "status", "instructor", "students", "modules"])
+        .select([
+          "_id",
+          "code",
+          "name",
+          "status",
+          "instructor",
+          "students",
+          "modules",
+        ])
         .populate([
           {
             path: "instructor",
@@ -533,7 +547,7 @@ export const useSearchSectionByCode = (sectionCode: string) => {
         .populate([
           {
             path: "course",
-            select: "thumbnail",
+            select: "title thumbnail",
           },
           {
             path: "instructor",
@@ -628,6 +642,7 @@ export const useSectionStudent = (
         .sort("createdAt")
         .limit(apiParams?.limit || 1000)
         .skip(apiParams?.skip || 0)
+        .withArchive(apiParams?.archiveStatus || "include")
         .withDocument(true)
         .withPagination(!!apiParams?.withPagination)
         .getSectionStudent(apiParams?.sectionCode as string);

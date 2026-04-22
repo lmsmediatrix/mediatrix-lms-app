@@ -1,14 +1,12 @@
 import React from "react";
-import { FaPlus, FaFileUpload } from "react-icons/fa";
+import { FaFileUpload } from "react-icons/fa";
 import Button from "./Button";
 import { useNavigate } from "react-router-dom";
+import HoverHelpTooltip from "./HoverHelpTooltip";
 
 interface TableEmptyStateProps {
   title: string;
   description: string;
-  primaryActionLabel: string;
-  primaryActionPath: string;
-  hidePrimaryAction?: boolean;
   secondaryActionLabel?: string;
   secondaryActionPath?: string;
   onPrimaryAction?: () => void;
@@ -27,12 +25,8 @@ interface TableEmptyStateProps {
 const TableEmptyState: React.FC<TableEmptyStateProps> = ({
   title,
   description,
-  primaryActionLabel,
-  primaryActionPath,
-  hidePrimaryAction = false,
   secondaryActionLabel,
   secondaryActionPath,
-  onPrimaryAction,
   onSecondaryAction,
   colSpan = 6,
   type = "course",
@@ -40,19 +34,6 @@ const TableEmptyState: React.FC<TableEmptyStateProps> = ({
 }) => {
   const navigate = useNavigate();
   void colSpan;
-
-  const handlePrimaryAction = () => {
-    if (onPrimaryAction) {
-      onPrimaryAction();
-    } else if (primaryActionPath.startsWith("?")) {
-      // If it's a search param, use navigate with the current path
-      const searchParams = new URLSearchParams(primaryActionPath.substring(1));
-      const currentPath = window.location.pathname;
-      navigate({ pathname: currentPath, search: searchParams.toString() });
-    } else {
-      navigate(primaryActionPath);
-    }
-  };
 
   const handleSecondaryAction = () => {
     if (onSecondaryAction) {
@@ -68,9 +49,6 @@ const TableEmptyState: React.FC<TableEmptyStateProps> = ({
       navigate(secondaryActionPath);
     }
   };
-
-  const showPrimaryAction = !hidePrimaryAction;
-  const showActions = !isFiltered && (showPrimaryAction || Boolean(secondaryActionLabel));
 
   // Render the appropriate illustration based on type
   const renderIllustration = () => {
@@ -532,28 +510,31 @@ const TableEmptyState: React.FC<TableEmptyStateProps> = ({
 
         {/* Title and Description */}
         <div className="mb-6 text-center">
-          <h3 className="mb-2 text-xl font-bold text-gray-800">
-            {isFiltered ? "No Results Found" : title}
-          </h3>
-          <p className="mx-auto max-w-lg text-gray-600">
-            {isFiltered
-              ? "Try adjusting your search or filter criteria to find what you're looking for."
-              : description}
-          </p>
+          <div className="mx-auto mb-2 flex w-full max-w-lg items-center justify-center gap-2">
+            <h3 className="text-xl font-bold text-gray-800">
+              {isFiltered ? "No Results Found" : title}
+            </h3>
+            {!isFiltered && (
+              <HoverHelpTooltip
+                text={description}
+                align="center"
+                label=""
+                className="shrink-0"
+              />
+            )}
+          </div>
+          {isFiltered ? (
+            <p className="mx-auto max-w-lg text-gray-600">
+              Try adjusting your search or filter criteria to find what you're looking for.
+            </p>
+          ) : (
+            <p className="mx-auto max-w-lg text-gray-500">Hover the ? icon for details.</p>
+          )}
         </div>
 
         {/* Actions - Only show actions if not in filtered state */}
-        {showActions && (
+        {!isFiltered && (
           <div className="flex flex-col gap-3 sm:flex-row">
-            {showPrimaryAction && (
-              <Button
-                variant="primary"
-                onClick={handlePrimaryAction}
-                className="flex items-center justify-center gap-2"
-              >
-                <FaPlus /> {primaryActionLabel}
-              </Button>
-            )}
             {secondaryActionLabel && (
               <Button
                 variant="outline"

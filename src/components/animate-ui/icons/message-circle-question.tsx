@@ -10,56 +10,50 @@ import {
   type IconProps,
 } from '@/components/animate-ui/icons/icon';
 
-type LightbulbProps = IconProps<keyof typeof animations>;
+type MessageCircleQuestionProps = IconProps<keyof typeof animations>;
 
 const animations = {
   default: {
     path1: {
       initial: {
-        rotate: 0,
-        fill: 'transparent',
+        scale: 1,
       },
       animate: {
-        transformOrigin: 'bottom center',
-        fill: 'currentColor',
-        rotate: [0, -20, 15, -7, 0],
-        fillOpacity: [0, 1, 0, 1, 0],
+        scale: [1, 1.04, 1],
         transition: {
-          duration: 0.8,
+          duration: 0.3,
           ease: 'easeInOut',
-          rotate: {
-            duration: 0.8,
-            ease: 'easeInOut',
-            times: [0, 0.4, 0.6, 0.8, 1],
-          },
-          fillOpacity: {
-            duration: 0.3,
-            ease: 'easeInOut',
-            times: [0, 0.4, 0.6, 0.8, 1],
-            delay: 0.4,
-          },
         },
       },
     },
     path2: {
       initial: {
-        rotate: 0,
+        y: 0,
       },
       animate: {
-        transformOrigin: 'bottom center',
-        rotate: [0, 0, 10, -5, 0],
+        y: [0, -0.8, 0],
         transition: {
-          duration: 0.8,
+          duration: 0.3,
           ease: 'easeInOut',
-          times: [0, 0.4, 0.6, 0.8, 1],
         },
       },
     },
-    path3: {},
+    path3: {
+      initial: {
+        opacity: 1,
+      },
+      animate: {
+        opacity: [1, 0.55, 1],
+        transition: {
+          duration: 0.3,
+          ease: 'easeInOut',
+        },
+      },
+    },
   } satisfies Record<string, Variants>,
 } as const;
 
-const IconComponent = React.forwardRef<SVGSVGElement, LightbulbProps>(
+const IconComponent = React.forwardRef<SVGSVGElement, MessageCircleQuestionProps>(
   ({ size, ...props }, ref) => {
     const { controls } = useAnimateIconContext();
     const variants = getVariants(animations);
@@ -79,19 +73,19 @@ const IconComponent = React.forwardRef<SVGSVGElement, LightbulbProps>(
         {...props}
       >
         <motion.path
-          d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"
+          d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2z"
           variants={variants.path1}
           initial="initial"
           animate={controls}
         />
         <motion.path
-          d="M9 18h6"
+          d="M9.09 9a3 3 0 0 1 5.82 1c0 2-3 3-3 3"
           variants={variants.path2}
           initial="initial"
           animate={controls}
         />
         <motion.path
-          d="M10 22h4"
+          d="M12 17h.01"
           variants={variants.path3}
           initial="initial"
           animate={controls}
@@ -101,16 +95,16 @@ const IconComponent = React.forwardRef<SVGSVGElement, LightbulbProps>(
   },
 );
 
-IconComponent.displayName = 'LightbulbIconComponent';
+IconComponent.displayName = 'MessageCircleQuestionIconComponent';
 
-function Lightbulb(props: LightbulbProps) {
+function MessageCircleQuestion(props: MessageCircleQuestionProps) {
   return <IconWrapper icon={IconComponent} {...props} />;
 }
 
 export {
   animations,
-  Lightbulb,
-  Lightbulb as LightbulbIcon,
-  type LightbulbProps,
-  type LightbulbProps as LightbulbIconProps,
+  MessageCircleQuestion,
+  MessageCircleQuestion as MessageCircleQuestionIcon,
+  type MessageCircleQuestionProps,
+  type MessageCircleQuestionProps as MessageCircleQuestionIconProps,
 };

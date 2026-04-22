@@ -82,8 +82,6 @@ export default function AnnouncementTab({ sectionCode }: AnnouncementTabProps) {
             <InstructorTableEmptyState
               title="Create Your First Announcement"
               description="Start by creating an announcement to communicate important information to your students."
-              primaryActionLabel="Add Announcement"
-              primaryActionPath="manage?tab=announcements&modal=create-announcements"
               type="announcement"
             />
           </div>

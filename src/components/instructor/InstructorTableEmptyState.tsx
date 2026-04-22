@@ -1,13 +1,10 @@
 import React from "react";
 import { FaPlus } from "react-icons/fa";
 import Button from "../common/Button";
-import { useNavigate } from "react-router-dom";
 
 interface InstructorTableEmptyStateProps {
   title: string;
   description: string;
-  primaryActionLabel: string;
-  primaryActionPath: string;
   colSpan?: number;
   type: "module" | "announcement" | "assessment";
 }
@@ -15,23 +12,8 @@ interface InstructorTableEmptyStateProps {
 const InstructorTableEmptyState: React.FC<InstructorTableEmptyStateProps> = ({
   title,
   description,
-  primaryActionLabel,
-  primaryActionPath,
   type,
 }) => {
-  const navigate = useNavigate();
-
-  const handlePrimaryAction = () => {
-    if (primaryActionPath.startsWith("?")) {
-      // If it's a search param, use navigate with the current path
-      const searchParams = new URLSearchParams(primaryActionPath.substring(1));
-      const currentPath = window.location.pathname;
-      navigate({ pathname: currentPath, search: searchParams.toString() });
-    } else {
-      navigate(primaryActionPath);
-    }
-  };
-
   // Render the appropriate illustration based on type
   const renderIllustration = () => {
     switch (type) {
@@ -272,10 +254,9 @@ const InstructorTableEmptyState: React.FC<InstructorTableEmptyStateProps> = ({
       <div className="flex flex-col sm:flex-row gap-3">
         <Button
           variant="primary"
-          onClick={handlePrimaryAction}
           className="flex items-center justify-center gap-2"
         >
-          <FaPlus /> {primaryActionLabel}
+          <FaPlus /> 
         </Button>
       </div>
     </div>

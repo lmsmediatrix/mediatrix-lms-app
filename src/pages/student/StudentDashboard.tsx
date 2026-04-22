@@ -29,7 +29,7 @@ interface Section {
   course: {
     _id: string;
     thumbnail: string;
-  };
+  } | null;
   instructor: {
     firstName: string;
     lastName: string;

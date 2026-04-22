@@ -1,10 +1,12 @@
 import { useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { FaArrowLeft } from "react-icons/fa";
 import { toast } from "react-toastify";
 import ActionMenuButton from "../../components/orgAdmin/ActionMenuButton";
 import Button from "../../components/common/Button";
 import Dialog from "../../components/common/Dialog";
+import HoverHelpTooltip from "../../components/common/HoverHelpTooltip";
 import { useAuth } from "../../context/AuthContext";
 import {
   GroupedTableColumn,
@@ -20,6 +22,7 @@ type EmployeeOption = {
   firstName?: string;
   lastName?: string;
   email?: string;
+  role?: string;
 };
 
 type RecommendationCourse = {
@@ -96,6 +99,13 @@ const getRecommendationStatusFilterValue = (
 ): RecommendationStatusFilter => {
   if (!recommendation) return "no-status";
   return normalizeStatus(recommendation.status);
+};
+
+const isTnaEligibleLearnerRole = (role: unknown): boolean => {
+  const normalizedRole = String(role || "")
+    .trim()
+    .toLowerCase();
+  return normalizedRole === "employee" || normalizedRole === "student";
 };
 
 const formatLatestTnaDateTime = (dateValue?: string) => {
@@ -184,7 +194,8 @@ export default function TnaEmployeeRecommendationsPage() {
 
   const employees = useMemo(() => {
     const response = studentsQuery.data as { students?: EmployeeOption[] } | undefined;
-    return Array.isArray(response?.students) ? response.students : [];
+    const students = Array.isArray(response?.students) ? response.students : [];
+    return students.filter((student) => isTnaEligibleLearnerRole(student?.role));
   }, [studentsQuery.data]);
 
   const recommendations = useMemo(() => {
@@ -530,6 +541,11 @@ export default function TnaEmployeeRecommendationsPage() {
     [employeeTerm, orgCode],
   );
 
+  const detailsModalHost =
+    typeof document !== "undefined"
+      ? document.querySelector("#admin-main-content")
+      : null;
+
   return (
     <div className="pt-14 pb-6 px-4 md:px-6 lg:p-6 space-y-6">
       <section className="rounded-2xl border border-slate-200 bg-white p-5 md:p-6 shadow-sm">
@@ -547,12 +563,16 @@ export default function TnaEmployeeRecommendationsPage() {
               <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
                 TNA Dashboard
               </p>
-              <h1 className="text-2xl font-bold text-slate-900">
-                {employeeTerm} TNA Recommendations
-              </h1>
-              <p className="text-sm text-slate-600 mt-1">
-                View who has TNA results, plus detailed skill gaps and training recommendations.
-              </p>
+              <div className="mt-1 flex items-center gap-2">
+                <h1 className="text-2xl font-bold text-slate-900">
+                  {employeeTerm} TNA Recommendations
+                </h1>
+                <HoverHelpTooltip
+                  text="View who has TNA results, plus detailed skill gaps and training recommendations."
+                  
+                  className="shrink-0"
+                />
+              </div>
             </div>
           </div>
 
@@ -579,10 +599,14 @@ export default function TnaEmployeeRecommendationsPage() {
             <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
               All {employeesTerm}
             </p>
-            <h2 className="text-xl font-semibold text-slate-900">Employee TNA Summary Table</h2>
-            <p className="text-sm text-slate-500 mt-1">
-              One row per employee. Click a row (or view) to open full skill gaps and recommendations.
-            </p>
+            <div className="mt-1 flex items-center gap-2">
+              <h2 className="text-xl font-semibold text-slate-900">Employee TNA Summary Table</h2>
+              <HoverHelpTooltip
+                text="One row per employee. Click a row (or view) to open full skill gaps and recommendations."
+                
+                className="shrink-0"
+              />
+            </div>
           </div>
         </div>
 
@@ -643,10 +667,12 @@ export default function TnaEmployeeRecommendationsPage() {
         </div>
       </Dialog>
 
-      {viewDetails && (
-        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-900/45 p-4">
+      {viewDetails &&
+        detailsModalHost &&
+        createPortal(
+          <div className="absolute inset-0 z-[80] flex items-center justify-center bg-slate-900/45 backdrop-blur-[2px] p-4">
           <div className="w-full max-w-5xl rounded-2xl border border-slate-200 bg-white shadow-2xl max-h-[88vh] overflow-hidden">
-            <div className="flex items-start justify-between gap-3 border-b border-slate-200 px-5 py-4">
+            <div className="flex items-center gap-2 border-b border-slate-200 px-5 py-4">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
                   {selectedRecommendation ? "TNA Recommendation Details" : "TNA Status"}
@@ -669,7 +695,7 @@ export default function TnaEmployeeRecommendationsPage() {
               <button
                 type="button"
                 onClick={() => setViewDetails(null)}
-                className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-slate-200 text-slate-600 hover:bg-slate-50"
+                className="ml-auto inline-flex h-9 w-9 items-center justify-center rounded-md border border-slate-200 text-slate-600 hover:bg-slate-50"
                 aria-label="Close details modal"
               >
                 <span className="text-base leading-none">x</span>
@@ -680,10 +706,10 @@ export default function TnaEmployeeRecommendationsPage() {
               {!selectedRecommendation ? (
                 <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-6">
                   <p className="text-sm font-semibold text-slate-800">No TNA record available yet</p>
-                  <p className="text-sm text-slate-600 mt-1">
-                    Run TNA analysis for this employee to generate skill gaps and training
-                    recommendations.
-                  </p>
+                  <HoverHelpTooltip
+                    text="Run TNA analysis for this employee to generate skill gaps and training recommendations."
+                    className="mt-1"
+                  />
                 </div>
               ) : (
                 <>
@@ -803,8 +829,9 @@ export default function TnaEmployeeRecommendationsPage() {
               )}
             </div>
           </div>
-        </div>
-      )}
+        </div>,
+          detailsModalHost
+        )}
     </div>
   );
 }

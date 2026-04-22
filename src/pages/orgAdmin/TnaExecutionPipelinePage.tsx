@@ -4,6 +4,7 @@ import { FaArrowLeft } from "react-icons/fa";
 import { toast } from "react-toastify";
 import { Lightbulb } from "@/components/animate-ui/icons/lightbulb";
 import Button from "../../components/common/Button";
+import HoverHelpTooltip from "../../components/common/HoverHelpTooltip";
 import { useAuth } from "../../context/AuthContext";
 import {
   useAutoDeployTnaRecommendations,
@@ -359,13 +360,16 @@ export default function TnaExecutionPipelinePage() {
             </button>
             <div>
               <p className={labelClassName}>Post-TNA Handoff</p>
-              <h1 className="text-2xl md:text-3xl font-bold text-slate-900 mt-1">
-                TNA To Course And Batch Execution
-              </h1>
-              <p className="text-sm text-slate-600 mt-2 max-w-3xl">
-                After reviewing TNA, continue in LMS setup: create or select Program and Course,
-                create Batch, assign Instructor, then assign {employeeTerm.toLowerCase()} to the batch.
-              </p>
+              <div className="mt-1 flex items-center gap-2">
+                <h1 className="text-2xl md:text-3xl font-bold text-slate-900">
+                  TNA To Course And Batch Execution
+                </h1>
+                <HoverHelpTooltip
+                  text={`After reviewing TNA, continue in LMS setup: create or select Program and Course, create Batch, assign Instructor, then assign ${employeeTerm.toLowerCase()} to the batch.`}
+                  
+                  className="shrink-0"
+                />
+              </div>
             </div>
           </div>
           <div className="grid w-full grid-cols-1 gap-2 sm:w-auto sm:min-w-[390px] sm:grid-cols-3">
@@ -631,10 +635,14 @@ export default function TnaExecutionPipelinePage() {
                 <div className="flex flex-col gap-3">
                   <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                     <div>
-                      <p className={labelClassName}>Execution Flow In LMS</p>
-                      <p className="text-xs text-slate-600 mt-1">
-                        Choose execution mode: auto create from TNA, or manual create using LMS setup steps.
-                      </p>
+                      <div className="flex items-center gap-2">
+                        <p className={labelClassName}>Execution Flow In LMS</p>
+                        <HoverHelpTooltip
+                          text="Choose execution mode: auto create from TNA, or manual create using LMS setup steps."
+                          
+                          className="shrink-0"
+                        />
+                      </div>
                     </div>
                     <div className="inline-grid grid-cols-2 rounded-xl border border-slate-200 bg-white p-1">
                       <button

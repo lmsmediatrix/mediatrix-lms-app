@@ -9,7 +9,7 @@ interface SectionCardProps {
   course: {
     _id: string;
     thumbnail?: string;
-  };
+  } | null;
   instructor?: string;
   status: string;
   updatedAt?: string;
@@ -59,7 +59,7 @@ const SectionCard = ({
     >
       {/* Image section */}
       <div className="h-[200px] w-full overflow-hidden rounded-t-lg relative group">
-        {course.thumbnail ? (
+        {course?.thumbnail ? (
           <img
             src={course.thumbnail}
             alt={name || "Section"}
@@ -110,7 +110,9 @@ const SectionCard = ({
             {updatedAt && (
               <div className="flex items-center gap-2 min-w-0">
                 <FaClock className="text-p" />
-                <span className="text-gray-500 w-24 shrink-0">Last Updated:</span>
+                <span className="text-gray-500 w-24 shrink-0">
+                  Last Updated:
+                </span>
                 <span className="text-gray-700 font-bold truncate flex-1 min-w-0">
                   {formatDate(updatedAt)}
                 </span>
@@ -157,7 +159,8 @@ const SectionCard = ({
               </div>
               {totalItems > 0 ? (
                 <p className="text-[10px] text-gray-400 mt-1">
-                  {resolvedProgress.completedLessons} of {resolvedProgress.totalLessons} lessons
+                  {resolvedProgress.completedLessons} of{" "}
+                  {resolvedProgress.totalLessons} lessons
                   {(resolvedProgress.totalAssessments ?? 0) > 0 &&
                     ` - ${resolvedProgress.completedAssessments} of ${resolvedProgress.totalAssessments} assessments`}
                 </p>
@@ -175,4 +178,3 @@ const SectionCard = ({
 };
 
 export default SectionCard;
-

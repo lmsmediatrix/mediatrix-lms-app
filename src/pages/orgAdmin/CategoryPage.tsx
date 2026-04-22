@@ -5,6 +5,7 @@ import { useCategories } from "../../hooks/useCategory";
 import { useMemo, useState } from "react";
 import { useAuth } from "../../context/AuthContext";
 import TableEmptyState from "../../components/common/TableEmptyState";
+import HoverHelpTooltip from "../../components/common/HoverHelpTooltip";
 import FilterDropdownButton from "../../components/orgAdmin/FilterDropdownButton";
 import ResponsiveFilterButton from "../../components/orgAdmin/ResponsiveFilterButton";
 import UpsertCategoryModal from "../../components/orgAdmin/UpsertCategoryModal";
@@ -47,13 +48,13 @@ export default function CategoryPage() {
 
   const [searchParams, setSearchParams] = useSearchParams();
   const [selectedStatus, setSelectedStatus] = useState<string>(
-    searchParams.get("status") || "" // No default filter
+    searchParams.get("status") || "", // No default filter
   );
   const [archiveStatus, setArchiveStatus] = useState<"only" | "none">(
-    (searchParams.get("archiveStatus") as "only" | "none") || "none"
+    (searchParams.get("archiveStatus") as "only" | "none") || "none",
   );
   const [searchTerm, setSearchTerm] = useState(
-    searchParams.get("search") || ""
+    searchParams.get("search") || "",
   );
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
 
@@ -129,7 +130,7 @@ export default function CategoryPage() {
   ];
 
   const categoryRows = useMemo(
-    () => ((data?.categories || []) as CategoryTableRow[]),
+    () => (data?.categories || []) as CategoryTableRow[],
     [data?.categories],
   );
 
@@ -156,7 +157,9 @@ export default function CategoryPage() {
         sortAccessor: (row) => row.name || "",
         filterAccessor: (row) => row.name || "",
         className: "min-w-[260px]",
-        render: (row) => <span className="font-semibold text-slate-900">{row.name}</span>,
+        render: (row) => (
+          <span className="font-semibold text-slate-900">{row.name}</span>
+        ),
       },
       {
         key: "status",
@@ -186,7 +189,8 @@ export default function CategoryPage() {
         filterable: true,
         filterPlaceholder: "Search date",
         sortAccessor: (row) => new Date(row.createdAt || 0).getTime(),
-        filterAccessor: (row) => new Date(row.createdAt || "").toLocaleDateString(),
+        filterAccessor: (row) =>
+          new Date(row.createdAt || "").toLocaleDateString(),
         className: "min-w-[170px]",
         render: (row) => (
           <span className="text-sm text-slate-600">
@@ -233,10 +237,13 @@ export default function CategoryPage() {
 
   return (
     <div className="pt-14 pb-6 px-6 lg:p-6">
-      <h1 className="text-3xl font-bold">Categories</h1>
-      <p className="text-gray-400">
-        Organize and manage your course categories.
-      </p>{" "}
+      <div className="flex items-center gap-2">
+        <h1 className="text-3xl font-bold">Categories</h1>
+        <HoverHelpTooltip
+          text="Organize and manage your course categories."
+          className="shrink-0"
+        />
+      </div>
       <div className="flex flex-col gap-4 py-6 md:flex-row md:items-center md:justify-between">
         {/* Search and Filter */}
         <div className="flex flex-col gap-3 md:flex-row md:flex-1 md:items-center md:gap-2 md:min-w-0">
@@ -350,11 +357,11 @@ export default function CategoryPage() {
         <TableEmptyState
           title="Create Your First Category"
           description="Start by creating a category. Categories help organize your courses."
-          primaryActionLabel="Add Category"
-          primaryActionPath="?modal=create-category"
           colSpan={4}
           type="category"
-          isFiltered={Boolean(searchTerm || selectedStatus || archiveStatus !== "none")}
+          isFiltered={Boolean(
+            searchTerm || selectedStatus || archiveStatus !== "none",
+          )}
         />
       ) : (
         <GroupedDataTable

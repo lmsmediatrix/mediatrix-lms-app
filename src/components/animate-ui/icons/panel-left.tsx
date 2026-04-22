@@ -10,56 +10,51 @@ import {
   type IconProps,
 } from '@/components/animate-ui/icons/icon';
 
-type LightbulbProps = IconProps<keyof typeof animations>;
+type PanelLeftProps = IconProps<keyof typeof animations>;
 
 const animations = {
   default: {
-    path1: {
-      initial: {
-        rotate: 0,
-        fill: 'transparent',
-      },
-      animate: {
-        transformOrigin: 'bottom center',
-        fill: 'currentColor',
-        rotate: [0, -20, 15, -7, 0],
-        fillOpacity: [0, 1, 0, 1, 0],
-        transition: {
-          duration: 0.8,
-          ease: 'easeInOut',
-          rotate: {
-            duration: 0.8,
-            ease: 'easeInOut',
-            times: [0, 0.4, 0.6, 0.8, 1],
-          },
-          fillOpacity: {
-            duration: 0.3,
-            ease: 'easeInOut',
-            times: [0, 0.4, 0.6, 0.8, 1],
-            delay: 0.4,
-          },
-        },
-      },
-    },
+    path1: {},
     path2: {
       initial: {
-        rotate: 0,
+        x: 0,
       },
       animate: {
-        transformOrigin: 'bottom center',
-        rotate: [0, 0, 10, -5, 0],
+        x: [-1, 0, -1],
         transition: {
-          duration: 0.8,
+          duration: 0.35,
           ease: 'easeInOut',
-          times: [0, 0.4, 0.6, 0.8, 1],
         },
       },
     },
-    path3: {},
+    path3: {
+      initial: {
+        x: 0,
+      },
+      animate: {
+        x: [-1, 0, -1],
+        transition: {
+          duration: 0.35,
+          ease: 'easeInOut',
+        },
+      },
+    },
+    path4: {
+      initial: {
+        x: 0,
+      },
+      animate: {
+        x: [-0.5, 0, -0.5],
+        transition: {
+          duration: 0.35,
+          ease: 'easeInOut',
+        },
+      },
+    },
   } satisfies Record<string, Variants>,
 } as const;
 
-const IconComponent = React.forwardRef<SVGSVGElement, LightbulbProps>(
+const IconComponent = React.forwardRef<SVGSVGElement, PanelLeftProps>(
   ({ size, ...props }, ref) => {
     const { controls } = useAnimateIconContext();
     const variants = getVariants(animations);
@@ -73,26 +68,32 @@ const IconComponent = React.forwardRef<SVGSVGElement, LightbulbProps>(
         viewBox="0 0 24 24"
         fill="none"
         stroke="currentColor"
-        strokeWidth={2}
+        strokeWidth={2.4}
         strokeLinecap="round"
         strokeLinejoin="round"
         {...props}
       >
         <motion.path
-          d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"
+          d="M3 5c0-1.1.9-2 2-2h14c1.1 0 2 .9 2 2v14c0 1.1-.9 2-2 2H5c-1.1 0-2-.9-2-2z"
           variants={variants.path1}
           initial="initial"
           animate={controls}
         />
         <motion.path
-          d="M9 18h6"
+          d="M9 3v18"
           variants={variants.path2}
           initial="initial"
           animate={controls}
         />
         <motion.path
-          d="M10 22h4"
+          d="M5 9h2"
           variants={variants.path3}
+          initial="initial"
+          animate={controls}
+        />
+        <motion.path
+          d="M5 15h2"
+          variants={variants.path4}
           initial="initial"
           animate={controls}
         />
@@ -101,16 +102,16 @@ const IconComponent = React.forwardRef<SVGSVGElement, LightbulbProps>(
   },
 );
 
-IconComponent.displayName = 'LightbulbIconComponent';
+IconComponent.displayName = 'PanelLeftIconComponent';
 
-function Lightbulb(props: LightbulbProps) {
+function PanelLeft(props: PanelLeftProps) {
   return <IconWrapper icon={IconComponent} {...props} />;
 }
 
 export {
   animations,
-  Lightbulb,
-  Lightbulb as LightbulbIcon,
-  type LightbulbProps,
-  type LightbulbProps as LightbulbIconProps,
+  PanelLeft,
+  PanelLeft as PanelLeftIcon,
+  type PanelLeftProps,
+  type PanelLeftProps as PanelLeftIconProps,
 };

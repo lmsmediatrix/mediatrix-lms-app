@@ -1,7 +1,15 @@
 import Button from "../../components/common/Button";
 import { FaPlus } from "react-icons/fa";
-import { FaFileExport } from "react-icons/fa6";
-import { FiBookOpen, FiCheckCircle, FiEdit3, FiList, FiToggleLeft, FiToggleRight } from "react-icons/fi";
+import {
+  FiBookOpen,
+  FiCheckCircle,
+  FiDownload,
+  FiEdit3,
+  FiList,
+  FiToggleLeft,
+  FiToggleRight,
+  FiUpload,
+} from "react-icons/fi";
 import { useSearchParams } from "react-router-dom";
 import UpsertCourseModal from "../../components/orgAdmin/UpsertCourseModal";
 import DeleteCourseModal from "../../components/orgAdmin/DeleteCourseModal";
@@ -17,11 +25,14 @@ import ActionMenuButton from "../../components/orgAdmin/ActionMenuButton";
 import { useCategoriesForDropdown } from "../../hooks/useCategory";
 import { useDebounce } from "../../hooks/useDebounce";
 import StatsCards from "../../components/common/StatsCards";
+import HoverHelpTooltip from "../../components/common/HoverHelpTooltip";
 import {
   GroupedTableColumn,
   GroupedTableGroup,
   default as GroupedDataTable,
 } from "../../components/common/GroupedDataTable";
+import { toast } from "react-toastify";
+import { PanelLeft } from "@/components/animate-ui/icons/panel-left";
 
 interface CourseToDelete {
   id: string;
@@ -51,7 +62,6 @@ const LEVEL_OPTIONS = [
 export default function CoursePage() {
   const { currentUser } = useAuth();
   const isCorporate = currentUser.user.organization.type === "corporate";
-  const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
   const [filters, setFilters] = useState({
     status: searchParams.get("status") || "",
@@ -74,6 +84,7 @@ export default function CoursePage() {
     null
   );
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+  const [isImportExportOpen, setIsImportExportOpen] = useState(false);
 
   const filtersArray = Object.entries(filters)
     .filter(
@@ -397,7 +408,7 @@ export default function CoursePage() {
               },
               {
                 key: "delete",
-                label: "Delete",
+                label: "Archive",
                 onClick: () => handleDeleteClick(row),
                 disabled: archiveStatus === "only",
                 danger: true,
@@ -432,60 +443,28 @@ export default function CoursePage() {
     toggleArchiveStatus,
   ]);
 
+  const hasActiveFilters = Boolean(
+    debouncedSearchTerm ||
+      filters.status ||
+      filters.level ||
+      (!isCorporate && filters.category) ||
+      archiveStatus !== "none",
+  );
+
   return (
     <div className=" pt-14 pb-6 px-6 lg:p-6">
-      <h1 className="text-2xl md:text-3xl font-bold text-slate-900">
-        Courses Overview
-      </h1>
-      <p className="text-slate-600 mt-1">
-        View and manage all courses linked to your sections and learning tracks.
-      </p>
+      <div className="flex items-center gap-2">
+        <h1 className="text-2xl md:text-3xl font-bold text-slate-900">
+          Courses Overview
+        </h1>
+        <HoverHelpTooltip
+          text="View and manage all courses linked to your sections and learning tracks."
+          
+          className="shrink-0"
+        />
+      </div>
 
       <div className="mt-6 mb-2">
-        <div className="flex justify-between mb-2">
-          <h2 className="text-xl md:text-2xl font-bold text-slate-900">
-            Course Summary
-          </h2>
-          <div className="relative">
-            <Button
-              variant="cancel"
-              onClick={() => setIsFilterOpen(!isFilterOpen)}
-              className="flex items-center gap-2"
-            >
-              <span className="capitalize flex justify-center items-center gap-2">
-                {archiveStatus === "only" ? "Archived Records" : "Active Records"}
-              </span>
-            </Button>
-            {isFilterOpen && (
-              <div className="absolute right-0 mt-2 w-44 bg-white rounded-md shadow-lg z-10">
-                <ul className="py-1">
-                  <li
-                    className={`px-4 py-2 hover:bg-gray-100 cursor-pointer text-sm ${
-                      archiveStatus === "none" ? "bg-gray-100 font-medium" : ""
-                    }`}
-                    onClick={() => {
-                      if (archiveStatus !== "none") toggleArchiveStatus();
-                      setIsFilterOpen(false);
-                    }}
-                  >
-                    Active Records
-                  </li>
-                  <li
-                    className={`px-4 py-2 hover:bg-gray-100 cursor-pointer text-sm ${
-                      archiveStatus === "only" ? "bg-gray-100 font-medium" : ""
-                    }`}
-                    onClick={() => {
-                      if (archiveStatus !== "only") toggleArchiveStatus();
-                      setIsFilterOpen(false);
-                    }}
-                  >
-                    Archived Records
-                  </li>
-                </ul>
-              </div>
-            )}
-          </div>
-        </div>
         <div className="mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <StatsCards stats={courseSummaryStats} isLoading={isLoading} />
         </div>
@@ -493,24 +472,55 @@ export default function CoursePage() {
 
       <div className="flex flex-col gap-4 py-6 md:flex-row md:items-center md:justify-end">
         {/* Action Buttons */}
-        <div className="flex gap-2 flex-shrink-0">
+        <div className="flex gap-2 flex-shrink-0 flex-wrap md:flex-nowrap md:items-center">
           <Button
             variant="primary"
             onClick={() => setSearchParams({ modal: "create-course" })}
-            className="whitespace-nowrap text-sm flex-1 md:flex-initial"
+            className="whitespace-nowrap text-sm h-[42px] flex-1 md:flex-initial"
           >
             <FaPlus />
             <span className="hidden sm:inline">Add Course</span>
             <span className="sm:hidden">Add</span>
           </Button>
-          <Button
-            variant="outline"
-            onClick={() => setIsExportModalOpen(true)}
-            className="whitespace-nowrap text-sm flex-1 md:flex-initial"
+          <div
+            className={`flex items-center gap-2 overflow-hidden transition-all duration-300 ease-out ${
+              isImportExportOpen
+                ? "max-w-[520px] opacity-100 translate-x-0"
+                : "max-w-0 opacity-0 -translate-x-2 pointer-events-none"
+            }`}
           >
-            <FaFileExport className="size-4" />
-            <span className="hidden sm:inline">Export CSV</span>
-            <span className="sm:hidden">Export</span>
+            <Button
+              variant="outline"
+              onClick={() => toast.info("Bulk import for courses is coming soon.")}
+              className={`whitespace-nowrap text-sm h-[42px] transition-all duration-300 ${
+                isImportExportOpen ? "scale-100" : "scale-95"
+              }`}
+            >
+              <FiUpload className="size-4" />
+              <span>Import</span>
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => setIsExportModalOpen(true)}
+              className={`whitespace-nowrap text-sm h-[42px] transition-all duration-300 ${
+                isImportExportOpen ? "scale-100" : "scale-95"
+              }`}
+            >
+              <FiDownload className="size-4" />
+              <span>Export</span>
+            </Button>
+          </div>
+          <Button
+            variant={isImportExportOpen ? "outline" : "primary"}
+            onClick={() => setIsImportExportOpen((prev) => !prev)}
+            className="text-sm h-[42px] !px-4 md:!px-4"
+          >
+            <PanelLeft
+              size={15}
+              animate={isImportExportOpen ? "default" : false}
+              animateOnHover
+            />
+            <span className="sr-only">Toggle import and export actions</span>
           </Button>
           {/* Archive Status Toggle Switch */}
           <div className="flex items-center gap-2">
@@ -542,22 +552,13 @@ export default function CoursePage() {
         <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
           Error loading courses
         </div>
-      ) : courseRows.length === 0 ? (
+      ) : courseRows.length === 0 && !hasActiveFilters ? (
         <TableEmptyState
           title="Create Your First Course"
           description="Start by creating a course. You'll need courses before you can create sections."
-          primaryActionLabel="Add Course"
-          primaryActionPath="?modal=create-course"
-          hidePrimaryAction
           colSpan={isCorporate ? 5 : 6}
           type="course"
-          isFiltered={Boolean(
-            debouncedSearchTerm ||
-              filters.status ||
-              filters.level ||
-              (!isCorporate && filters.category) ||
-              archiveStatus !== "none",
-          )}
+          isFiltered={false}
         />
       ) : (
         <GroupedDataTable

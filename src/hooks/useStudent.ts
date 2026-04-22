@@ -37,14 +37,20 @@ export const useBulkImportStudent = () => {
   });
 };
 
-export const useGetStudentProfile = (studentId: string) => {
+export const useGetStudentProfile = (
+  studentId: string,
+  options?: { includeArchived?: boolean }
+) => {
   return useQuery({
-    queryKey: ["student-profile", studentId],
+    queryKey: ["student-profile", studentId, options?.includeArchived],
     queryFn: async () => {
       studentService.resetQuery();
-      return studentService
+      const query = studentService
         .select([
+          "role",
           "studentId",
+          "subrole",
+          "directTo",
           "program",
           "person",
           "firstName",
@@ -52,7 +58,9 @@ export const useGetStudentProfile = (studentId: string) => {
           "email",
           "avatar",
           "status",
+          "archive",
           "gpa",
+          "lastLogin",
           "updatedAt",
           "createdAt",
           "socialLinks",
@@ -67,8 +75,17 @@ export const useGetStudentProfile = (studentId: string) => {
             path: "person.department",
             select: "name",
           },
-        ])
-        .getStudentById(studentId);
+          {
+            path: "directTo",
+            select: "firstName lastName subrole",
+          },
+        ]);
+
+      if (options?.includeArchived) {
+        query.withArchive("include");
+      }
+
+      return query.getStudentById(studentId);
     },
     enabled: !!studentId,
   });
@@ -106,6 +123,17 @@ export const useGetStudentById = (studentId: string) => {
   });
 };
 
+export const useStudentArchiveImpact = (
+  studentId: string,
+  options?: { enabled?: boolean }
+) => {
+  return useQuery({
+    queryKey: ["student-archive-impact", studentId],
+    queryFn: () => studentService.getStudentArchiveImpact(studentId),
+    enabled: Boolean(studentId) && (options?.enabled ?? true),
+  });
+};
+
 export const useSearchStudents = (
   apiParams?: Partial<ApiParams> & { organizationId?: string; enabled?: boolean }
 ) => {
@@ -121,6 +149,7 @@ export const useSearchStudents = (
           "firstName",
           "lastName",
           "email",
+          "role",
           "studentId",
           "subrole",
           "person",

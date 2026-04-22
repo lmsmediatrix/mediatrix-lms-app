@@ -1,15 +1,12 @@
 import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import {
-  FaFilter,
-  FaExclamationTriangle,
-  FaCheckCircle,
-} from "react-icons/fa";
+import { FaFilter, FaExclamationTriangle, FaCheckCircle } from "react-icons/fa";
 import { useGetPerformanceDashboard } from "../../hooks/useMetrics";
 import { useAuth } from "../../context/AuthContext";
 import { getTerm } from "../../lib/utils";
 import { SearchIcon } from "@/components/ui/search-icon";
 import { InfoIcon } from "@/components/ui/info-icon";
+import HoverHelpTooltip from "../../components/common/HoverHelpTooltip";
 
 type PerformanceStudentRow = {
   _id: string;
@@ -106,13 +103,15 @@ export default function AdminPerformancePage() {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-800">
-            Compliance Management
-          </h1>
-          <p className="text-gray-500 mt-1">
-            Oversee {learnerTerm.toLowerCase()} compliance indicators and risk levels across the
-            organization using lessons, attendance, and assessment outcomes.
-          </p>
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-bold text-gray-800">
+              Compliance Management
+            </h1>
+            <HoverHelpTooltip
+              text={`Oversee ${learnerTerm.toLowerCase()} compliance indicators and risk levels across the organization using lessons, attendance, and assessment outcomes.`}
+              className="shrink-0"
+            />
+          </div>
         </div>
       </div>
 
@@ -177,7 +176,10 @@ export default function AdminPerformancePage() {
       {/* Filters and Search */}
       <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex flex-col md:flex-row gap-4 justify-between items-center">
         <div className="relative w-full md:w-96">
-          <SearchIcon size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+          <SearchIcon
+            size={14}
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+          />
           <input
             type="text"
             placeholder={`Search ${learnersTerm.toLowerCase()}...`}
@@ -237,9 +239,9 @@ export default function AdminPerformancePage() {
             </thead>
             <tbody className="divide-y divide-gray-200">
               {filteredStudents.length > 0 ? (
-                filteredStudents.map((student) => (
+                filteredStudents.map((student, index) => (
                   <tr
-                    key={student._id}
+                    key={`${student._id}-${student.section || "unknown-section"}-${index}`}
                     className="hover:bg-gray-50 transition-colors"
                   >
                     <td className="px-6 py-4 whitespace-nowrap">

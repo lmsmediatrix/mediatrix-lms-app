@@ -130,8 +130,6 @@ export default function AssessmentTab({ sectionCode }: AssessmentTabProps) {
               <InstructorTableEmptyState
                 title="Create Your First Assessment"
                 description="Start by creating an assessment to evaluate your students' understanding of the course material."
-                primaryActionLabel="Add Assessment"
-                primaryActionPath="manage?tab=assessments&modal=create-assessment"
                 type="assessment"
               />
             ) : (

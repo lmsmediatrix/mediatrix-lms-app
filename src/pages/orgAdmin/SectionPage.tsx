@@ -1,5 +1,4 @@
 import { FaPlus } from "react-icons/fa";
-import { FaFileExport } from "react-icons/fa6";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import Button from "../../components/common/Button";
 import {
@@ -12,42 +11,53 @@ import { getTerm } from "../../lib/utils";
 import { exportToCSVUtil } from "../../lib/exportCsvUtils";
 import ExportModal from "../../components/orgAdmin/ExportModal";
 import TableEmptyState from "../../components/common/TableEmptyState";
+import HoverHelpTooltip from "../../components/common/HoverHelpTooltip";
 import ActionMenuButton from "../../components/orgAdmin/ActionMenuButton";
 import { ISection } from "../../types/interfaces";
 import { useCoursesForDropdown } from "../../hooks/useCourse";
 import { useInstructorsForDropdown } from "../../hooks/useInstructor";
 import TableSkeletonClean from "../../components/skeleton/TableSkeletonClean";
 import { useDebounce } from "../../hooks/useDebounce";
-import { FiList, FiToggleLeft, FiToggleRight, FiUsers } from "react-icons/fi";
+import {
+  FiDownload,
+  FiList,
+  FiToggleLeft,
+  FiToggleRight,
+  FiUpload,
+  FiUsers,
+} from "react-icons/fi";
 import StatsCards from "../../components/common/StatsCards";
 import {
   GroupedTableColumn,
   GroupedTableGroup,
   default as GroupedDataTable,
 } from "../../components/common/GroupedDataTable";
+import { toast } from "react-toastify";
+import { PanelLeft } from "@/components/animate-ui/icons/panel-left";
 
 export default function SectionPage() {
   const { currentUser } = useAuth();
   const orgType = currentUser.user.organization.type;
   const [searchParams, setSearchParams] = useSearchParams();
   const [searchTerm, setSearchTerm] = useState(
-    searchParams.get("search") || ""
+    searchParams.get("search") || "",
   );
 
   const [selectedCourse, setSelectedCourse] = useState(
-    searchParams.get("course") || ""
+    searchParams.get("course") || "",
   );
   const [selectedInstructor, setSelectedInstructor] = useState(
-    searchParams.get("instructor") || ""
+    searchParams.get("instructor") || "",
   );
   const [archiveStatus, setArchiveStatus] = useState<"only" | "none">(
-    (searchParams.get("archiveStatus") as "only" | "none") || "none"
+    (searchParams.get("archiveStatus") as "only" | "none") || "none",
   );
   const [skipLimit, setSkipLimit] = useState({
     skip: Number(searchParams.get("page") || "1") - 1,
     limit: 10,
   });
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+  const [isImportExportOpen, setIsImportExportOpen] = useState(false);
   const exportSection = useExportSectionToCsv();
 
   // Define dynamic terms
@@ -72,12 +82,7 @@ export default function SectionPage() {
     value: currentUser.user.organization._id,
   });
 
-  const {
-    data,
-    isLoading,
-    isFetching,
-    isError,
-  } = useAdminSections({
+  const { data, isLoading, isFetching, isError } = useAdminSections({
     skip: skipLimit.skip,
     limit: skipLimit.limit,
     searchTerm: debouncedSearchTerm,
@@ -184,7 +189,12 @@ export default function SectionPage() {
       mutationParams:
         type === "all"
           ? { limit: 1000, filters, archiveStatus }
-          : { limit: skipLimit.limit, skip: skipLimit.skip, filters, archiveStatus },
+          : {
+              limit: skipLimit.limit,
+              skip: skipLimit.skip,
+              filters,
+              archiveStatus,
+            },
       filenamePrefix: "1bislms-sections",
       toastMessages: {
         pending: `Exporting ${type} data to CSV...`,
@@ -196,7 +206,7 @@ export default function SectionPage() {
   };
 
   const sectionRows = useMemo(
-    () => ((data?.sections || []) as ISection[]),
+    () => (data?.sections || []) as ISection[],
     [data?.sections],
   );
 
@@ -291,7 +301,9 @@ export default function SectionPage() {
         sortAccessor: (row) => row.code || "",
         filterAccessor: (row) => row.code || "",
         className: "min-w-[180px]",
-        render: (row) => <span className="font-semibold text-slate-900">{row.code}</span>,
+        render: (row) => (
+          <span className="font-semibold text-slate-900">{row.code}</span>
+        ),
       },
       {
         key: "name",
@@ -360,7 +372,9 @@ export default function SectionPage() {
         filterAccessor: (row) => row.course?.title || "",
         className: "min-w-[240px]",
         render: (row) => (
-          <span className="text-sm text-slate-700">{row.course?.title || "N/A"}</span>
+          <span className="text-sm text-slate-700">
+            {row.course?.title || "N/A"}
+          </span>
         ),
       },
       {
@@ -379,7 +393,9 @@ export default function SectionPage() {
               {(row.totalStudent || 0) !== 1 ? "s" : ""}
             </span>
             {row.maxStudents && (
-              <span className="text-xs text-slate-500">Max: {row.maxStudents}</span>
+              <span className="text-xs text-slate-500">
+                Max: {row.maxStudents}
+              </span>
             )}
           </div>
         ),
@@ -396,17 +412,20 @@ export default function SectionPage() {
               {
                 key: "view",
                 label: "View",
-                onClick: () => navigate(`/${orgCode}/admin/section/${row.code}`),
+                onClick: () =>
+                  navigate(`/${orgCode}/admin/section/${row.code}`),
               },
               {
                 key: "update",
                 label: "Update",
-                onClick: () => navigate(`/${orgCode}/admin/section/${row.code}`),
+                onClick: () =>
+                  navigate(`/${orgCode}/admin/section/${row.code}`),
                 disabled: archiveStatus === "only",
               },
               {
                 key: "archive-toggle",
-                label: archiveStatus === "only" ? "Show Active" : "Show Archived",
+                label:
+                  archiveStatus === "only" ? "Show Active" : "Show Archived",
                 icon:
                   archiveStatus === "only" ? (
                     <FiToggleLeft className="size-4" />
@@ -439,44 +458,77 @@ export default function SectionPage() {
   return (
     <div className="pt-14 pb-6 px-6 lg:p-6">
       <div className="mb-6">
-        <h1 className="text-2xl md:text-3xl font-bold text-slate-900">
-          {pageTitle}
-        </h1>
-        <p className="mt-1 text-sm md:text-base text-slate-600">
-          {pageDescription}
-        </p>
+        <div className="flex items-center gap-2">
+          <h1 className="text-2xl md:text-3xl font-bold text-slate-900">
+            {pageTitle}
+          </h1>
+          <HoverHelpTooltip text={pageDescription} className="shrink-0" />
+        </div>
       </div>
 
       <div className="mt-6 mb-2">
-        <div className="flex justify-between mb-2">
-          <h2 className="text-xl md:text-2xl font-bold text-slate-900">
-            {sectionTerm} Summary
-          </h2>
-        </div>
         <div className="mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatsCards stats={batchSummaryStats} isLoading={isInitialSectionsLoading} />
+          <StatsCards
+            stats={batchSummaryStats}
+            isLoading={isInitialSectionsLoading}
+          />
         </div>
       </div>
 
       <div className="flex flex-col gap-4 py-6 md:flex-row md:items-center md:justify-end">
-        <div className="flex gap-2 flex-shrink-0">
+        <div className="flex gap-2 flex-shrink-0 flex-wrap md:flex-nowrap md:items-center">
           <Button
             variant="primary"
             onClick={() => navigate(`/${orgCode}/admin/section/new`)}
-            className="whitespace-nowrap text-sm flex-1 md:flex-initial"
+            className="whitespace-nowrap text-sm h-[42px] flex-1 md:flex-initial"
           >
             <FaPlus />
             <span className="hidden sm:inline">Add {sectionTerm}</span>
             <span className="sm:hidden">Create</span>
           </Button>
-          <Button
-            variant="outline"
-            onClick={() => setIsExportModalOpen(true)}
-            className="whitespace-nowrap text-sm flex-1 md:flex-initial"
+          <div
+            className={`flex items-center gap-2 overflow-hidden transition-all duration-300 ease-out ${
+              isImportExportOpen
+                ? "max-w-[520px] opacity-100 translate-x-0"
+                : "max-w-0 opacity-0 -translate-x-2 pointer-events-none"
+            }`}
           >
-            <FaFileExport className="size-4" />
-            <span className="hidden sm:inline">Export CSV</span>
-            <span className="sm:hidden">Export</span>
+            <Button
+              variant="outline"
+              onClick={() =>
+                toast.info(
+                  `Bulk import for ${sectionsTerm.toLowerCase()} is coming soon.`,
+                )
+              }
+              className={`whitespace-nowrap text-sm h-[42px] transition-all duration-300 ${
+                isImportExportOpen ? "scale-100" : "scale-95"
+              }`}
+            >
+              <FiUpload className="size-4" />
+              <span>Import</span>
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => setIsExportModalOpen(true)}
+              className={`whitespace-nowrap text-sm h-[42px] transition-all duration-300 ${
+                isImportExportOpen ? "scale-100" : "scale-95"
+              }`}
+            >
+              <FiDownload className="size-4" />
+              <span>Export</span>
+            </Button>
+          </div>
+          <Button
+            variant={isImportExportOpen ? "outline" : "primary"}
+            onClick={() => setIsImportExportOpen((prev) => !prev)}
+            className="text-sm h-[42px] !px-4 md:!px-4"
+          >
+            <PanelLeft
+              size={15}
+              animate={isImportExportOpen ? "default" : false}
+              animateOnHover
+            />
+            <span className="sr-only">Toggle import and export actions</span>
           </Button>
 
           <div className="flex items-center gap-2">
@@ -509,19 +561,23 @@ export default function SectionPage() {
           Error loading {sectionsTerm.toLowerCase()}
         </div>
       ) : sectionRows.length === 0 &&
-        !(debouncedSearchTerm || selectedCourse || selectedInstructor || archiveStatus !== "none") ? (
+        !(
+          debouncedSearchTerm ||
+          selectedCourse ||
+          selectedInstructor ||
+          archiveStatus !== "none"
+        ) ? (
         <TableEmptyState
           title={`Create Your First ${sectionTerm}`}
           description={`Start by creating a ${sectionTerm.toLowerCase()}. You'll need courses, ${instructorTerm.toLowerCase()}s, and ${learnerTerm.toLowerCase()}s first.`}
-          primaryActionLabel={`Create ${sectionTerm}`}
-          primaryActionPath={`/${orgCode}/admin/section/new`}
-          hidePrimaryAction
           colSpan={6}
           type="section"
           isFiltered={false}
         />
       ) : (
-        <div className={`transition-opacity duration-200 ${isFetching ? "opacity-70" : "opacity-100"}`}>
+        <div
+          className={`transition-opacity duration-200 ${isFetching ? "opacity-70" : "opacity-100"}`}
+        >
           <GroupedDataTable
             groups={tableGroups}
             columns={tableColumns}
@@ -530,7 +586,9 @@ export default function SectionPage() {
             showPagination={false}
             cardless
             showGroupHeader={false}
-            onRowClick={(row) => navigate(`/${orgCode}/admin/section/${row.code}`)}
+            onRowClick={(row) =>
+              navigate(`/${orgCode}/admin/section/${row.code}`)
+            }
             emptyFilteredText={`No matching ${sectionsTerm.toLowerCase()} found.`}
           />
         </div>

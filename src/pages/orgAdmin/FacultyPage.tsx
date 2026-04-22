@@ -5,6 +5,7 @@ import { useFaculties } from "../../hooks/useFaculty";
 import { useMemo, useState } from "react";
 import { useAuth } from "../../context/AuthContext";
 import TableEmptyState from "../../components/common/TableEmptyState";
+import HoverHelpTooltip from "../../components/common/HoverHelpTooltip";
 import FilterDropdownButton from "../../components/orgAdmin/FilterDropdownButton";
 import ResponsiveFilterButton from "../../components/orgAdmin/ResponsiveFilterButton";
 import UpsertFacultyModal from "../../components/orgAdmin/UpsertFacultyModal";
@@ -246,10 +247,14 @@ export default function FacultyPage() {
 
   return (
     <div className="pt-14 pb-6 px-6 lg:p-6">
-      <h1 className="text-3xl font-bold">Faculties</h1>
-      <p className="text-gray-400">
-        Organize and manage your instructor faculties.
-      </p>{" "}
+      <div className="flex items-center gap-2">
+        <h1 className="text-3xl font-bold">Faculties</h1>
+        <HoverHelpTooltip
+          text="Organize and manage your instructor faculties."
+          
+          className="shrink-0"
+        />
+      </div>
 
       <div className="flex flex-col gap-4 py-6 md:flex-row md:items-center md:justify-between">
         {/* Search and Filter */}
@@ -365,8 +370,6 @@ export default function FacultyPage() {
         <TableEmptyState
           title="Create Your First Faculty"
           description="Start by creating a faculty. Faculties help organize your academic departments."
-          primaryActionLabel="Add Faculty"
-          primaryActionPath="?modal=create-faculty"
           colSpan={5}
           type="faculty"
           isFiltered={Boolean(searchTerm || selectedStatus || archiveStatus !== "none")}

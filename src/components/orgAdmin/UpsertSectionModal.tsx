@@ -9,10 +9,12 @@ import { useUpdateSection, useGetSectionById } from "../../hooks/useSection";
 import { useInfiniteCoursesForDropdown } from "../../hooks/useCourse";
 import { useInfiniteInstructorsForDropdown } from "../../hooks/useInstructor";
 import { SearchableSelect } from "../SearchableSelect";
-import { getMaxDate } from "../../lib/maxDateUtils";
+import { getMaxDate, getMinDate } from "../../lib/maxDateUtils";
 import { getTerm } from "../../lib/utils";
+import { calculateDurationMinutes } from "../../lib/dateUtils";
 import { ICourseBasic, IInstructorBasic } from "../../types/interfaces";
 import { useSearchParams } from "react-router-dom";
+import TimePickerDropdown from "../common/TimePickerDropdown";
 
 // Updated schema to match the create section schema
 const editSectionSchema = z.object({
@@ -81,6 +83,7 @@ export default function UpsertSectionModal({
   onClose,
   onSuccess,
 }: UpsertSectionModalProps) {
+  const minDate = getMinDate();
   const { currentUser } = useAuth();
   const orgType = currentUser?.user?.organization?.type;
   const orgCode = currentUser?.user?.organization?.code;
@@ -171,6 +174,11 @@ export default function UpsertSectionModal({
   };
 
   const timeOptions = generateTimeOptions();
+  const applySourceDay = selectedDays.find((selectedDay) => {
+    const schedule = schedules.find((s: any) => s.day === selectedDay);
+    if (!schedule?.startTime || !schedule?.endTime) return false;
+    return calculateDurationMinutes(schedule.startTime, schedule.endTime) > 0;
+  });
 
   // Initialize form with section data
   useEffect(() => {
@@ -245,6 +253,11 @@ export default function UpsertSectionModal({
   };
 
   const onSubmit = (data: FormValues) => {
+    if (new Date(data.endDate) < new Date(data.startDate)) {
+      toast.error("End date cannot be earlier than start date");
+      return;
+    }
+
     if (selectedDays.length === 0) {
       toast.error("Please select at least one day");
       return;
@@ -259,6 +272,21 @@ export default function UpsertSectionModal({
     if (invalidDays.length > 0) {
       toast.error(
         `Please select start and end times for: ${invalidDays.join(", ")}`
+      );
+      return;
+    }
+
+    const invalidTimeRangeDays = selectedDays.filter((day) => {
+      const schedule = schedules.find((s: any) => s.day === day);
+      if (!schedule?.startTime || !schedule?.endTime) return false;
+      return calculateDurationMinutes(schedule.startTime, schedule.endTime) <= 0;
+    });
+
+    if (invalidTimeRangeDays.length > 0) {
+      toast.error(
+        `End time must be later than start time for: ${invalidTimeRangeDays.join(
+          ", "
+        )}`
       );
       return;
     }
@@ -444,11 +472,15 @@ export default function UpsertSectionModal({
                 <input
                   {...register("startDate")}
                   type="date"
+                  min={minDate}
                   max={getMaxDate()}
                   className={`w-full px-3 py-2 border ${
                     errors.startDate ? "border-red-500" : "border-gray-300"
                   } rounded-lg focus:ring-2 focus:ring-[#60B2F0] focus:border-transparent`}
                   onChange={(e) => {
+                    if (new Date(e.target.value) < new Date(minDate)) {
+                      e.target.value = minDate;
+                    }
                     if (new Date(e.target.value) > new Date(getMaxDate())) {
                       e.target.value = getMaxDate();
                     }
@@ -503,6 +535,8 @@ export default function UpsertSectionModal({
                   (day) => {
                     const schedule =
                       schedules.find((s: any) => s.day === day) || {};
+                    const currentStartTime = (schedule as any).startTime;
+                    const currentEndTime = (schedule as any).endTime;
                     return (
                       <div
                         key={day}
@@ -529,57 +563,60 @@ export default function UpsertSectionModal({
                               <label className="text-xs text-gray-500">
                                 Start
                               </label>
-                              <select
-                                value={(schedule as any).startTime || ""}
-                                onChange={(e) =>
+                              <TimePickerDropdown
+                                value={currentStartTime || ""}
+                                onChange={(value) =>
                                   updateScheduleTime(
                                     day,
                                     "startTime",
-                                    e.target.value
+                                    value
                                   )
                                 }
-                                className="text-xs sm:text-sm px-1 sm:px-2 py-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent w-full sm:w-auto"
-                              >
-                                <option value="">Start</option>
-                                {timeOptions.map((time) => (
-                                  <option key={time} value={time}>
-                                    {time}
-                                  </option>
-                                ))}
-                              </select>
+                                options={timeOptions}
+                                isOptionDisabled={(option) =>
+                                  Boolean(
+                                    currentEndTime &&
+                                      calculateDurationMinutes(
+                                        option,
+                                        currentEndTime
+                                      ) <= 0
+                                  )
+                                }
+                                placeholder="Start"
+                                className="w-full sm:w-auto text-xs sm:text-sm"
+                              />
                             </div>
                             <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1 sm:gap-2">
                               <label className="text-xs text-gray-500">
                                 End
                               </label>
-                              <select
-                                value={(schedule as any).endTime || ""}
-                                onChange={(e) =>
+                              <TimePickerDropdown
+                                value={currentEndTime || ""}
+                                onChange={(value) =>
                                   updateScheduleTime(
                                     day,
                                     "endTime",
-                                    e.target.value
+                                    value
                                   )
                                 }
-                                className="text-xs sm:text-sm px-1 sm:px-2 py-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent w-full sm:w-auto"
-                              >
-                                <option value="">End</option>
-                                {timeOptions.map((time) => (
-                                  <option key={time} value={time}>
-                                    {time}
-                                  </option>
-                                ))}
-                              </select>
+                                options={timeOptions}
+                                isOptionDisabled={(option) =>
+                                  Boolean(
+                                    currentStartTime &&
+                                      calculateDurationMinutes(
+                                        currentStartTime,
+                                        option
+                                      ) <= 0
+                                  )
+                                }
+                                placeholder="End"
+                                className="w-full sm:w-auto text-xs sm:text-sm"
+                              />
                             </div>
-                            {(schedule as any).startTime &&
-                              (schedule as any).endTime && (
+                            {day === applySourceDay && (
                                 <button
                                   type="button"
                                   onClick={() => {
-                                    const currentStartTime = (schedule as any)
-                                      .startTime;
-                                    const currentEndTime = (schedule as any)
-                                      .endTime;
                                     selectedDays.forEach((selectedDay) => {
                                       if (selectedDay !== day) {
                                         updateScheduleTime(
@@ -595,7 +632,7 @@ export default function UpsertSectionModal({
                                       }
                                     });
                                   }}
-                                  className="w-full mt-2 text-xs text-primary hover:text-primary-dark transition-colors"
+                                  className="mt-2 inline-flex w-full items-center justify-center rounded-md border border-primary/30 bg-primary/5 px-2 py-1.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/10 focus:outline-none focus:ring-2 focus:ring-primary/25"
                                 >
                                   Apply to all
                                 </button>
