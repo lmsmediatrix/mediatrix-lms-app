@@ -5,6 +5,15 @@ import { APIService } from "./apiService";
 const { BASE_URL, MODULE } = API_ENDPOINTS;
 
 class ModuleService extends APIService {
+  private normalizePayload(body: Record<string, unknown>) {
+    return {
+      ...body,
+      ...(body.certificateEnabled !== undefined
+        ? { certificateEnabled: Boolean(body.certificateEnabled) }
+        : {}),
+    };
+  }
+
   getModuleById = async (moduleId: string) => {
     try {
       const response = await apiClient.get(
@@ -22,11 +31,11 @@ class ModuleService extends APIService {
     }
   };
 
-  createModule = async (body: object) => {
+  createModule = async (body: Record<string, unknown>) => {
     try {
       const response = await apiClient.post(
         `${BASE_URL}${MODULE.CREATE}`,
-        body,
+        this.normalizePayload(body),
         {
           withCredentials: true,
         }
@@ -37,11 +46,11 @@ class ModuleService extends APIService {
     }
   };
 
-  updateModule = async (body: object) => {
+  updateModule = async (body: Record<string, unknown>) => {
     try {
       const response = await apiClient.put(
         `${BASE_URL}${MODULE.UPDATE}`,
-        body,
+        this.normalizePayload(body),
         {
           withCredentials: true,
         }

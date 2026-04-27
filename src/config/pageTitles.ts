@@ -51,6 +51,7 @@ export const pageTitles: TitleMapping = {
   "/:orgCode/admin/settings": "Settings",
   "/:orgCode/admin/performance": "Compliance Management",
   "/:orgCode/admin/compliance": "Compliance Management",
+  "/:orgCode/admin/reports": "Reports",
   "/:orgCode/admin/completion": "Completion Tracker",
   "/:orgCode/admin/performance/:studentId": () =>
     `${getTerms().studentTerm} Compliance Details`,

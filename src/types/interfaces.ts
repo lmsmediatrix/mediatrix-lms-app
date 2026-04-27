@@ -294,6 +294,7 @@ export interface ILesson {
 export interface IModule {
   _id: string;
   title: string;
+  certificateEnabled?: boolean;
   lessons: ILesson[];
   assessments?: Array<{
     _id: string;
@@ -304,6 +305,27 @@ export interface IModule {
     numberOfItems?: number;
     totalPoints?: number;
   }>;
+}
+
+export interface ICertificate {
+  _id: string;
+  organizationId: string;
+  studentId: string;
+  sectionId: string;
+  moduleId: string;
+  certificateNo: string;
+  title: string;
+  subtitle?: string;
+  issueDate: string;
+  issuerName: string;
+  signatoryName?: string;
+  logoUrl?: string;
+  metadata?: Record<string, unknown>;
+  status: "active" | "revoked";
+  archive?: {
+    status: boolean;
+    date: string | null;
+  };
 }
 
 export interface IAnnouncement {

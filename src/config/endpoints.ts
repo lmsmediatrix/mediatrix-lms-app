@@ -109,6 +109,7 @@ export const API_ENDPOINTS = {
     ADD_STUDENTS_TO_SECTION_BY_CODE: "/section/:sectionCode/add/students",
     BULK_ADD_STUDENTS: "/section/:sectionCode/add/students/bulk",
     SCHEDULE: "/section/schedule",
+    BATCH_CONTENT_CREATE: "/section/:sectionCode/content/batch",
   },
 
   MODULE: {
@@ -120,6 +121,14 @@ export const API_ENDPOINTS = {
     SEARCH: "/module/search",
     POPULATE_ASSESSMENTS: "/module/:id/assessments/populate",
     ASSESSMENT_DRAFT: "/module/:id/assessments/draft",
+  },
+  CERTIFICATE: {
+    GET_ALL: "/certificate/get/all",
+    GET_BY_ID: "/certificate/get/:id",
+    GET_BY_NUMBER: "/certificate/no/:certificateNo",
+    GET_BY_STUDENT: "/certificate/student/:studentId",
+    GENERATE: "/certificate/generate",
+    SEARCH: "/certificate/search",
   },
 
   // Lesson API Endpoint
