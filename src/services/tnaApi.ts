@@ -4,6 +4,21 @@ import { APIService } from "./apiService";
 
 const { BASE_URL, TNA } = API_ENDPOINTS;
 
+type AutoDeployPlannerCourse = {
+  trainingId?: string;
+  title: string;
+  programName?: string;
+  batchName?: string;
+  description?: string;
+  code?: string;
+};
+
+type AutoDeployPlanner = {
+  programName?: string;
+  batchName?: string;
+  courses: AutoDeployPlannerCourse[];
+};
+
 class TnaService extends APIService {
   createSkill = async (body: { name: string; description?: string }) => {
     const response = await apiClient.post(`${BASE_URL}${TNA.SKILL_CREATE}`, body, {
@@ -194,7 +209,10 @@ class TnaService extends APIService {
     return response.data;
   };
 
-  autoDeployRecommendations = async (body?: { recommendationIds?: string[] }) => {
+  autoDeployRecommendations = async (body?: {
+    recommendationIds?: string[];
+    planner?: AutoDeployPlanner;
+  }) => {
     const response = await apiClient.post(
       `${BASE_URL}${TNA.RECOMMENDATION_AUTO_DEPLOY}`,
       body || {},

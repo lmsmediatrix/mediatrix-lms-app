@@ -1,6 +1,21 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import TnaService from "../services/tnaApi";
 
+type AutoDeployPlannerCoursePayload = {
+  trainingId?: string;
+  title: string;
+  programName?: string;
+  batchName?: string;
+  description?: string;
+  code?: string;
+};
+
+type AutoDeployPlannerPayload = {
+  programName?: string;
+  batchName?: string;
+  courses: AutoDeployPlannerCoursePayload[];
+};
+
 export const useGetTnaSkills = (params?: { keyword?: string; limit?: number; skip?: number }) => {
   return useQuery({
     queryKey: ["tna-skills", params],
@@ -207,7 +222,7 @@ export const useUpsertTnaRecommendationExecution = () => {
 export const useAutoDeployTnaRecommendations = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (payload?: { recommendationIds?: string[] }) =>
+    mutationFn: (payload?: { recommendationIds?: string[]; planner?: AutoDeployPlannerPayload }) =>
       TnaService.autoDeployRecommendations(payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["tna-recommendations"] });
