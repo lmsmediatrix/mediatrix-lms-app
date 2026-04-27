@@ -26,6 +26,75 @@ export const useCreateSection = () => {
   });
 };
 
+type BatchQuestionOptionInput = {
+  option?: string;
+  text?: string;
+  isCorrect?: boolean;
+};
+
+type BatchQuestionInput = {
+  type: string;
+  questionText?: string;
+  points: number;
+  correctAnswers?: string[];
+  options?: BatchQuestionOptionInput[];
+};
+
+type BatchAssessmentInput = {
+  title: string;
+  description?: string;
+  assessmentType: string;
+  startDate: string;
+  endDate: string;
+  timeLimit?: number;
+  gradeMethod?: "auto" | "manual" | "mixed";
+  attemptsAllowed?: number;
+  questionsToDisplay?: number;
+  shuffleQuestions?: boolean;
+  questions?: BatchQuestionInput[];
+};
+
+type BatchLessonInput = {
+  title: string;
+  description?: string;
+  information?: string;
+  startDate?: string;
+  endDate?: string;
+  mainContentText?: string;
+  assessments?: BatchAssessmentInput[];
+};
+
+type BatchModuleInput = {
+  title: string;
+  description?: string;
+  certificateEnabled?: boolean;
+  lessons?: BatchLessonInput[];
+};
+
+export type SectionBatchCreateInput = {
+  modules: BatchModuleInput[];
+};
+
+export const useBatchCreateSectionContent = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: {
+      sectionCode: string;
+      payload: SectionBatchCreateInput;
+    }) => {
+      sectionService.resetQuery();
+      return sectionService.batchCreateContent(data.sectionCode, data.payload);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["section-module"] });
+      queryClient.invalidateQueries({ queryKey: ["section-assessment"] });
+      queryClient.invalidateQueries({ queryKey: ["section-by-code"] });
+      queryClient.invalidateQueries({ queryKey: ["search-section-by-code"] });
+    },
+  });
+};
+
 export const useGetSectionById = (sectionId: string) => {
   return useQuery({
     queryKey: ["section-by-id", sectionId],

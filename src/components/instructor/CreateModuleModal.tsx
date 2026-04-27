@@ -18,6 +18,7 @@ const moduleSchema = z.object({
     .string()
     .min(3, "Module title must be at least 3 characters")
     .max(100, "Module title must be at most 100 characters"),
+  certificateEnabled: z.boolean().optional(),
 });
 
 type ModuleFormData = z.infer<typeof moduleSchema>;
@@ -42,18 +43,24 @@ export default function CreateModuleModal({
     handleSubmit,
     formState: { errors, isSubmitting, isDirty },
     reset,
-    setValue,
   } = useForm<ModuleFormData>({
     resolver: zodResolver(moduleSchema),
-    defaultValues: { title: "" },
+    defaultValues: { title: "", certificateEnabled: false },
   });
 
   // Update form when module data is loaded
   useEffect(() => {
-    if (moduleData) {
-      setValue("title", moduleData.data.title);
+    if (moduleId && moduleData?.data) {
+      reset({
+        title: moduleData.data.title || "",
+        certificateEnabled: Boolean(moduleData.data.certificateEnabled),
+      });
+      return;
     }
-  }, [moduleData, setValue]);
+    if (!moduleId) {
+      reset({ title: "", certificateEnabled: false });
+    }
+  }, [moduleData, moduleId, reset]);
 
   const createModule = useCreateModule();
   const updateModule = useUpdateModule();
@@ -66,7 +73,7 @@ export default function CreateModuleModal({
       // Update existing module
       toast.promise(
         updateModule.mutateAsync(
-          { _id: moduleId, title: data.title },
+          { _id: moduleId, title: data.title, certificateEnabled: !!data.certificateEnabled },
           {
             onSuccess: () => {
               reset();
@@ -84,6 +91,7 @@ export default function CreateModuleModal({
       // Create new module
       const moduleData = {
         ...data,
+        certificateEnabled: !!data.certificateEnabled,
         organizationId: currentUser?.user.organization._id,
         sectionCode: location.pathname.split("/")[4],
       };
@@ -138,6 +146,14 @@ export default function CreateModuleModal({
               </p>
             )}
           </div>
+          <label className="mt-4 inline-flex items-center gap-2 text-sm text-gray-700">
+            <input
+              type="checkbox"
+              {...register("certificateEnabled")}
+              disabled={moduleId ? isSubmitting || isPending : isSubmitting}
+            />
+            Enable completion certificate for this module
+          </label>
         </div>
 
         {/* Action Buttons */}

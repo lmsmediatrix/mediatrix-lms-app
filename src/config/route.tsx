@@ -26,6 +26,7 @@ import InstructorDetailsPage from "../pages/orgAdmin/InstructorDetailsPage";
 import AssessmentResult from "../pages/instructor/AssessmentResult";
 import InstructorAssessmentPage from "../pages/instructor/InstructorAssessmentPage";
 import EditSectionPage from "../pages/orgAdmin/EditSectionPage";
+import OrgAdminManageSection from "../pages/orgAdmin/ManageSection";
 import NewSectionPage from "../pages/orgAdmin/NewSectionPage";
 import OrgAdminSections from "../pages/orgAdmin/SectionPage";
 import Notifications from "../pages/common/Notifications";
@@ -55,6 +56,7 @@ import PerformanceSystemRedirect from "../pages/common/PerformanceSystemRedirect
 import Settings from "../pages/orgAdmin/Settings";
 import AdminPerformancePage from "../pages/orgAdmin/AdminPerformancePage";
 import AdminStudentPerformanceDetails from "../pages/orgAdmin/AdminStudentPerformanceDetails";
+import ReportsPage from "../pages/orgAdmin/ReportsPage";
 import WeeklySchedule from "../pages/instructor/WeeklySchedule";
 import InstructorStudentPerformanceDetails from "../pages/instructor/InstructorStudentPerformanceDetails";
 import InstructorCompletionPage from "../pages/instructor/InstructorCompletionPage";
@@ -143,6 +145,10 @@ export const appRoutes = [
         element: <EditSectionPage />,
       },
       {
+        path: "/:orgCode/admin/section/:sectionCode/manage",
+        element: <OrgAdminManageSection />,
+      },
+      {
         path: "/:orgCode/admin/course",
         element: <CoursePage />,
       },
@@ -201,6 +207,10 @@ export const appRoutes = [
       {
         path: "/:orgCode/admin/compliance",
         element: <AdminPerformancePage />,
+      },
+      {
+        path: "/:orgCode/admin/reports",
+        element: <ReportsPage />,
       },
       {
         path: "/:orgCode/admin/performance/:studentId",
