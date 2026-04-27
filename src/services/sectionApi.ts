@@ -7,6 +7,27 @@ import { APIService } from "./apiService";
 const { BASE_URL, SECTION } = API_ENDPOINTS;
 
 class SectionService extends APIService {
+  batchCreateContent = async (sectionCode: string, body: object) => {
+    try {
+      const response = await apiClient.post(
+        `${BASE_URL}${SECTION.BATCH_CONTENT_CREATE.replace(
+          ":sectionCode",
+          sectionCode,
+        )}`,
+        body,
+        {
+          withCredentials: true,
+        },
+      );
+      return response.data;
+    } catch (error: any) {
+      throw new Error(
+        error?.response?.data?.message ||
+          "Error creating section content batch",
+      );
+    }
+  };
+
   createSection = async (body: object) => {
     try {
       const response = await apiClient.post(
@@ -14,7 +35,7 @@ class SectionService extends APIService {
         body,
         {
           withCredentials: true,
-        }
+        },
       );
       return response.data;
     } catch (error: any) {
@@ -30,7 +51,7 @@ class SectionService extends APIService {
         body,
         {
           withCredentials: true,
-        }
+        },
       );
       return response.data;
     } catch (error: any) {
@@ -43,11 +64,11 @@ class SectionService extends APIService {
       const response = await apiClient.get(
         `${BASE_URL}${SECTION.GET_BY_ID.replace(
           ":id",
-          sectionId
+          sectionId,
         )}${this.getQueryString()}`,
         {
           withCredentials: true,
-        }
+        },
       );
       return response.data;
     } catch (error) {
@@ -62,7 +83,7 @@ class SectionService extends APIService {
         `${BASE_URL}${SECTION.REMOVE.replace(":id", sectionCode)}`,
         {
           withCredentials: true,
-        }
+        },
       );
       return response.data;
     } catch (error) {
@@ -80,7 +101,7 @@ class SectionService extends APIService {
         body,
         {
           withCredentials: true,
-        }
+        },
       );
       return response.data;
     } catch (error: any) {
@@ -91,19 +112,19 @@ class SectionService extends APIService {
 
   getSectionAttendance = async (
     sectionCode: string,
-    date: { from: string; to: string }
+    date: { from: string; to: string },
   ) => {
     try {
       const params = date;
       const response = await apiClient.get(
         `${BASE_URL}${SECTION.SECTION_ATTENDANCE.replace(
           ":sectionCode",
-          sectionCode
+          sectionCode,
         )}`,
         {
           withCredentials: true,
           params,
-        }
+        },
       );
       return response.data;
     } catch (error) {
@@ -116,7 +137,7 @@ class SectionService extends APIService {
       const response = await apiClient.post(
         `${BASE_URL}${SECTION.BULK_ADD_STUDENTS.replace(
           ":sectionCode",
-          sectionCode
+          sectionCode,
         )}`,
         data,
         {
@@ -124,7 +145,7 @@ class SectionService extends APIService {
           headers: {
             "Content-Type": "multipart/form-data",
           },
-        }
+        },
       );
       return response.data;
     } catch (error) {
@@ -139,7 +160,7 @@ class SectionService extends APIService {
         this.searchParams,
         {
           withCredentials: true,
-        }
+        },
       );
       return response.data;
     } catch (error) {
@@ -152,11 +173,11 @@ class SectionService extends APIService {
       const response = await apiClient.get(
         `${BASE_URL}${SECTION.SECTION_STUDENT_GRADES.replace(
           ":sectionCode",
-          sectionCode
+          sectionCode,
         )}${this.getQueryString()}`,
         {
           withCredentials: true,
-        }
+        },
       );
       return response.data;
     } catch (error) {
@@ -169,11 +190,11 @@ class SectionService extends APIService {
       const response = await apiClient.get(
         `${BASE_URL}${SECTION.SECTION_STUDENT_GRADES_ANALYTICS.replace(
           ":sectionCode",
-          sectionCode
+          sectionCode,
         )}${this.getQueryString()}`,
         {
           withCredentials: true,
-        }
+        },
       );
       return response.data;
     } catch (error) {
@@ -192,7 +213,7 @@ class SectionService extends APIService {
             Accept: "text/csv", // Request CSV from backend
           },
           responseType: "blob", // Treat response as a Blob
-        }
+        },
       );
       return response.data;
     } catch (error) {
@@ -205,8 +226,8 @@ class SectionService extends APIService {
       const response = await apiClient.delete(
         `${BASE_URL}${SECTION.REMOVE_STUDENT_IN_SECTION.replace(
           ":sectionCode",
-          sectionCode
-        ).replace(":studentId", studentId)}`
+          sectionCode,
+        ).replace(":studentId", studentId)}`,
       );
       return response.data;
     } catch (error) {
@@ -220,12 +241,12 @@ class SectionService extends APIService {
       const response = await apiClient.post(
         `${BASE_URL}${SECTION.ADD_STUDENTS_TO_SECTION_BY_CODE.replace(
           ":sectionCode",
-          sectionCode
+          sectionCode,
         )}`,
         { studentIds },
         {
           withCredentials: true,
-        }
+        },
       );
       return response.data;
     } catch (error: any) {
@@ -241,7 +262,7 @@ class SectionService extends APIService {
         body,
         {
           withCredentials: true,
-        }
+        },
       );
       return response.data;
     } catch (error: any) {
@@ -255,7 +276,7 @@ class SectionService extends APIService {
       body,
       {
         withCredentials: true,
-      }
+      },
     );
     return response.data;
   };
@@ -265,11 +286,11 @@ class SectionService extends APIService {
       const response = await apiClient.get(
         `${BASE_URL}${SECTION.SECTION_MODULE.replace(
           ":sectionCode",
-          sectionCode
+          sectionCode,
         )}${this.getQueryString()}`,
         {
           withCredentials: true,
-        }
+        },
       );
       return response.data;
     } catch (error) {
@@ -282,11 +303,11 @@ class SectionService extends APIService {
       const response = await apiClient.get(
         `${BASE_URL}${SECTION.SECTION_ANNOUNCEMENT.replace(
           ":sectionCode",
-          sectionCode
+          sectionCode,
         )}${this.getQueryString()}`,
         {
           withCredentials: true,
-        }
+        },
       );
       return response.data;
     } catch (error) {
@@ -299,11 +320,11 @@ class SectionService extends APIService {
       const response = await apiClient.get(
         `${BASE_URL}${SECTION.SECTION_ASSESSMENT.replace(
           ":sectionCode",
-          sectionCode
+          sectionCode,
         )}${this.getQueryString()}&assessmentId=true&pendingAssessment=true&count=true`,
         {
           withCredentials: true,
-        }
+        },
       );
       return response.data;
     } catch (error) {
@@ -316,11 +337,11 @@ class SectionService extends APIService {
       const response = await apiClient.get(
         `${BASE_URL}${SECTION.SECTION_STUDENT.replace(
           ":sectionCode",
-          sectionCode
+          sectionCode,
         )}${this.getQueryString()}`,
         {
           withCredentials: true,
-        }
+        },
       );
       return response.data;
     } catch (error) {
@@ -333,11 +354,11 @@ class SectionService extends APIService {
       const response = await apiClient.get(
         `${BASE_URL}${SECTION.SECTION_GRADE_SYSTEM.replace(
           ":sectionCode",
-          sectionCode
+          sectionCode,
         )}${this.getQueryString()}`,
         {
           withCredentials: true,
-        }
+        },
       );
       return response.data;
     } catch (error) {
@@ -350,7 +371,7 @@ class SectionService extends APIService {
       const response = await apiClient.get(
         `${BASE_URL}${SECTION.SECTION_STUDENT_GRADES_EXPORT.replace(
           ":sectionCode",
-          sectionCode
+          sectionCode,
         )}`,
         {
           withCredentials: true,
@@ -358,7 +379,7 @@ class SectionService extends APIService {
             Accept: "text/csv",
           },
           responseType: "blob",
-        }
+        },
       );
       return response.data;
     } catch (error) {
@@ -371,7 +392,7 @@ class SectionService extends APIService {
       const response = await apiClient.get(
         `${BASE_URL}${SECTION.SECTION_STUDENT_EXPORT.replace(
           ":sectionCode",
-          sectionCode
+          sectionCode,
         )}`,
         {
           withCredentials: true,
@@ -379,7 +400,7 @@ class SectionService extends APIService {
             Accept: "text/csv",
           },
           responseType: "blob",
-        }
+        },
       );
       return response.data;
     } catch (error) {
@@ -394,7 +415,7 @@ class SectionService extends APIService {
         {
           withCredentials: true,
           params: { startDate, endDate },
-        }
+        },
       );
       return response.data;
     } catch (error) {

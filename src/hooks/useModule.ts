@@ -5,7 +5,7 @@ export const useGetModuleById = (moduleId: string) => {
   return useQuery({
     queryKey: ["module-by-id", moduleId],
     queryFn: () => {
-      ModuleService.select(["title", "description"]);
+      ModuleService.select(["title", "description", "certificateEnabled"]);
       return ModuleService.getModuleById(moduleId);
     },
     enabled: !!moduleId,
@@ -16,7 +16,7 @@ export const useCreateModule = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (data: object) => {
+    mutationFn: (data: Record<string, unknown>) => {
       return ModuleService.createModule(data);
     },
     onSuccess: () => {
@@ -29,7 +29,7 @@ export const useUpdateModule = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (data: object) => {
+    mutationFn: (data: Record<string, unknown>) => {
       return ModuleService.updateModule(data);
     },
     onSuccess: () => {

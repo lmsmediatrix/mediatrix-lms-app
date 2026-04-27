@@ -5,6 +5,7 @@ import { toast } from "react-toastify";
 import { Lightbulb } from "@/components/animate-ui/icons/lightbulb";
 import Button from "../../components/common/Button";
 import HoverHelpTooltip from "../../components/common/HoverHelpTooltip";
+import TnaAutoCreatePlanModal from "../../components/orgAdmin/TnaAutoCreatePlanModal";
 import { useAuth } from "../../context/AuthContext";
 import {
   useAutoDeployTnaRecommendations,
@@ -17,6 +18,18 @@ type TrainingProgressStatus = "pending" | "in_progress" | "completed";
 type TrainingFilterStatus = "all" | TrainingProgressStatus;
 type TrainingPriority = "high" | "medium" | "low";
 type DeploymentCreateMode = "auto_create" | "manual_create";
+type AutoCreatePlannerCourse = {
+  trainingId?: string;
+  title: string;
+  programName?: string;
+  batchName?: string;
+  description?: string;
+  code?: string;
+};
+
+type AutoCreatePlannerPayload = {
+  courses: AutoCreatePlannerCourse[];
+};
 
 type TnaRecommendation = {
   _id: string;
@@ -35,6 +48,7 @@ type TnaRecommendation = {
 
 type AutoDeploySummary = {
   noOp?: boolean;
+  plannerApplied?: boolean;
   totalGroups: number;
   programsCreated: number;
   programsReused: number;
@@ -172,6 +186,7 @@ export default function TnaExecutionPipelinePage() {
   const [trainingSearchTerm, setTrainingSearchTerm] = useState("");
   const [trainingStatusFilter, setTrainingStatusFilter] = useState<TrainingFilterStatus>("all");
   const [autoDeploySummary, setAutoDeploySummary] = useState<AutoDeploySummary | null>(null);
+  const [isPlannerModalOpen, setIsPlannerModalOpen] = useState(false);
   const [deploymentCreateMode, setDeploymentCreateMode] =
     useState<DeploymentCreateMode>("auto_create");
 
@@ -254,6 +269,19 @@ export default function TnaExecutionPipelinePage() {
     });
   }, [selectedRecommendation]);
 
+  const plannerDefaultCourses = useMemo(() => {
+    const safeEmployeeName =
+      selectedEmployeeName && selectedEmployeeName !== "--" ? selectedEmployeeName : employeeTerm;
+    return selectedTrainingRows
+      .filter((row) => row.status === "pending")
+      .map((row) => ({
+        trainingId: row.id,
+        title: row.title,
+        programName: `${row.title} Program`,
+        batchName: `${safeEmployeeName} - ${row.title} Batch`,
+      }));
+  }, [selectedTrainingRows, selectedEmployeeName, employeeTerm]);
+
   const filteredTrainingRows = useMemo(() => {
     const keyword = trainingSearchTerm.trim().toLowerCase();
     return selectedTrainingRows.filter((row) => {
@@ -285,10 +313,13 @@ export default function TnaExecutionPipelinePage() {
     };
   }, [selectedRecommendation]);
 
-  const runAutoDeployFromTna = async () => {
+  const runAutoDeployFromTna = async (planner?: AutoCreatePlannerPayload) => {
+    const recommendationIds = selectedRecommendation?._id ? [selectedRecommendation._id] : undefined;
     try {
       const response = await toast.promise(
-        autoDeployMutation.mutateAsync({}),
+        autoDeployMutation.mutateAsync(
+          planner ? { recommendationIds, planner } : { recommendationIds }
+        ),
         {
           pending: "Auto creating from TNA recommendations...",
           success: {
@@ -308,9 +339,26 @@ export default function TnaExecutionPipelinePage() {
       if (summary) {
         setAutoDeploySummary(summary);
       }
+      setIsPlannerModalOpen(false);
     } catch {
       // Error toast is already handled above.
     }
+  };
+
+  const handleConfirmPlanner = async (payload: AutoCreatePlannerPayload) => {
+    await runAutoDeployFromTna(payload);
+  };
+
+  const openPlannerModal = () => {
+    if (!selectedRecommendation?._id) {
+      toast.error("Select a recommendation first.");
+      return;
+    }
+    if (plannerDefaultCourses.length === 0) {
+      toast.error("No pending training items available for auto create.");
+      return;
+    }
+    setIsPlannerModalOpen(true);
   };
 
   const suggestedBatchName = useMemo(() => {
@@ -687,12 +735,12 @@ export default function TnaExecutionPipelinePage() {
                       </div>
                       <Button
                         variant="primary"
-                        onClick={runAutoDeployFromTna}
+                        onClick={openPlannerModal}
                         isLoading={autoDeployMutation.isPending}
                         disabled={pendingTrainingItemsCount === 0}
                         className="h-10"
                       >
-                        Auto Create From TNA
+                        Plan Auto Create
                       </Button>
                     </div>
 
@@ -842,6 +890,13 @@ export default function TnaExecutionPipelinePage() {
           )}
         </main>
       </div>
+      <TnaAutoCreatePlanModal
+        isOpen={isPlannerModalOpen}
+        onClose={() => setIsPlannerModalOpen(false)}
+        onConfirm={handleConfirmPlanner}
+        isSubmitting={autoDeployMutation.isPending}
+        defaultCourses={plannerDefaultCourses}
+      />
     </div>
   );
 }

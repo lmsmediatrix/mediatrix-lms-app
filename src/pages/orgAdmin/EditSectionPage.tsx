@@ -125,6 +125,16 @@ const SectionEditPage = () => {
               <div className="flex gap-2 w-full sm:w-auto">
                 <button
                   onClick={() =>
+                    navigate(
+                      `/${orgCode}/admin/section/${sectionCode}/manage?tab=modules`,
+                    )
+                  }
+                  className="bg-white border border-primary text-primary px-3 sm:px-4 py-2 rounded-lg hover:bg-primary/10 flex items-center gap-2 text-sm sm:text-base flex-1 sm:flex-initial justify-center"
+                >
+                  Manage Content
+                </button>
+                <button
+                  onClick={() =>
                     setSearchParams({ modal: "edit-section", id: section._id })
                   }
                   className="bg-primary text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-primary/90 flex items-center gap-2 text-sm sm:text-base flex-1 sm:flex-initial justify-center"
@@ -183,13 +193,13 @@ const SectionEditPage = () => {
                             <p className="font-semibold text-sm sm:text-base break-words">
                               {sched.time.start && sched.time.end
                                 ? `${convert24to12Format(
-                                    sched.time.start
+                                    sched.time.start,
                                   )} - ${convert24to12Format(sched.time.end)}`
                                 : "No time set"}
                             </p>
                           </div>
                         </div>
-                      )
+                      ),
                     )}
                   </div>
                 </div>
@@ -217,10 +227,10 @@ const SectionEditPage = () => {
                       section.status === "upcoming"
                         ? "bg-yellow-100 text-yellow-800"
                         : section.status === "active"
-                        ? "bg-green-100 text-green-800"
-                        : section.status === "completed"
-                        ? "bg-blue-100 text-blue-800"
-                        : "bg-gray-100 text-gray-800"
+                          ? "bg-green-100 text-green-800"
+                          : section.status === "completed"
+                            ? "bg-blue-100 text-blue-800"
+                            : "bg-gray-100 text-gray-800"
                     }`}
                   >
                     {section.status
@@ -236,9 +246,9 @@ const SectionEditPage = () => {
                   <p className="font-medium text-sm sm:text-base break-words">
                     {section.schedule?.startDate && section.schedule?.endDate
                       ? `${new Date(
-                          section.schedule.startDate
+                          section.schedule.startDate,
                         ).toLocaleDateString()} - ${new Date(
-                          section.schedule.endDate
+                          section.schedule.endDate,
                         ).toLocaleDateString()}`
                       : "Not scheduled"}
                   </p>

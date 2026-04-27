@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import BreadCrumbs from "../../components/common/BreadCrumbs";
 import { IoMdDownload } from "react-icons/io";
@@ -9,9 +9,12 @@ import {
   useGetLessonBySectionCode,
   useUpdateLessonProgress,
 } from "../../hooks/useLesson";
+import { useSectionModule } from "../../hooks/useSection";
 import { useAuth } from "../../context/AuthContext";
 import { formatDateMMMDDYYY } from "../../lib/dateUtils";
 import CreateAssessmentModal from "../../components/instructor/CreateAssessmentModal";
+import { useGenerateCertificate, useStudentCertificates } from "../../hooks/useCertificate";
+import { toast } from "react-toastify";
 
 const contentTypes = {
   video: ["mp4"],
@@ -99,8 +102,10 @@ export default function LessonsPage() {
     lessonId,
     moduleId,
   );
+  const { data: moduleData } = useSectionModule(sectionCode);
   const { mutate: updateProgress, isPending: isUpdating } =
     useUpdateLessonProgress();
+  const generateCertificateMutation = useGenerateCertificate();
 
   const section = data?.sections?.[0];
   const lesson = section?.modules?.[0]?.lessons?.[0];
@@ -111,6 +116,35 @@ export default function LessonsPage() {
     (p: { userId: string }) => p.userId === userId,
   );
   const progressStatus = progressEntry?.status || "not-started";
+  const currentModule = useMemo(
+    () =>
+      moduleData?.modules?.data?.find(
+        (module: { _id: string }) => module._id === moduleId,
+      ),
+    [moduleData?.modules?.data, moduleId],
+  );
+  const moduleLessons = currentModule?.lessons || [];
+  const modulePublishedLessons = moduleLessons.filter(
+    (l: { status: string }) => l.status === "published",
+  );
+  const isModuleCompleted =
+    modulePublishedLessons.length > 0 &&
+    modulePublishedLessons.every((l: any) =>
+      (l.progress || []).some(
+        (p: { userId: string; status: string }) =>
+          p.userId === userId && p.status === "completed",
+      ),
+    );
+  const certificateEnabled = !!currentModule?.certificateEnabled;
+  const {
+    data: studentCertificates,
+    isPending: isCertificateLoading,
+    isError: isCertificateLoadError,
+  } = useStudentCertificates(userId || "", {
+    moduleId,
+    enabled: isStudent && !!userId && !!moduleId && isModuleCompleted && certificateEnabled,
+  });
+  const moduleCertificate = studentCertificates?.data?.[0];
 
   useEffect(() => {
     if (isStudent && lesson && progressStatus === "not-started") {
@@ -159,6 +193,22 @@ export default function LessonsPage() {
   const openAssessment = (assessmentId: string) => {
     if (!orgCode || !role) return;
     navigate(`/${orgCode}/${role}/sections/${sectionCode}/assessment/${assessmentId}`);
+  };
+
+  const onGenerateCertificate = async () => {
+    if (!userId || !moduleId || !section?._id) return;
+    await toast.promise(
+      generateCertificateMutation.mutateAsync({
+        studentId: userId,
+        moduleId,
+        sectionId: section._id,
+      }),
+      {
+        pending: "Generating certificate...",
+        success: "Certificate is ready",
+        error: "Failed to generate certificate",
+      },
+    );
   };
 
   const renderContent = () => {
@@ -273,6 +323,41 @@ export default function LessonsPage() {
                 {isUpdating ? "Updating..." : "Mark as Complete"}
               </button>
             ))}
+          {isStudent &&
+            progressStatus === "completed" &&
+            certificateEnabled &&
+            isModuleCompleted && (
+              <>
+                {isCertificateLoading ? (
+                  <span className="rounded-lg bg-gray-100 px-3 py-2 text-xs text-gray-600">
+                    Checking certificate...
+                  </span>
+                ) : moduleCertificate ? (
+                  <span className="rounded-lg bg-blue-100 px-3 py-2 text-xs font-medium text-blue-700">
+                    Certificate: {moduleCertificate.certificateNo}
+                  </span>
+                ) : (
+                  <button
+                    onClick={onGenerateCertificate}
+                    disabled={generateCertificateMutation.isPending}
+                    className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60"
+                  >
+                    {generateCertificateMutation.isPending
+                      ? "Generating..."
+                      : "Generate Certificate"}
+                  </button>
+                )}
+              </>
+            )}
+          {isStudent &&
+            progressStatus === "completed" &&
+            certificateEnabled &&
+            isModuleCompleted &&
+            isCertificateLoadError && (
+              <span className="rounded-lg bg-red-100 px-3 py-2 text-xs text-red-700">
+                Unable to load certificate status
+              </span>
+            )}
           {isInstructor && (
             <button
               onClick={openAddAssessmentModal}

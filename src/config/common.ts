@@ -19,6 +19,7 @@ import { UsersIcon } from "../components/ui/users-icon";
 import { LayoutGridIcon } from "../components/ui/layout-grid-icon";
 import { SettingsIcon } from "../components/ui/settings-icon";
 import { ChartNoAxesCombinedIcon } from "../components/ui/chart-no-axes-combined-icon";
+import { ChartBarIcon } from "../components/ui/chart-bar-icon";
 import { ActivityIcon } from "../components/ui/activity-icon";
 import { BellIcon } from "../components/ui/bell-icon";
 
@@ -127,6 +128,11 @@ export const BASE_NAVIGATION: {
       LABEL: "Compliance",
       PATH: "/:code/admin/compliance",
       ICON: ChartNoAxesCombinedIcon,
+    },
+    {
+      LABEL: "Reports",
+      PATH: "/:code/admin/reports",
+      ICON: ChartBarIcon,
     },
   ],
   INSTRUCTOR: [
