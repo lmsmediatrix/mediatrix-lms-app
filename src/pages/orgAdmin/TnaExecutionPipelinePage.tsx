@@ -389,13 +389,7 @@ export default function TnaExecutionPipelinePage() {
 
   return (
     <div className="pt-14 pb-6 px-4 md:px-6 lg:p-6 space-y-6">
-      <section
-        className="rounded-2xl border border-slate-200 p-5 md:p-6"
-        style={{
-          background:
-            "linear-gradient(135deg, color-mix(in srgb, var(--color-primary) 16%, #ffffff), #ffffff 56%, color-mix(in srgb, var(--color-secondary) 14%, #ffffff))",
-        }}
-      >
+      <section className="rounded-2xl border border-slate-200 bg-white p-5 md:p-6">
         <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
           <div className="flex items-start gap-3">
             <button

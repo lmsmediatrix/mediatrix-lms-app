@@ -1063,7 +1063,7 @@ export default function OrgAdminCompletionPage() {
                                         className="rounded-md border border-slate-200 px-2 py-0.5 text-[11px] font-semibold text-slate-700 hover:bg-slate-50"
                                         onClick={() =>
                                           navigate(
-                                            `/${orgCode}/admin/performance/${employee.employeeId}`,
+                                            `/${orgCode}/admin/student/${employee.employeeId}`,
                                           )
                                         }
                                         disabled={!employee.employeeId}
@@ -1177,7 +1177,7 @@ export default function OrgAdminCompletionPage() {
                       type="button"
                       className="rounded-md border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
                       onClick={() =>
-                        navigate(`/${orgCode}/admin/performance/${selectedEmployee.employeeId}`)
+                        navigate(`/${orgCode}/admin/student/${selectedEmployee.employeeId}`)
                       }
                       disabled={!selectedEmployee.employeeId}
                     >

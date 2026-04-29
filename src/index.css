@@ -3,17 +3,28 @@
 @tailwind utilities;
 
 :root {
-  --color-primary: #3e5b93; /* Default value */
-  --color-secondary: #228ab9;
-  --color-accent: #c0db70;
-  --color-info: #6366f1;
-  --color-light: #f8f9fa;
-  --color-dark: #343a40;
-  --color-neutral: #8b5cf6;
-  --color-success: #28a745;
-  --color-warning: #f97316;
-  --color-danger: #dc3545;
-  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  --cb-blue: #0052ff;
+  --cb-hover-blue: #578bfa;
+  --cb-link-blue: #0667d0;
+  --cb-text: #0a0b0d;
+  --cb-dark: #0a0b0d;
+  --cb-dark-card: #282b31;
+  --cb-light: #ffffff;
+  --cb-surface: #eef0f3;
+  --cb-muted-border: rgba(91, 97, 110, 0.2);
+  --cb-light-surface: rgba(247, 247, 247, 0.88);
+
+  --color-primary: var(--cb-blue);
+  --color-secondary: var(--cb-link-blue);
+  --color-accent: var(--cb-surface);
+  --color-info: var(--cb-hover-blue);
+  --color-light: var(--cb-light);
+  --color-dark: var(--cb-text);
+  --color-neutral: #5b616e;
+  --color-success: #1f9d55;
+  --color-warning: #f59e0b;
+  --color-danger: #dc2626;
+  font-family: CoinbaseText, Inter, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
 }
@@ -66,7 +77,9 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
-  color: #1a1a1a;
+  color: var(--cb-text);
+  background-color: var(--cb-light);
+  font-family: CoinbaseText, Inter, system-ui, sans-serif;
 }
 
 #root {
@@ -173,4 +186,100 @@ body {
 .admin-content-compact .text-xs {
   font-size: 0.71rem;
   line-height: 1.1rem;
+}
+
+.cb-section-light {
+  background-color: var(--cb-light);
+  color: var(--cb-text);
+}
+
+.cb-section-dark {
+  background-color: var(--cb-dark);
+  color: var(--cb-light);
+}
+
+.cb-surface {
+  background-color: var(--cb-surface);
+}
+
+.cb-card-border {
+  border: 1px solid var(--cb-muted-border);
+}
+
+.cb-display-hero {
+  font-family: CoinbaseDisplay, Inter Tight, Inter, sans-serif;
+  font-size: clamp(3rem, 6vw, 5rem);
+  font-weight: 400;
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+
+.cb-display-secondary {
+  font-family: CoinbaseDisplay, Inter Tight, Inter, sans-serif;
+  font-size: clamp(2.5rem, 4.5vw, 4rem);
+  font-weight: 400;
+  line-height: 1;
+}
+
+.cb-section-heading {
+  font-family: CoinbaseSans, Inter, system-ui, sans-serif;
+  font-size: clamp(2rem, 3vw, 2.25rem);
+  font-weight: 400;
+  line-height: 1.11;
+}
+
+.cb-body {
+  font-family: CoinbaseText, Inter, system-ui, sans-serif;
+  font-size: 18px;
+  line-height: 1.56;
+}
+
+.cb-button-pill {
+  border-radius: 10px;
+  border: 1px solid transparent;
+  font-family: CoinbaseSans, Inter, system-ui, sans-serif;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: 0.16px;
+  transition: background-color 200ms ease, color 200ms ease, border-color 200ms ease;
+}
+
+.cb-button-pill:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.cb-button-primary {
+  background-color: var(--color-primary);
+  border-color: var(--color-primary);
+  color: var(--color-light);
+}
+
+.cb-button-primary:hover {
+  background-color: var(--color-secondary, var(--color-primary));
+  border-color: var(--color-secondary, var(--color-primary));
+  color: var(--color-light);
+}
+
+.cb-button-dark {
+  background-color: var(--cb-dark-card);
+  border-color: var(--cb-dark-card);
+  color: var(--cb-light);
+}
+
+.cb-button-dark:hover {
+  background-color: var(--color-primary);
+  border-color: var(--color-primary);
+  color: var(--color-light);
+}
+
+.cb-button-blue-outline {
+  background-color: transparent;
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.cb-button-blue-outline:hover {
+  background-color: color-mix(in srgb, var(--color-primary) 10%, transparent);
 }

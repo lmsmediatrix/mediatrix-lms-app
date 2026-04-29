@@ -130,7 +130,6 @@ export const API_ENDPOINTS = {
     GENERATE: "/certificate/generate",
     SEARCH: "/certificate/search",
   },
-
   // Lesson API Endpoint
   LESSON: {
     GET_ALL: "/lesson/get/all",
@@ -220,7 +219,6 @@ export const API_ENDPOINTS = {
     GET_ORGANIZATION_DASHBOARD: "/metric/organization/dashboard",
     GET_PERFORMANCE_DASHBOARD: "/metric/performance/dashboard",
     GET_STUDENT_PERFORMANCE_DETAILS: "/metric/performance/student",
-    CREATE_PERFORMANCE_ACTION_PLAN: "/metric/performance/action-plan/create",
   },
   // Activity Log API Endpoint
   ACTIVITY_LOG: {

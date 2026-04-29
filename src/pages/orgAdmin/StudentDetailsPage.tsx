@@ -557,11 +557,9 @@ export default function StudentDetailsPage() {
               </Button>
               <Button
                 variant="outline"
-                onClick={() =>
-                  navigate(`/${orgCode}/admin/performance/${studentId}`)
-                }
+                onClick={() => navigate(`/${orgCode}/admin/completion`)}
               >
-                View Performance
+                View Progress
               </Button>
               <Button
                 variant="destructive"

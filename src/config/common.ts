@@ -125,11 +125,6 @@ export const BASE_NAVIGATION: {
       ],
     },
     {
-      LABEL: "Compliance",
-      PATH: "/:code/admin/compliance",
-      ICON: ChartNoAxesCombinedIcon,
-    },
-    {
       LABEL: "Reports",
       PATH: "/:code/admin/reports",
       ICON: ChartBarIcon,

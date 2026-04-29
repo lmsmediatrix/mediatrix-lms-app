@@ -32,17 +32,11 @@ export default function Button({
   children,
 }: ButtonProps) {
   const baseClasses =
-    "flex justify-center items-center gap-2 px-4 py-2.5 rounded-md transition-all duration-300 ";
+    "cb-button-pill flex justify-center items-center gap-2 px-4 py-2.5 transition-all duration-300";
   const variantClasses = {
-    primary: `bg-primary border border-primary text-white ${
-      !disabled && !isLoading ? "hover:bg-white hover:text-primary" : ""
-    }`,
-    secondary: `bg-[#F2F9FD] text-[#228AB9] ${
-      !disabled && !isLoading ? "hover:bg-[#F2F9FD]/80" : ""
-    }`,
-    outline: `border-[1.5px] border-primary text-primary ${
-      !disabled && !isLoading ? "hover:bg-[color-mix(in_srgb,var(--color-primary)_10%,transparent_90%)] " : ""
-    } bg-transparent`,
+    primary: "cb-button-primary",
+    secondary: "cb-button-dark",
+    outline: `cb-button-blue-outline`,
     ghost: `bg-transparent text-black ${
       !disabled && !isLoading ? "hover:bg-gray-100" : ""
     }`,
@@ -52,14 +46,12 @@ export default function Button({
     success: `bg-green-500 text-white ${
       !disabled && !isLoading ? "hover:bg-green-600" : ""
     }`,
-    link: `bg-transparent text-primary ${
-      !disabled && !isLoading ? "hover:bg-gray-100 hover:text-underline" : ""
+    link: `bg-transparent text-coinbase-link ${
+      !disabled && !isLoading ? "hover:underline" : ""
     }`,
-    next: `bg-[#F4F6FA] text-primary border border-[#F4F6FA] ${
-      !disabled && !isLoading ? "hover:border-primary" : ""
-    }`,
+    next: "cb-button-primary",
     cancel: `bg-[#F3F4F6] border border-[#F3F4F6] text-[#565D6D] ${
-      !disabled && !isLoading ? "hover:border-primary" : ""
+      !disabled && !isLoading ? "hover:border-coinbase-blue" : ""
     }`,
   };
 

@@ -79,40 +79,6 @@ const FLOW_STEPS: Array<{
 
 const TNA_ACTIVE_STEP_STORAGE_KEY = "tna_active_step";
 
-const STEP_GUIDANCE: Record<
-  StepKey,
-  {
-    goal: string;
-    checklist: string[];
-  }
-> = {
-  "employee-skills": {
-    goal: "Capture employee profile inputs so gaps can be measured accurately.",
-    checklist: [
-      "Select an employee profile.",
-      "Select the target role from configured role standards.",
-      "Add current skill levels using the same 1 to 5 scale.",
-      "Save before moving to analysis.",
-    ],
-  },
-  analyze: {
-    goal: "Run analysis to compare role standards versus employee profile and extra signals.",
-    checklist: [
-      "Choose employee and job role.",
-      "Review role standard preview to confirm required levels.",
-      "Run analysis to generate recommendations.",
-    ],
-  },
-  recommendations: {
-    goal: "Track and manage generated recommendations through completion.",
-    checklist: [
-      "Review skill gap and recommendation counts per employee.",
-      "Status updates automatically when downstream workflow events are triggered.",
-      "Open employee details for full recommendation breakdown.",
-    ],
-  },
-};
-
 const parseList = (value: string): string[] =>
   value
     .split(/[\n,]/g)
@@ -1288,158 +1254,99 @@ export default function TnaPage() {
 
   return (
     <div className="pt-14 pb-6 px-4 md:px-6 lg:p-6 space-y-6">
-      <section
-        className="rounded-2xl border border-slate-200 p-5 md:p-6"
-        style={{
-          background:
-            "linear-gradient(135deg, color-mix(in srgb, var(--color-primary) 15%, #ffffff), #ffffff 55%, color-mix(in srgb, var(--color-secondary) 15%, #ffffff))",
-        }}
-      >
-        <div className="flex flex-col gap-5">
-          <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">
-                Corporate Workflow
-              </p>
-              <div className="mt-1 flex items-center gap-2">
-                <h1 className="text-3xl font-bold text-slate-900">
-                  Training Needs Analysis
-                </h1>
-                <HoverHelpTooltip
-                  text="This flow is focused on employee role and level capture, analysis, and recommendation tracking. Skills and role standards are configured in a separate Configuration page."
-                  className="shrink-0"
-                />
-              </div>
-            </div>
-            <Button
-              variant="outline"
-              className="h-10 w-full sm:w-[200px] md:shrink-0 text-center whitespace-nowrap"
-              onClick={() => navigate(`/${orgCode}/admin/tna/configuration`)}
-            >
-              Open Skill and Role
-            </Button>
+      <section className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">
+            Corporate Workflow
+          </p>
+          <div className="mt-1 flex items-center gap-2">
+            <h1 className="text-2xl font-bold text-slate-900">
+              Training Needs Analysis
+            </h1>
+            <HoverHelpTooltip
+              text="This flow is focused on employee role and level capture, analysis, and recommendation tracking. Skills and role standards are configured in a separate Configuration page."
+              className="shrink-0"
+            />
           </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
-            <div className="rounded-xl border border-slate-200 bg-white/80 p-4">
-              <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-                Skill Library
-              </p>
-              <p className="text-2xl font-bold text-slate-900 mt-2">
-                {skills.length}
-              </p>
-              <p className="text-xs text-slate-500 mt-1">
-                Reusable skills available
-              </p>
-            </div>
-            <div className="rounded-xl border border-slate-200 bg-white/80 p-4">
-              <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-                Role Standards
-              </p>
-              <p className="text-2xl font-bold text-slate-900 mt-2">
-                {roleOptions.length}
-              </p>
-              <p className="text-xs text-slate-500 mt-1">
-                Configured role profiles
-              </p>
-            </div>
-            <div className="rounded-xl border border-slate-200 bg-white/80 p-4">
-              <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-                {employeeTermPlural}
-              </p>
-              <p className="text-2xl font-bold text-slate-900 mt-2">
-                {employees.length}
-              </p>
-              <p className="text-xs text-slate-500 mt-1">
-                Profiles ready for TNA
-              </p>
-            </div>
-            <div className="rounded-xl border border-slate-200 bg-white/80 p-4">
-              <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-                Pending Actions
-              </p>
-              <p
-                className={`text-2xl font-bold mt-2 ${themeSecondaryTextClass}`}
-              >
-                {pendingRecommendations}
-              </p>
-              <p className="text-xs text-slate-500 mt-1">
-                Recommendations waiting assignment
-              </p>
-            </div>
-          </div>
+          <p className="mt-2 text-xs text-slate-500">
+            Skills: <span className="font-semibold text-slate-700">{skills.length}</span> | Role
+            Standards: <span className="font-semibold text-slate-700">{roleOptions.length}</span>{" "}
+            | {employeeTermPlural}:{" "}
+            <span className="font-semibold text-slate-700">{employees.length}</span> | Pending:{" "}
+            <span className={`font-semibold ${themeSecondaryTextClass}`}>{pendingRecommendations}</span>
+          </p>
         </div>
+        <Button
+          variant="outline"
+          className="h-10 w-full sm:w-[200px] md:shrink-0 text-center whitespace-nowrap"
+          onClick={() => navigate(`/${orgCode}/admin/tna/configuration`)}
+        >
+          Open Skill and Role
+        </Button>
       </section>
 
-      <section className="rounded-2xl border border-slate-200 bg-white p-3 md:p-4 shadow-[0_12px_36px_-24px_rgba(15,23,42,0.3)]">
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2">
-          {FLOW_STEPS.map((step, index) => {
-            const isActive = activeStep === step.key;
-            const isStepEnabled = stepEnabledByStep[step.key];
-            const isStepLocked = !isStepEnabled && !isActive;
-            const stepGuide =
-              STEP_GUIDANCE[step.key] || STEP_GUIDANCE["employee-skills"];
-            const hoverAlignClass =
-              index >= FLOW_STEPS.length - 2 ? "right-0" : "left-0";
-
-            return (
-              <div key={`flow-chip-${step.key}`} className="relative group">
-                <button
-                  type="button"
-                  onClick={() => goToStep(step.key)}
-                  disabled={isStepLocked}
-                  className={`w-full rounded-xl border px-3 py-2 text-left transition-colors ${
-                    isActive
-                      ? "border-primary bg-primary/10 shadow-[0_10px_24px_-20px_rgba(37,99,235,0.9)]"
-                      : isStepLocked
-                        ? "border-slate-200 bg-slate-100/80 cursor-not-allowed"
-                        : "border-slate-200 bg-slate-50/70 hover:border-slate-300 hover:bg-white"
-                  }`}
-                >
-                  <p
-                    className={`text-[11px] font-semibold uppercase tracking-wide ${isStepLocked ? "text-slate-400" : "text-slate-500"}`}
+      <section className="rounded-2xl border border-slate-200 bg-white p-4 md:p-5">
+        <div>
+          <div>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-3 md:gap-6">
+              {FLOW_STEPS.map((step) => {
+                const isActive = activeStep === step.key;
+                const isStepEnabled = stepEnabledByStep[step.key];
+                const isStepLocked = !isStepEnabled && !isActive;
+                return (
+                  <button
+                    key={`flow-step-label-${step.key}`}
+                    type="button"
+                    onClick={() => goToStep(step.key)}
+                    disabled={isStepLocked}
+                    className={`text-left transition-colors ${isStepLocked ? "cursor-not-allowed opacity-50" : ""}`}
                   >
-                    Step {index + 1}
-                  </p>
-                  <p
-                    className={`mt-0.5 flex items-center gap-2 text-sm font-medium ${isStepLocked ? "text-slate-400" : "text-slate-900"}`}
-                  >
-                    <span
-                      className={`h-1.5 w-1.5 rounded-full ${isStepLocked ? "bg-slate-300" : "bg-slate-500"}`}
-                    />
-                    <span>{step.title}</span>
-                  </p>
-                </button>
-
-                <div
-                  className={`pointer-events-none absolute ${hoverAlignClass} top-full z-30 mt-2 w-[320px] max-w-[calc(100vw-2rem)] rounded-xl border border-slate-200 bg-white/95 p-3 shadow-[0_20px_50px_-22px_rgba(15,23,42,0.45)] backdrop-blur-sm opacity-0 translate-y-1 transition-all duration-200 group-hover:opacity-100 group-hover:translate-y-0 group-focus-within:opacity-100 group-focus-within:translate-y-0`}
-                >
-                  <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-                    Step {index + 1}
-                  </p>
-                  <p className="mt-1 text-sm font-semibold text-slate-900">
-                    {step.title}
-                  </p>
-                  <p className="mt-1 text-xs leading-5 text-slate-600">
-                    {step.description}
-                  </p>
-                  <div className="mt-2 space-y-1.5">
-                    {stepGuide.checklist.map((item) => (
-                      <div
-                        key={`${step.key}-${item}`}
-                        className="flex items-start gap-2"
+                    <div className="flex items-center gap-1.5">
+                      <p
+                        className={`text-sm font-medium ${isActive ? "text-[color:var(--color-primary,#2563eb)]" : "text-slate-500"}`}
                       >
-                        <span className="mt-1 h-1.5 w-1.5 rounded-full bg-primary/80" />
-                        <p className="text-xs leading-5 text-slate-700">
-                          {item}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
+                        {step.title}
+                      </p>
+                      <HoverHelpTooltip text={step.description} className="shrink-0" />
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+            <div className="relative mt-3">
+              <div className="absolute left-2 right-2 top-2 h-[2px] bg-slate-200" />
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-3 md:gap-6">
+                {FLOW_STEPS.map((step, index) => {
+                  const isActive = activeStep === step.key;
+                  const isStepEnabled = stepEnabledByStep[step.key];
+                  const isStepLocked = !isStepEnabled && !isActive;
+                  return (
+                    <button
+                      key={`flow-step-dot-${step.key}`}
+                      type="button"
+                      onClick={() => goToStep(step.key)}
+                      disabled={isStepLocked}
+                      className="relative z-10 flex justify-start"
+                      aria-label={`Go to step ${index + 1}`}
+                    >
+                      <span
+                        className={`inline-flex h-4 w-4 items-center justify-center rounded-full border-2 ${
+                          isActive
+                            ? "border-[color:var(--color-primary,#2563eb)] bg-white"
+                            : isStepEnabled
+                              ? "border-[color:var(--color-primary,#2563eb)] bg-[color:var(--color-primary,#2563eb)]"
+                              : "border-slate-300 bg-white"
+                        }`}
+                      />
+                    </button>
+                  );
+                })}
               </div>
-            );
-          })}
+            </div>
+            <p className="mt-3 text-xs text-slate-500">
+              {FLOW_STEPS.find((step) => step.key === activeStep)?.description}
+            </p>
+          </div>
         </div>
       </section>
 

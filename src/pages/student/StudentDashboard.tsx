@@ -18,7 +18,6 @@ import OverallProgress from "../../components/student/OverallProgress";
 import RecentGrades from "../../components/student/RecentGrades";
 import AttendanceSummary from "../../components/student/AttendanceSummary";
 import StudyStreak from "../../components/student/StudyStreak";
-import PerformanceChart from "../../components/student/PerformanceChart";
 import CompletionTracker from "../../components/common/CompletionTracker";
 import { getTerm } from "../../lib/utils";
 
@@ -119,7 +118,6 @@ export default function StudentDashboard() {
     upcomingDeadlines,
     attendanceSummary,
     studyStreak,
-    performanceData,
   } = dashboardMetrics?.[0] || {};
 
   type SectionModule = NonNullable<Section["modules"]>[number];
@@ -381,8 +379,7 @@ export default function StudentDashboard() {
               </div>
 
               {/* Performance · Grades */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:mr-4 mb-4">
-                <PerformanceChart data={performanceData} />
+              <div className="grid grid-cols-1 gap-4 lg:mr-4 mb-4">
                 <RecentGrades data={recentGrades} />
               </div>
 

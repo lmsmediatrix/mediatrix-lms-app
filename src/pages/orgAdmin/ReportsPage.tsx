@@ -2110,7 +2110,7 @@ function PerformanceReportTab({
         render: (row) => (
           <button
             type="button"
-            onClick={() => navigate(`/${orgCode}/admin/performance/${row._id}`)}
+            onClick={() => navigate(`/${orgCode}/admin/student/${row._id}`)}
             className="text-sm font-medium text-primary hover:text-primary/80"
           >
             View Details
@@ -2195,8 +2195,8 @@ function PerformanceReportTab({
       onExportPdf={reportExporter.exportPdf}
       isExportingExcel={reportExporter.isExportingExcel}
       isExportingPdf={reportExporter.isExportingPdf}
-      onOpenPage={() => navigate(`/${orgCode}/admin/performance`)}
-      openPageLabel="Open Performance Page"
+      onOpenPage={() => navigate(`/${orgCode}/admin/completion`)}
+      openPageLabel="Open Progress Page"
     >
       {isPending ? (
         <TableSkeletonClean

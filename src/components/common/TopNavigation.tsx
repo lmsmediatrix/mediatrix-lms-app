@@ -38,16 +38,6 @@ export default function TopNavigation() {
   const learnerTerm = orgType ? getTerm("learner", orgType) : "Student";
 
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
-  const [isLogoMenuOpen, setIsLogoMenuOpen] = useState(false);
-
-  const performancePath =
-    role === "ADMIN" && code
-      ? `/${code}/admin/performance-system`
-      : role === "INSTRUCTOR" && code
-        ? `/${code}/instructor/performance-system`
-        : role === "STUDENT" && code
-          ? `/${code}/student/performance-system`
-          : null;
 
   const toggleSubmenu = (label: string) => {
     setOpenMenus((prev) =>
@@ -143,22 +133,10 @@ export default function TopNavigation() {
       "/";
     navigate(homePath);
     setIsMobileMenuOpen(false);
-    setIsLogoMenuOpen(false);
-  };
-
-  const navigateToPerformance = () => {
-    if (!performancePath) return;
-    navigate(performancePath);
-    setIsMobileMenuOpen(false);
-    setIsLogoMenuOpen(false);
   };
 
   const handleLogoClick = () => {
-    if (!performancePath) {
-      navigateToHome();
-      return;
-    }
-    setIsLogoMenuOpen((prev) => !prev);
+    navigateToHome();
   };
 
   const navigateToProfile = () => {
@@ -171,7 +149,6 @@ export default function TopNavigation() {
       await logout();
       navigate("/login", { replace: true });
       setIsMobileMenuOpen(false);
-      setIsLogoMenuOpen(false);
     } catch (error) {
       console.error("Logout failed:", error);
     }
@@ -187,25 +164,6 @@ export default function TopNavigation() {
       document.body.style.overflow = "unset";
     };
   }, [isMobileMenuOpen]);
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (
-        logoMenuRef.current &&
-        !logoMenuRef.current.contains(event.target as Node)
-      ) {
-        setIsLogoMenuOpen(false);
-      }
-    };
-
-    if (isLogoMenuOpen) {
-      document.addEventListener("mousedown", handleClickOutside);
-    }
-
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, [isLogoMenuOpen]);
 
   const navigationItems: NavItem[] = role
     ? BASE_NAVIGATION[role]
@@ -268,24 +226,7 @@ export default function TopNavigation() {
                     className="h-10 w-10 cursor-pointer hover:scale-105 transition-transform rounded-full"
                   />
                 )}
-                {performancePath && (
-                  <MdKeyboardArrowDown
-                    className={`text-lg transition-transform duration-200 ${
-                      isLogoMenuOpen ? "rotate-180 text-primary" : "text-gray-500"
-                    }`}
-                  />
-                )}
               </button>
-              {isLogoMenuOpen && performancePath && (
-                <div className="absolute top-12 left-0 min-w-[220px] bg-white border border-gray-200 rounded-lg shadow-lg z-50 py-1">
-                  <button
-                    onClick={navigateToPerformance}
-                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                  >
-                    Performance Management
-                  </button>
-                </div>
-              )}
             </div>
 
             {/* Desktop Navigation */}

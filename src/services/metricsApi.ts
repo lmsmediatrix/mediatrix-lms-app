@@ -4,14 +4,6 @@ import { APIService } from "./apiService";
 
 const { BASE_URL, METRICS } = API_ENDPOINTS;
 
-export interface CreatePerformanceActionPlanPayload {
-  studentId: string;
-  sectionCode?: string;
-  title?: string;
-  summary?: string;
-  riskLevel?: "Critical" | "Moderate" | "Low";
-}
-
 class MetricsService extends APIService {
   searchMetrics = async () => {
     try {
@@ -57,27 +49,6 @@ class MetricsService extends APIService {
     } catch (error) {
       console.error("Error fetching performance dashboard metrics:", error);
       throw new Error("Error fetching performance dashboard metrics");
-    }
-  };
-
-  createPerformanceActionPlan = async (
-    body: CreatePerformanceActionPlanPayload,
-  ) => {
-    try {
-      const response = await apiClient.post(
-        `${BASE_URL}${METRICS.CREATE_PERFORMANCE_ACTION_PLAN}`,
-        body,
-        {
-          withCredentials: true,
-        },
-      );
-      return response.data;
-    } catch (error: any) {
-      console.error("Error creating performance action plan:", error);
-      throw new Error(
-        error?.response?.data?.error ||
-          "Error creating performance action plan",
-      );
     }
   };
 

@@ -238,7 +238,6 @@ export default function SideNavigation({
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const logoMenuRef = useRef<HTMLDivElement>(null);
-  const [isLogoMenuOpen, setIsLogoMenuOpen] = useState(false);
 
   const role = currentUser?.user.role?.toUpperCase() as
     | keyof typeof BASE_NAVIGATION
@@ -252,14 +251,6 @@ export default function SideNavigation({
   const groupTermPlural = orgType
     ? getTerm("group", orgType, true)
     : "Sections";
-  const performancePath =
-    role === "ADMIN" && code
-      ? `/${code}/admin/performance-system`
-      : role === "INSTRUCTOR" && code
-        ? `/${code}/instructor/performance-system`
-        : role === "STUDENT" && code
-          ? `/${code}/student/performance-system`
-          : null;
 
   const toggleSubmenu = (label: string) => {
     if (!isCollapsed || isMobileMenuOpen) {
@@ -335,25 +326,11 @@ export default function SideNavigation({
       "/";
     navigate(homePath);
     setIsMobileMenuOpen(false);
-    setIsLogoMenuOpen(false);
-  };
-
-  const navigateToPerformance = () => {
-    if (!performancePath) return;
-    navigate(performancePath);
-    setIsMobileMenuOpen(false);
-    setIsLogoMenuOpen(false);
+    
   };
 
   const handleLogoClick = () => {
-    if (!performancePath) {
-      navigateToHome();
-      return;
-    }
-    if (isCollapsed && !isMobileMenuOpen) {
-      setIsCollapsed(false);
-    }
-    setIsLogoMenuOpen((prev) => !prev);
+    navigateToHome();
   };
 
   const navigateToProfile = () => {
@@ -361,7 +338,6 @@ export default function SideNavigation({
     navigate(`${location.pathname.split("/").slice(0, 3).join("/")}/profile`);
     setIsMobileMenuOpen(false);
     setIsMenuOpen(false);
-    setIsLogoMenuOpen(false);
   };
 
   const navigateToSettings = () => {
@@ -369,7 +345,6 @@ export default function SideNavigation({
     navigate(`${location.pathname.split("/").slice(0, 3).join("/")}/settings`);
     setIsMobileMenuOpen(false);
     setIsMenuOpen(false);
-    setIsLogoMenuOpen(false);
   };
 
   const handleLogout = async () => {
@@ -378,7 +353,6 @@ export default function SideNavigation({
       navigate("/login", { replace: true });
       setIsMobileMenuOpen(false);
       setIsMenuOpen(false);
-      setIsLogoMenuOpen(false);
     } catch (error) {
       console.error("Logout failed:", error);
     }
@@ -396,22 +370,16 @@ export default function SideNavigation({
       if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
         setIsMenuOpen(false);
       }
-      if (
-        logoMenuRef.current &&
-        !logoMenuRef.current.contains(event.target as Node)
-      ) {
-        setIsLogoMenuOpen(false);
-      }
     };
 
-    if (isMenuOpen || isLogoMenuOpen) {
+    if (isMenuOpen) {
       document.addEventListener("mousedown", handleClickOutside);
     }
 
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
-  }, [isMenuOpen, isLogoMenuOpen]);
+  }, [isMenuOpen]);
 
   const navigationItems: NavItem[] = role
     ? BASE_NAVIGATION[role]
@@ -535,32 +503,7 @@ export default function SideNavigation({
                     )}
                   </m.div>
                 </AnimatePresence>
-                {performancePath && (
-                  <MdKeyboardArrowDown
-                    className={`text-[20px] text-gray-500 transition-transform ${
-                      isLogoMenuOpen ? "rotate-180" : ""
-                    }`}
-                  />
-                )}
               </button>
-              <AnimatePresence>
-                {isLogoMenuOpen && performancePath && (
-                  <m.div
-                    className="absolute left-0 right-0 top-[calc(100%+0.5rem)] z-50 overflow-hidden rounded-lg border border-gray-200 bg-white shadow-lg"
-                    initial={{ opacity: 0, y: 8, scale: 0.98 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: 8, scale: 0.98 }}
-                    transition={{ duration: 0.2 }}
-                  >
-                    <button
-                      onClick={navigateToPerformance}
-                      className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                    >
-                      Performance Management
-                    </button>
-                  </m.div>
-                )}
-              </AnimatePresence>
             </div>
           )}
         </div>

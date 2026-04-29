@@ -548,7 +548,7 @@ export default function TnaEmployeeRecommendationsPage() {
 
   return (
     <div className="pt-14 pb-6 px-4 md:px-6 lg:p-6 space-y-6">
-      <section className="rounded-2xl border border-slate-200 bg-white p-5 md:p-6 shadow-sm">
+      <section className="p-1 md:p-0">
         <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
           <div className="flex items-start gap-3">
             <button
