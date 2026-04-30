@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { KeyboardEvent, MouseEvent as ReactMouseEvent } from "react";
 import { createPortal } from "react-dom";
+import { cn } from "@/lib/utils";
+import { ArrowDownUpIcon } from "@/components/ui/arrow-down-up-icon";
 
 type SortDirection = "asc" | "desc";
 
@@ -77,7 +79,7 @@ function TableFilterSelect({
         ref={triggerRef}
         type="button"
         onClick={() => setIsOpen((prev) => !prev)}
-        className="flex w-full items-center justify-between rounded-lg border border-slate-200 bg-gradient-to-b from-white to-slate-50 px-3 py-1.5 text-xs font-medium text-slate-700 shadow-sm transition-all duration-200 hover:border-slate-300 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+        className="flex w-full items-center justify-between rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition-all duration-150 hover:border-slate-300 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
         aria-expanded={isOpen}
         aria-haspopup="listbox"
       >
@@ -190,6 +192,8 @@ interface GroupedDataTableProps<T> {
   showGroupHeader?: boolean;
   collapsibleGroups?: boolean;
   defaultGroupsCollapsed?: boolean;
+  toolbarRight?: React.ReactNode;
+  onVisibleRowsChange?: (rowsByGroup: Record<string, T[]>) => void;
 }
 
 export default function GroupedDataTable<T extends object>({
@@ -206,7 +210,19 @@ export default function GroupedDataTable<T extends object>({
   showGroupHeader = true,
   collapsibleGroups = false,
   defaultGroupsCollapsed = false,
+  toolbarRight,
+  onVisibleRowsChange,
 }: GroupedDataTableProps<T>) {
+  const [areFiltersVisible, setAreFiltersVisible] = useState(showColumnFilters);
+
+  useEffect(() => {
+    if (!showColumnFilters) {
+      setAreFiltersVisible(false);
+      return;
+    }
+    setAreFiltersVisible(true);
+  }, [showColumnFilters]);
+
   const triggerRowClick = (
     row: T,
     event?: ReactMouseEvent<HTMLElement> | KeyboardEvent<HTMLElement>,
@@ -240,6 +256,7 @@ export default function GroupedDataTable<T extends object>({
   const [collapsedByGroup, setCollapsedByGroup] = useState<
     Record<string, boolean>
   >({});
+  const visibleRowsByGroupRef = useRef<Record<string, T[]>>({});
 
   useEffect(() => {
     setCollapsedByGroup((prev) => {
@@ -250,6 +267,22 @@ export default function GroupedDataTable<T extends object>({
       return next;
     });
   }, [groups, defaultGroupsCollapsed]);
+
+  useEffect(() => {
+    if (!onVisibleRowsChange) return;
+    onVisibleRowsChange(visibleRowsByGroupRef.current);
+  }, [
+    onVisibleRowsChange,
+    groups,
+    columns,
+    pageByGroup,
+    sortByGroup,
+    filtersByGroup,
+    showPagination,
+    pageSize,
+    showColumnFilters,
+    areFiltersVisible,
+  ]);
 
   const getSortState = (groupKey: string) =>
     sortByGroup[groupKey] || {
@@ -298,12 +331,25 @@ export default function GroupedDataTable<T extends object>({
     activeDirection: SortDirection,
     targetKey: string,
   ) => {
-    if (activeKey !== targetKey) return "\u2195";
-    return activeDirection === "asc" ? "\u2191" : "\u2193";
+    const isActive = activeKey === targetKey;
+    const isAsc = isActive && activeDirection === "asc";
+    const isDesc = isActive && activeDirection === "desc";
+    const direction = isAsc ? "asc" : isDesc ? "desc" : null;
+
+    return (
+      <ArrowDownUpIcon
+        size={14}
+        className={cn(
+          "text-slate-400 transition-transform duration-200",
+          direction === "desc" && "rotate-180",
+          direction && "text-slate-700",
+        )}
+      />
+    );
   };
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-8">
       {groups.map((group) => {
         const sortState = getSortState(group.key);
         const groupFilters = getFiltersState(group.key);
@@ -381,36 +427,51 @@ export default function GroupedDataTable<T extends object>({
         const pagedRows = showPagination
           ? sortedRows.slice(pageStartIndex, pageStartIndex + pageSize)
           : sortedRows;
+        visibleRowsByGroupRef.current[group.key] = pagedRows;
 
         return (
           <div
             key={group.key}
             className={
               cardless
-                ? "overflow-hidden"
-                : "rounded-2xl border shadow-sm overflow-hidden"
-            }
-            style={
-              cardless
-                ? undefined
-                : {
-                    backgroundColor:
-                      "color-mix(in srgb, var(--color-primary, #3b82f6) 4%, white 96%)",
-                    borderColor:
-                      "color-mix(in srgb, var(--color-primary, #3b82f6) 15%, white 85%)",
-                  }
+                ? "overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-[0_12px_35px_-22px_rgba(15,23,42,0.45)]"
+                : "overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-[0_12px_35px_-22px_rgba(15,23,42,0.45)]"
             }
           >
+            {(showColumnFilters || toolbarRight) && (
+              <div className="border-b border-slate-100 bg-slate-50/80 px-4 py-3 flex items-center justify-between gap-3">
+                {showColumnFilters ? (
+                  <button
+                    type="button"
+                    onClick={() => setAreFiltersVisible((prev) => !prev)}
+                    className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 transition-colors hover:border-slate-300 hover:text-slate-900"
+                  >
+                    <svg
+                      className="h-4 w-4 text-slate-500"
+                      viewBox="0 0 20 20"
+                      fill="none"
+                      xmlns="http://www.w3.org/2000/svg"
+                      aria-hidden="true"
+                    >
+                      <path
+                        d="M3 5H17M6 10H14M8 15H12"
+                        stroke="currentColor"
+                        strokeWidth="1.8"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                    {areFiltersVisible ? "Hide Filters" : "Show Filters"}
+                  </button>
+                ) : (
+                  <div />
+                )}
+                {toolbarRight ? <div className="min-w-0">{toolbarRight}</div> : null}
+              </div>
+            )}
+
             {showGroupHeader && (
-              <div
-                className="px-5 py-3 border-b flex items-center justify-between"
-                style={{
-                  backgroundColor:
-                    "color-mix(in srgb, var(--color-primary, #3b82f6) 8%, white 92%)",
-                  borderColor:
-                    "color-mix(in srgb, var(--color-primary, #3b82f6) 15%, white 85%)",
-                }}
-              >
+              <div className="px-5 py-3 border-b border-slate-200 bg-slate-50/70 flex items-center justify-between">
                 {collapsibleGroups ? (
                   <button
                     type="button"
@@ -481,58 +542,45 @@ export default function GroupedDataTable<T extends object>({
                 id={`group-content-${group.key}`}
                 className="bg-white overflow-x-auto"
               >
-                <table className={`w-full ${tableMinWidthClassName}`}>
+                <table className={`w-full border-collapse text-sm ${tableMinWidthClassName}`}>
                   <thead>
-                    <tr
-                      className="border-b"
-                      style={{
-                        backgroundColor:
-                          "color-mix(in srgb, var(--color-primary, #3b82f6) 5%, white 95%)",
-                        borderColor:
-                          "color-mix(in srgb, var(--color-primary, #3b82f6) 12%, white 88%)",
-                      }}
-                    >
+                    <tr className="border-b border-slate-100 bg-slate-50/80">
                       {columns.map((column) => {
                         const alignClass =
                           column.align === "right" ? "text-right" : "text-left";
                         return (
-                          <th
-                            key={column.key}
-                            className={`px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider ${alignClass} ${column.className || ""}`}
-                          >
-                            {column.sortable ? (
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  toggleSort(group.key, column.key)
-                                }
-                                className="inline-flex items-center gap-1 hover:text-gray-700"
-                              >
-                                {column.label}
-                                <span className="text-[10px]">
-                                  {getSortIndicator(
-                                    sortState.key,
-                                    sortState.direction,
+                            <th
+                              key={column.key}
+                              className={`px-5 py-3 text-sm font-semibold text-slate-600 ${alignClass} ${column.className || ""}`}
+                            >
+                              {column.sortable ? (
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    toggleSort(group.key, column.key)
+                                  }
+                                  className="inline-flex h-5 items-center gap-1.5 leading-none hover:text-slate-800"
+                                >
+                                  {column.label}
+                                  <span className="inline-flex h-4 w-4 shrink-0 items-center justify-center leading-none">
+                                    {getSortIndicator(
+                                      sortState.key,
+                                      sortState.direction,
                                     column.key,
                                   )}
                                 </span>
                               </button>
                             ) : (
-                              column.label
+                              <span className="inline-flex h-5 items-center leading-none">
+                                {column.label}
+                              </span>
                             )}
                           </th>
                         );
                       })}
                     </tr>
-                    {showColumnFilters && (
-                      <tr
-                        className="border-b"
-                        style={{
-                          borderColor:
-                            "color-mix(in srgb, var(--color-primary, #3b82f6) 8%, white 92%)",
-                          backgroundColor: "white",
-                        }}
-                      >
+                    {showColumnFilters && areFiltersVisible && (
+                      <tr className="border-b border-slate-100 bg-white">
                         {columns.map((column) => {
                           const alignClass =
                             column.align === "right"
@@ -571,32 +619,55 @@ export default function GroupedDataTable<T extends object>({
                                     }}
                                   />
                                 ) : (
-                                  <input
-                                    type="text"
-                                    value={
-                                      column.filterValue ??
-                                      groupFilters[column.key] ??
-                                      ""
-                                    }
-                                    onChange={(e) => {
-                                      const nextValue = e.target.value;
-                                      if (column.onFilterChange) {
-                                        column.onFilterChange(nextValue);
+                                  <div className="relative">
+                                    <svg
+                                      className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
+                                      viewBox="0 0 20 20"
+                                      fill="none"
+                                      xmlns="http://www.w3.org/2000/svg"
+                                      aria-hidden="true"
+                                    >
+                                      <circle
+                                        cx="9"
+                                        cy="9"
+                                        r="6"
+                                        stroke="currentColor"
+                                        strokeWidth="1.8"
+                                      />
+                                      <path
+                                        d="M13.5 13.5L17 17"
+                                        stroke="currentColor"
+                                        strokeWidth="1.8"
+                                        strokeLinecap="round"
+                                      />
+                                    </svg>
+                                    <input
+                                      type="text"
+                                      value={
+                                        column.filterValue ??
+                                        groupFilters[column.key] ??
+                                        ""
                                       }
-                                      if (column.filterValue === undefined) {
-                                        updateFilter(
-                                          group.key,
-                                          column.key,
-                                          nextValue,
-                                        );
+                                      onChange={(e) => {
+                                        const nextValue = e.target.value;
+                                        if (column.onFilterChange) {
+                                          column.onFilterChange(nextValue);
+                                        }
+                                        if (column.filterValue === undefined) {
+                                          updateFilter(
+                                            group.key,
+                                            column.key,
+                                            nextValue,
+                                          );
+                                        }
+                                      }}
+                                      placeholder={
+                                        column.filterPlaceholder ||
+                                        `Search ${column.label.toLowerCase()}`
                                       }
-                                    }}
-                                    placeholder={
-                                      column.filterPlaceholder ||
-                                      `Search ${column.label.toLowerCase()}`
-                                    }
-                                    className="w-full rounded-lg border border-gray-200 px-3 py-1.5 text-xs text-gray-700 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/20"
-                                  />
+                                      className="w-full rounded-xl border border-slate-300 bg-white pl-9 pr-3 py-2 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/20"
+                                    />
+                                  </div>
                                 )
                               ) : null}
                             </th>
@@ -607,11 +678,7 @@ export default function GroupedDataTable<T extends object>({
                   </thead>
 
                   <tbody
-                    className="divide-y"
-                    style={{
-                      borderColor:
-                        "color-mix(in srgb, var(--color-primary, #3b82f6) 8%, white 92%)",
-                    }}
+                    className="divide-y divide-slate-100"
                   >
                     {pagedRows.length === 0 ? (
                       <tr>
@@ -626,8 +693,7 @@ export default function GroupedDataTable<T extends object>({
                       pagedRows.map((row, index) => (
                         <tr
                           key={rowKey(row, index)}
-                          className={`transition-colors hover:brightness-[0.98] ${onRowClick ? "cursor-pointer" : ""}`}
-                          style={{ backgroundColor: "white" }}
+                          className={`bg-white transition-colors duration-150 hover:bg-slate-50/80 ${onRowClick ? "cursor-pointer" : ""}`}
                           onClick={(event) => triggerRowClick(row, event)}
                           onKeyDown={(event) => {
                             if (event.key === "Enter" || event.key === " ") {
@@ -636,17 +702,6 @@ export default function GroupedDataTable<T extends object>({
                             }
                           }}
                           tabIndex={onRowClick ? 0 : undefined}
-                          onMouseEnter={(e) =>
-                            ((
-                              e.currentTarget as HTMLTableRowElement
-                            ).style.backgroundColor =
-                              "color-mix(in srgb, var(--color-primary, #3b82f6) 4%, white 96%)")
-                          }
-                          onMouseLeave={(e) =>
-                            ((
-                              e.currentTarget as HTMLTableRowElement
-                            ).style.backgroundColor = "white")
-                          }
                         >
                           {columns.map((column) => {
                             const alignClass =

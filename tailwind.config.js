@@ -26,17 +26,17 @@ export default {
         },
       },
       fontFamily: {
-        roboto: ["Roboto", "sans-serif"],
+        roboto: ["Nunito", "sans-serif"],
+        fredoka: ["Fredoka", "sans-serif"],
+        nunito: ["Nunito", "sans-serif"],
         display: [
-          "CoinbaseDisplay",
-          "Sohne Breit",
-          "Inter Tight",
+          "Fredoka",
           "Inter",
           "system-ui",
           "sans-serif",
         ],
         sans: [
-          "CoinbaseSans",
+          "Nunito",
           "Inter",
           "Avenir Next",
           "Segoe UI",
@@ -44,7 +44,7 @@ export default {
           "sans-serif",
         ],
         text: [
-          "CoinbaseText",
+          "Nunito",
           "Inter",
           "Georgia",
           "system-ui",

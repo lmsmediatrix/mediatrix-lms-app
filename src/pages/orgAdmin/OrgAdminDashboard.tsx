@@ -114,7 +114,7 @@ function ModernChartCard({
   const dashOffset = circumference - (clampedPercent / 100) * circumference;
 
   return (
-    <div className="group relative overflow-hidden rounded-2xl border border-slate-200/80 bg-gradient-to-br from-white via-white to-slate-50 p-4 shadow-[0_10px_30px_-22px_rgba(15,23,42,0.45)]">
+    <div className="group relative overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-4 shadow-[0_10px_30px_-22px_rgba(15,23,42,0.45)]">
       <span
         className="absolute right-3 top-3 h-2.5 w-2.5 rounded-full"
         style={{ backgroundColor: color }}
@@ -541,7 +541,7 @@ export default function OrgAdminDashboard() {
       {/* Main Layout */}
       <div className="w-full p-4">
         {/* Main Panel */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
           {dashboardData.stats.map(
             (
               stat: {
@@ -592,7 +592,7 @@ export default function OrgAdminDashboard() {
             </button>
           </div>
 
-          <div className="rounded-2xl border border-slate-200 bg-gradient-to-br from-slate-50 via-white to-sky-50/40 p-4 mb-5">
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 mb-5">
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
               <ModernChartCard
                 label={`Completed ${sectionsTerm}`}
@@ -616,7 +616,7 @@ export default function OrgAdminDashboard() {
           </div>
 
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
-            <div className="rounded-2xl border border-slate-200 bg-gradient-to-br from-white to-slate-50 p-3.5 shadow-sm">
+            <div className="rounded-2xl border border-slate-200 bg-white p-3.5 shadow-sm">
               <p className="text-[11px] uppercase tracking-wide text-slate-500 font-semibold">
                 Instructors
               </p>
@@ -624,7 +624,7 @@ export default function OrgAdminDashboard() {
                 {completionHierarchy.totals.instructors}
               </p>
             </div>
-            <div className="rounded-2xl border border-slate-200 bg-gradient-to-br from-white to-slate-50 p-3.5 shadow-sm">
+            <div className="rounded-2xl border border-slate-200 bg-white p-3.5 shadow-sm">
               <p className="text-[11px] uppercase tracking-wide text-slate-500 font-semibold">
                 Batches
               </p>
@@ -632,7 +632,7 @@ export default function OrgAdminDashboard() {
                 {completionHierarchy.totals.batches}
               </p>
             </div>
-            <div className="rounded-2xl border border-slate-200 bg-gradient-to-br from-white to-slate-50 p-3.5 shadow-sm">
+            <div className="rounded-2xl border border-slate-200 bg-white p-3.5 shadow-sm">
               <p className="text-[11px] uppercase tracking-wide text-slate-500 font-semibold">
                 Modules
               </p>
@@ -640,7 +640,7 @@ export default function OrgAdminDashboard() {
                 {completionHierarchy.totals.modules}
               </p>
             </div>
-            <div className="rounded-2xl border border-slate-200 bg-gradient-to-br from-white to-slate-50 p-3.5 shadow-sm">
+            <div className="rounded-2xl border border-slate-200 bg-white p-3.5 shadow-sm">
               <p className="text-[11px] uppercase tracking-wide text-slate-500 font-semibold">
                 Lessons
               </p>
@@ -663,7 +663,7 @@ export default function OrgAdminDashboard() {
               {completionHierarchy.instructors.map((instructor, instructorIdx) => (
                 <details
                   key={instructor.id}
-                  className="group rounded-2xl border border-slate-200 bg-gradient-to-r from-white via-slate-50/70 to-white shadow-sm"
+                  className="group rounded-2xl border border-slate-200 bg-white shadow-sm"
                 >
                   <summary className="cursor-pointer list-none px-4 py-3">
                     <div className="flex items-center justify-between gap-4">

@@ -811,7 +811,7 @@ export default function OrgAdminCompletionPage() {
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="mb-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
               <StatsCards stats={completionSummaryStats} />
             </div>
 

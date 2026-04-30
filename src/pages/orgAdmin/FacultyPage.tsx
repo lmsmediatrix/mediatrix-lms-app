@@ -245,6 +245,64 @@ export default function FacultyPage() {
     { width: "20%", alignment: "center" as const }, // Actions
   ];
 
+  const tableToolbarActions = (
+    <div className="flex items-center gap-2 flex-wrap md:flex-nowrap">
+      <div className="hidden md:block xl:hidden">
+        <ResponsiveFilterButton
+          activeFiltersCount={selectedStatus ? 1 : 0}
+          filters={[
+            {
+              key: "status",
+              label: "Status",
+              value: selectedStatus,
+              options: FACULTY_STATUS,
+              onChange: handleStatusChange,
+              placeholder: "All Status",
+            },
+          ]}
+        />
+      </div>
+      <Button
+        variant="primary"
+        onClick={() => setSearchParams({ modal: "create-faculty" })}
+        className="whitespace-nowrap text-sm"
+      >
+        <FaPlus />
+        <span className="hidden sm:inline">Add Faculty</span>
+        <span className="sm:hidden">Add</span>
+      </Button>
+      <div className="flex items-center gap-2">
+        <button
+          onClick={() => {
+            const newStatus = archiveStatus === "only" ? "none" : "only";
+            setArchiveStatus(newStatus);
+            setSkipLimit((prev) => ({ ...prev, skip: 0 }));
+            setSearchParams((prev) => {
+              prev.set("archiveStatus", newStatus);
+              prev.set("page", "1");
+              return prev;
+            });
+          }}
+          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-[#3E5B93] focus:ring-offset-2 ${
+            archiveStatus === "only" ? "bg-gray-200" : "bg-primary"
+          }`}
+        >
+          <span
+            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+              archiveStatus === "only" ? "translate-x-1" : "translate-x-6"
+            }`}
+          />
+        </button>
+        <span className="text-sm text-gray-600 hidden lg:inline whitespace-nowrap">
+          {archiveStatus === "only" ? "Archived" : "Active"}
+        </span>
+        <span className="text-sm text-gray-600 lg:hidden">
+          {archiveStatus === "only" ? "Archived" : "Active"}
+        </span>
+      </div>
+    </div>
+  );
+
   return (
     <div className="pt-14 pb-6 px-6 lg:p-6">
       <div className="flex items-center gap-2">
@@ -300,64 +358,6 @@ export default function FacultyPage() {
           </div>
         </div>
 
-        {/* Action Buttons */}
-        <div className="flex gap-2 flex-shrink-0">
-          {/* Tablet Filter Button - Hidden on mobile and desktop */}
-          <div className="hidden md:block xl:hidden">
-            <ResponsiveFilterButton
-              activeFiltersCount={selectedStatus ? 1 : 0}
-              filters={[
-                {
-                  key: "status",
-                  label: "Status",
-                  value: selectedStatus,
-                  options: FACULTY_STATUS,
-                  onChange: handleStatusChange,
-                  placeholder: "All Status",
-                },
-              ]}
-            />
-          </div>
-          <Button
-            variant="primary"
-            onClick={() => setSearchParams({ modal: "create-faculty" })}
-            className="whitespace-nowrap text-sm flex-1 md:flex-initial"
-          >
-            <FaPlus />
-            <span className="hidden sm:inline">Add Faculty</span>
-            <span className="sm:hidden">Add</span>
-          </Button>
-          {/* Archive Status Toggle Switch */}
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => {
-                const newStatus = archiveStatus === "only" ? "none" : "only";
-                setArchiveStatus(newStatus);
-                setSkipLimit((prev) => ({ ...prev, skip: 0 }));
-                setSearchParams((prev) => {
-                  prev.set("archiveStatus", newStatus);
-                  prev.set("page", "1");
-                  return prev;
-                });
-              }}
-              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-[#3E5B93] focus:ring-offset-2 ${
-                archiveStatus === "only" ? "bg-gray-200" : "bg-primary"
-              }`}
-            >
-              <span
-                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                  archiveStatus === "only" ? "translate-x-1" : "translate-x-6"
-                }`}
-              />
-            </button>
-            <span className="text-sm text-gray-600 hidden lg:inline whitespace-nowrap">
-              {archiveStatus === "only" ? "Archived" : "Active"}
-            </span>
-            <span className="text-sm text-gray-600 lg:hidden">
-              {archiveStatus === "only" ? "Archived" : "Active"}
-            </span>
-          </div>
-        </div>
       </div>
 
       {isLoading ? (
@@ -384,6 +384,7 @@ export default function FacultyPage() {
           cardless
           showGroupHeader={false}
           onRowClick={(row) => setSearchParams({ modal: "view-faculty", id: row._id })}
+          toolbarRight={tableToolbarActions}
           emptyFilteredText="No matching faculties found."
         />
       )}
