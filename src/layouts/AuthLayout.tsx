@@ -1,11 +1,13 @@
 import { Outlet, Navigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import LoadingSpinner from "../components/SplashScreen";
+import { getRouteRoleSegment } from "../lib/utils";
 
 export default function AuthLayout () {
   const { isAuthenticated, isInitialAuthCheck, currentUser } = useAuth();
   const role = currentUser?.user?.role;
   const orgCode = currentUser?.user?.organization?.code;
+  const roleSegment = getRouteRoleSegment(role);
 
   const destination =
     role === "superadmin"
@@ -18,9 +20,9 @@ export default function AuthLayout () {
       ? orgCode
         ? `/${orgCode}/instructor/dashboard`
         : "/login"
-      : role === "student"
+      : role === "student" || role === "employee"
       ? orgCode
-        ? `/${orgCode}/student/dashboard`
+        ? `/${orgCode}/${roleSegment}/dashboard`
         : "/login"
       : "/login";
 

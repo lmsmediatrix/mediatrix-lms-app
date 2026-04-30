@@ -14,7 +14,7 @@ import { createStudentFormData } from "../../lib/formDataUtils";
 import { toast } from "react-toastify";
 import { useSearchParams } from "react-router-dom";
 import ChangePasswordModal from "../../components/common/ChangePasswordModal";
-import { ICurrentUser, IStudent } from "../../types/interfaces";
+import { ICertificate, ICurrentUser, IStudent } from "../../types/interfaces";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -24,6 +24,11 @@ import { useGetStudentProfile } from "../../hooks/useStudent";
 import { getTerm } from "../../lib/utils";
 import CameraModal from "../instructor/CameraModal";
 import ImageCropper from "../../components/ImageCropper";
+import { useStudentCertificates } from "../../hooks/useCertificate";
+import CertificateDisplayCard from "../../components/student/CertificateDisplayCard";
+import { downloadCertificatePdf } from "../../lib/certificatePdf";
+import CertificatePreviewModal from "../../components/student/CertificatePreviewModal";
+import EmployeeProfilePage from "./EmployeeProfilePage";
 
 const profileSchema = z.object({
   firstName: z
@@ -88,6 +93,7 @@ export default function StudentProfilePage() {
   const [showImageOptions, setShowImageOptions] = useState(false);
   const [showCameraModal, setShowCameraModal] = useState(false);
   const [showCropper, setShowCropper] = useState(false);
+  const [previewCertificate, setPreviewCertificate] = useState<ICertificate | null>(null);
   const [searchParams, setSearchParams] = useSearchParams();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
@@ -95,9 +101,18 @@ export default function StudentProfilePage() {
 
   const { id } = currentUser.user as ICurrentUser["user"];
   const { data, isPending } = useGetStudentProfile(id);
+  const { data: certificatesData, isPending: isCertificatesLoading } = useStudentCertificates(id, {
+    enabled: !!id,
+  });
   const updateStudent = useUpdateStudent();
   const orgType = currentUser.user.organization.type;
+  const isEmployee =
+    currentUser.user.role === "employee" || orgType === "corporate";
   const learnerTerm = getTerm("learner", orgType);
+
+  if (isEmployee) {
+    return <EmployeeProfilePage />;
+  }
 
   const {
     register,
@@ -237,7 +252,7 @@ export default function StudentProfilePage() {
       ...formData,
       _id,
       orgCode,
-      socialLinks: filteredSocialLinks,
+      socialLinks: isEmployee ? undefined : filteredSocialLinks,
       ...(avatar && { avatar }),
     });
 
@@ -267,6 +282,21 @@ export default function StudentProfilePage() {
     { label: "4th year", value: 4 },
     { label: "5th year", value: 5 },
   ];
+  const certificates = (certificatesData?.data || []) as ICertificate[];
+  const learnerName = `${userData?.firstName || ""} ${userData?.lastName || ""}`.trim() || "Learner";
+  const handlePreviewCertificate = (certificate: ICertificate) => {
+    setPreviewCertificate(certificate);
+  };
+
+  const handleDownloadCertificate = async () => {
+    if (!previewCertificate) return;
+    await downloadCertificatePdf({
+      certificate: previewCertificate,
+      learnerName,
+      organizationName: currentUser.user.organization.name,
+    });
+    setPreviewCertificate(null);
+  };
 
   return (
     <div className="max-w-5xl mx-auto p-6">
@@ -513,78 +543,107 @@ export default function StudentProfilePage() {
           </div>
         )}
 
-        {/* Social Links Section */}
-        <div className="p-6">
-          <h3 className="text-base font-medium flex items-center space-x-2 text-gray-800 mb-4">
-            <FaRegUser className="text-gray-500 text-lg" />
-            <span>Social Links</span>
-          </h3>
-          <div className="space-y-2">
-            {isEditing ? (
-              <>
-                <div className="flex items-center space-x-2">
-                  <span className="w-6 h-6 flex items-center justify-center">
-                    {socialIcons.linkedIn}
-                  </span>
-                  <div className="flex-1">
-                    <InputField
-                      field="socialLinks.linkedIn"
-                      register={register}
-                      error={errors.socialLinks?.linkedIn?.message}
-                      placeholder="Enter LinkedIn URL"
-                    />
-                  </div>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <span className="w-6 h-6 flex items-center justify-center">
-                    {socialIcons.twitter}
-                  </span>
-                  <div className="flex-1">
-                    <InputField
-                      field="socialLinks.twitter"
-                      register={register}
-                      error={errors.socialLinks?.twitter?.message}
-                      placeholder="Enter Twitter URL"
-                    />
-                  </div>
-                </div>
-                <div className="flex items-center space espidra.comx-2">
-                  <span className="w-6 h-6 flex items-center justify-center">
-                    {socialIcons.website}
-                  </span>
-                  <div className="flex-1">
-                    <InputField
-                      field="socialLinks.website"
-                      register={register}
-                      error={errors.socialLinks?.website?.message}
-                      placeholder="Enter Website URL"
-                    />
-                  </div>
-                </div>
-              </>
-            ) : !userData?.socialLinks ||
-              Object.values(userData.socialLinks).every((url) => !url) ? (
-              <p className="text-gray-600 text-sm">No social links available</p>
-            ) : (
-              Object.entries(userData.socialLinks).map(([platform, url]) =>
-                url ? (
-                  <div key={platform} className="flex items-center space-x-2">
+        {!isEmployee && (
+          <div className="p-6">
+            <h3 className="text-base font-medium flex items-center space-x-2 text-gray-800 mb-4">
+              <FaRegUser className="text-gray-500 text-lg" />
+              <span>Social Links</span>
+            </h3>
+            <div className="space-y-2">
+              {isEditing ? (
+                <>
+                  <div className="flex items-center space-x-2">
                     <span className="w-6 h-6 flex items-center justify-center">
-                      {socialIcons[platform as keyof typeof socialIcons]}
+                      {socialIcons.linkedIn}
                     </span>
-                    <a
-                      href={url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-blue-600 hover:underline text-sm truncate"
-                    >
-                      {url}
-                    </a>
+                    <div className="flex-1">
+                      <InputField
+                        field="socialLinks.linkedIn"
+                        register={register}
+                        error={errors.socialLinks?.linkedIn?.message}
+                        placeholder="Enter LinkedIn URL"
+                      />
+                    </div>
                   </div>
-                ) : null
-              )
-            )}
+                  <div className="flex items-center space-x-2">
+                    <span className="w-6 h-6 flex items-center justify-center">
+                      {socialIcons.twitter}
+                    </span>
+                    <div className="flex-1">
+                      <InputField
+                        field="socialLinks.twitter"
+                        register={register}
+                        error={errors.socialLinks?.twitter?.message}
+                        placeholder="Enter Twitter URL"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <span className="w-6 h-6 flex items-center justify-center">
+                      {socialIcons.website}
+                    </span>
+                    <div className="flex-1">
+                      <InputField
+                        field="socialLinks.website"
+                        register={register}
+                        error={errors.socialLinks?.website?.message}
+                        placeholder="Enter Website URL"
+                      />
+                    </div>
+                  </div>
+                </>
+              ) : !userData?.socialLinks ||
+                Object.values(userData.socialLinks).every((url) => !url) ? (
+                <p className="text-gray-600 text-sm">No social links available</p>
+              ) : (
+                Object.entries(userData.socialLinks).map(([platform, url]) =>
+                  url ? (
+                    <div key={platform} className="flex items-center space-x-2">
+                      <span className="w-6 h-6 flex items-center justify-center">
+                        {socialIcons[platform as keyof typeof socialIcons]}
+                      </span>
+                      <a
+                        href={url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-600 hover:underline text-sm truncate"
+                      >
+                        {url}
+                      </a>
+                    </div>
+                  ) : null
+                )
+              )}
+            </div>
           </div>
+        )}
+
+        <div className="border-t border-slate-200 p-6">
+          <div className="mb-4 flex items-center justify-between">
+            <h3 className="text-base font-medium text-gray-800">All Certificates</h3>
+            <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700">
+              {certificates.length}
+            </span>
+          </div>
+
+          {isCertificatesLoading ? (
+            <p className="text-sm text-slate-500">Loading certificates...</p>
+          ) : certificates.length === 0 ? (
+            <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-5 text-sm text-slate-600">
+              No certificates yet. Complete lessons/modules with certificate enabled to unlock them.
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              {certificates.map((certificate) => (
+                <CertificateDisplayCard
+                  key={certificate._id}
+                  certificate={certificate}
+                  learnerName={learnerName}
+                  onDownload={handlePreviewCertificate}
+                />
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
@@ -627,6 +686,14 @@ export default function StudentProfilePage() {
         onClose={() => setShowCropper(false)}
         aspectRatio={1}
         onCropComplete={handleCropComplete}
+      />
+      <CertificatePreviewModal
+        isOpen={!!previewCertificate}
+        onClose={() => setPreviewCertificate(null)}
+        onDownload={handleDownloadCertificate}
+        certificate={previewCertificate}
+        learnerName={learnerName}
+        organizationName={currentUser.user.organization.name}
       />
     </div>
   );

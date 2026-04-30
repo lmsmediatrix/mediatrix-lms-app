@@ -192,6 +192,9 @@ export const createLessonFormData = (data: any): FormData => {
   if (data.information !== undefined) {
     formData.append("information", data.information);
   }
+  if (typeof data.certificateEnabled === "boolean") {
+    formData.append("certificateEnabled", String(data.certificateEnabled));
+  }
 
   if (data.lessonId) {
     formData.append("_id", data.lessonId);

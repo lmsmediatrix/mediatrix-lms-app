@@ -285,6 +285,7 @@ export interface ILesson {
   updatedAt: string;
   endDate: string;
   status: "published" | "unpublished";
+  certificateEnabled?: boolean;
   progress?: Array<{
     userId: string;
     status: "completed" | "in-progress" | "not-started";
@@ -313,6 +314,9 @@ export interface ICertificate {
   studentId: string;
   sectionId: string;
   moduleId: string;
+  lessonId?: string;
+  scopeType?: "module" | "lesson";
+  scopeId?: string;
   certificateNo: string;
   title: string;
   subtitle?: string;

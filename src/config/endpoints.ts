@@ -127,6 +127,7 @@ export const API_ENDPOINTS = {
     GET_BY_ID: "/certificate/get/:id",
     GET_BY_NUMBER: "/certificate/no/:certificateNo",
     GET_BY_STUDENT: "/certificate/student/:studentId",
+    GET_VISIBILITY: "/certificate/visibility/student/:studentId",
     GENERATE: "/certificate/generate",
     SEARCH: "/certificate/search",
   },

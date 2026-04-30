@@ -2,6 +2,7 @@ import { useNavigate } from "react-router-dom";
 import Button from "./Button";
 import Dialog from "./Dialog";
 import { useAuth } from "../../context/AuthContext";
+import { getRouteRoleSegment } from "../../lib/utils";
 
 export default function IsPasswordChangedModal({
   onClose,
@@ -10,6 +11,7 @@ export default function IsPasswordChangedModal({
 }) {
   const { currentUser } = useAuth();
   const { organization, role } = currentUser.user;
+  const routeRole = getRouteRoleSegment(role);
   const navigate = useNavigate();
 
   const handleCloseModal = () => {
@@ -44,7 +46,7 @@ export default function IsPasswordChangedModal({
           <Button
             onClick={() =>
               navigate(
-                `/${organization.code}/${role}/profile?change-password=true`
+                `/${organization.code}/${routeRole}/profile?change-password=true`
               )
             }
             variant="primary"

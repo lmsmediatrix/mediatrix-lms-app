@@ -46,7 +46,9 @@ export default function ModuleTab({
   const { data: assessmentData } = useSectionAssessment(
     isLearner ? sectionCode : "",
   );
-  useStudentCompletedAssessments(isLearner ? userId : "");
+  const { data: completedAssessmentIds } = useStudentCompletedAssessments(
+    isLearner ? userId : "",
+  );
   const totalAssessments = assessmentData?.data?.totalAssessments || 0;
   const completedAssessments = totalAssessments
     ? totalAssessments - (assessmentData?.data?.pendingAssessment || 0)
@@ -161,6 +163,16 @@ export default function ModuleTab({
                     p.userId?.toString() === userId && p.status === "completed",
                 ),
               ).length;
+              const moduleLessonsComplete =
+                publishedLessons.length > 0 &&
+                moduleCompleted === publishedLessons.length;
+              const moduleAssessmentsComplete =
+                moduleAssessments.length === 0 ||
+                moduleAssessments.every((assessment) =>
+                  completedAssessmentIds?.has(assessment._id?.toString()),
+                );
+              const moduleCertificateUnlocked =
+                moduleLessonsComplete && moduleAssessmentsComplete;
 
               return (
                 <Accordion
@@ -198,6 +210,36 @@ export default function ModuleTab({
                   defaultExpanded={true}
                 >
                   <div>
+                    {isLearner && module.certificateEnabled && (
+                      <div
+                        className={`mx-4 mt-4 rounded-lg border p-3 ${
+                          moduleCertificateUnlocked
+                            ? "border-emerald-200 bg-emerald-50"
+                            : "border-slate-200 bg-slate-100"
+                        }`}
+                      >
+                        <p
+                          className={`text-xs font-semibold uppercase tracking-wide ${
+                            moduleCertificateUnlocked
+                              ? "text-emerald-700"
+                              : "text-slate-600"
+                          }`}
+                        >
+                          Module Certificate
+                        </p>
+                        <p
+                          className={`mt-1 text-sm ${
+                            moduleCertificateUnlocked
+                              ? "text-emerald-800"
+                              : "text-slate-700 blur-[1px]"
+                          }`}
+                        >
+                          {moduleCertificateUnlocked
+                            ? "Unlocked - you can view or generate your certificate."
+                            : "Locked - complete all required module lessons to unlock certificate."}
+                        </p>
+                      </div>
+                    )}
                     {publishedLessons.map((lesson) => (
                       <div
                         key={lesson._id}

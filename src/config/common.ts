@@ -169,6 +169,23 @@ export const BASE_NAVIGATION: {
       ICON: BellIcon,
     },
   ],
+  EMPLOYEE: [
+    {
+      LABEL: "Dashboard",
+      PATH: "/:code/student/dashboard",
+      ICON: HouseIcon,
+    },
+    {
+      LABEL: "My Sections",
+      PATH: "/:code/student/sections",
+      ICON: LayoutGridIcon,
+    },
+    {
+      LABEL: "Schedule",
+      PATH: "/:code/student/calendar",
+      ICON: BellIcon,
+    },
+  ],
 };
 
 export const organizationTypes = ["school", "corporate"];

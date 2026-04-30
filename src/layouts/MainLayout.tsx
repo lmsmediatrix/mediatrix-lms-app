@@ -5,6 +5,7 @@ import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { useEffect, useState } from "react";
 import { useAuth } from "../context/AuthContext";
+import { getRouteRoleSegment } from "../lib/utils";
 
 const MainLayout = () => {
   const location = useLocation();
@@ -12,11 +13,14 @@ const MainLayout = () => {
   const { currentUser } = useAuth();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const role = currentUser.user.role;
+  const routeRole = getRouteRoleSegment(role);
   const orgCode = currentUser.user.organization?.code;
-  const isTopNav = role === "student" || role === "instructor";
+  const isTopNav =
+    role === "student" || role === "employee" || role === "instructor";
   const isSideNav = role === "admin" || role === "superadmin";
   const isAssessmentPage =
-    role === "student" && location.pathname.includes("/assessment/");
+    (role === "student" || role === "employee") &&
+    location.pathname.includes("/assessment/");
 
   useEffect(() => {
     if (
@@ -25,10 +29,10 @@ const MainLayout = () => {
       orgCode
     ) {
       navigate(
-        `/${orgCode}/${currentUser.user.role}/profile?change-password=true`
+        `/${orgCode}/${routeRole}/profile?change-password=true`
       );
     }
-  }, [currentUser, navigate, orgCode]);
+  }, [currentUser, navigate, orgCode, routeRole]);
 
   return (
     <div className="flex h-screen flex-col overflow-hidden">

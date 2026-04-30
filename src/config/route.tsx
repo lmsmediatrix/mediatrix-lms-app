@@ -275,7 +275,7 @@ export const appRoutes = [
   //Student routes
   {
     element: (
-      <ProtectedRoutes element={<MainLayout />} allowedRoles={["student"]} />
+      <ProtectedRoutes element={<MainLayout />} allowedRoles={["student", "employee"]} />
     ),
     children: [
       {
@@ -334,7 +334,7 @@ export const appRoutes = [
     element: (
       <ProtectedRoutes
         element={<MainLayout />}
-        allowedRoles={["superadmin", "admin", "instructor", "student"]}
+        allowedRoles={["superadmin", "admin", "instructor", "student", "employee"]}
       />
     ),
     children: [
