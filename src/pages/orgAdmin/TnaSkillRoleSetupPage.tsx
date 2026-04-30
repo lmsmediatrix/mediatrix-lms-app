@@ -521,7 +521,7 @@ export default function TnaSkillRoleSetupPage() {
       <section>
         <div className="rounded-xl border border-slate-200 bg-white p-4">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            {SETUP_TABS.map((step, index) => {
+            {SETUP_TABS.map((step) => {
               const isActive = activeStep === step.key;
               return (
                 <button
@@ -534,10 +534,7 @@ export default function TnaSkillRoleSetupPage() {
                       : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
                   }`}
                 >
-                  <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-                    Step {index + 1}
-                  </p>
-                  <p className="mt-1 text-sm font-semibold">{step.title}</p>
+                  <p className="text-sm font-semibold">{step.title}</p>
                 </button>
               );
             })}

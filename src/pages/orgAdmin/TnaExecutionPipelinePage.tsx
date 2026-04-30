@@ -72,11 +72,6 @@ type AutoDeploySummary = {
   }>;
 };
 
-const normalizeStatus = (value?: string): RecommendationStatus => {
-  if (value === "assigned" || value === "completed") return value;
-  return "pending";
-};
-
 const normalizeTrainingProgressStatus = (value?: string): TrainingProgressStatus => {
   if (value === "in_progress" || value === "completed") return value;
   return "pending";
@@ -219,18 +214,6 @@ export default function TnaExecutionPipelinePage() {
     [recommendations, filteredRecommendations, selectedRecommendationId]
   );
 
-  const totalRecommendations = recommendations.length;
-  const withTrainingRecommendations = useMemo(
-    () =>
-      recommendations.filter(
-        (item) => Array.isArray(item.recommendedTrainings) && item.recommendedTrainings.length > 0
-      ).length,
-    [recommendations]
-  );
-  const pendingRecommendations = useMemo(
-    () => recommendations.filter((item) => normalizeStatus(item.status) === "pending").length,
-    [recommendations]
-  );
   const pendingTrainingItemsCount = useMemo(
     () =>
       recommendations.reduce((count, recommendation) => {
@@ -389,51 +372,24 @@ export default function TnaExecutionPipelinePage() {
 
   return (
     <div className="pt-14 pb-6 px-4 md:px-6 lg:p-6 space-y-6">
-      <section className="rounded-2xl border border-slate-200 bg-white p-5 md:p-6">
-        <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-          <div className="flex items-start gap-3">
-            <button
-              type="button"
-              onClick={() => navigate(`/${orgCode}/admin/tna`)}
-              className="mt-1 inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
-              aria-label="Back to TNA"
-            >
-              <FaArrowLeft className="h-3.5 w-3.5" />
-            </button>
-            <div>
-              <p className={labelClassName}>Post-TNA Handoff</p>
-              <div className="mt-1 flex items-center gap-2">
-                <h1 className="text-2xl md:text-3xl font-bold text-slate-900">
-                  TNA To Course And Batch Execution
-                </h1>
-                <HoverHelpTooltip
-                  text={`After reviewing TNA, continue in LMS setup: create or select Program and Course, create Batch, assign Instructor, then assign ${employeeTerm.toLowerCase()} to the batch.`}
-                  
-                  className="shrink-0"
-                />
-              </div>
-            </div>
-          </div>
-          <div className="grid w-full grid-cols-1 gap-2 sm:w-auto sm:min-w-[390px] sm:grid-cols-3">
-            <div className="relative overflow-hidden rounded-2xl border border-[color:color-mix(in_srgb,var(--color-primary,#2563eb)_22%,white)] bg-[color:color-mix(in_srgb,var(--color-primary,#2563eb)_8%,white)] px-3.5 py-2.5 min-h-[92px] shadow-[0_10px_24px_-18px_rgba(37,99,235,0.34)]">
-              <span className="pointer-events-none absolute inset-x-0 top-0 h-0.5 bg-[color:color-mix(in_srgb,var(--color-primary,#2563eb)_48%,white)]" />
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-[color:color-mix(in_srgb,var(--color-primary,#2563eb)_68%,black)]">Total TNA</p>
-              <p className="mt-1 text-2xl font-bold leading-none text-[color:color-mix(in_srgb,var(--color-primary,#2563eb)_84%,black)]">{totalRecommendations}</p>
-              <p className="mt-2 text-[11px] text-[color:color-mix(in_srgb,var(--color-primary,#2563eb)_62%,black)]">All recommendations in scope</p>
-            </div>
-            <div className="relative overflow-hidden rounded-2xl border border-[color:color-mix(in_srgb,var(--color-secondary,#0ea5e9)_24%,white)] bg-[color:color-mix(in_srgb,var(--color-secondary,#0ea5e9)_10%,white)] px-3.5 py-2.5 min-h-[92px] shadow-[0_10px_24px_-18px_rgba(14,165,233,0.38)]">
-              <span className="pointer-events-none absolute inset-x-0 top-0 h-0.5 bg-[color:color-mix(in_srgb,var(--color-secondary,#0ea5e9)_50%,white)]" />
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-[color:color-mix(in_srgb,var(--color-secondary,#0ea5e9)_70%,black)]">With Trainings</p>
-              <p className="mt-1 text-2xl font-bold leading-none text-[color:color-mix(in_srgb,var(--color-secondary,#0ea5e9)_84%,black)]">{withTrainingRecommendations}</p>
-              <p className="mt-2 text-[11px] text-[color:color-mix(in_srgb,var(--color-secondary,#0ea5e9)_64%,black)]">Has generated training items</p>
-            </div>
-            <div className="relative overflow-hidden rounded-2xl border border-[color:color-mix(in_srgb,var(--color-primary,#2563eb)_26%,white)] bg-[color:color-mix(in_srgb,var(--color-primary,#2563eb)_6%,white)] px-3.5 py-2.5 min-h-[92px] shadow-[0_10px_24px_-18px_rgba(37,99,235,0.3)]">
-              <span className="pointer-events-none absolute inset-x-0 top-0 h-0.5 bg-[color:color-mix(in_srgb,var(--color-primary,#2563eb)_44%,white)]" />
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-[color:color-mix(in_srgb,var(--color-primary,#2563eb)_70%,black)]">Pending</p>
-              <p className="mt-1 text-2xl font-bold leading-none text-[color:color-mix(in_srgb,var(--color-primary,#2563eb)_84%,black)]">{pendingRecommendations}</p>
-              <p className="mt-2 text-[11px] text-[color:color-mix(in_srgb,var(--color-primary,#2563eb)_64%,black)]">Ready for execution action</p>
-            </div>
-          </div>
+      <section className="flex items-start gap-3">
+        <button
+          type="button"
+          onClick={() =>
+            navigate(`/${orgCode}/admin/tna?step=recommendations`)
+          }
+          className="mt-1 inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+          aria-label="Back to TNA"
+        >
+          <FaArrowLeft className="h-3.5 w-3.5" />
+        </button>
+        <div>
+          <h1 className="text-2xl md:text-3xl font-bold text-slate-900">
+            TNA Execution
+          </h1>
+          <p className="mt-1 text-sm text-slate-500">
+            Review recommended trainings and continue deployment actions.
+          </p>
         </div>
       </section>
 
@@ -457,7 +413,6 @@ export default function TnaExecutionPipelinePage() {
               {filteredRecommendations.map((recommendation) => {
                 const isActive = recommendation._id === (selectedRecommendation?._id || "");
                 const employeeName = getEmployeeName(recommendation);
-                const status = normalizeStatus(recommendation.status);
                 return (
                   <button
                     key={recommendation._id}
@@ -473,14 +428,10 @@ export default function TnaExecutionPipelinePage() {
                     <p className="text-xs text-slate-500 mt-0.5 truncate">
                       {recommendation.jobRole || "--"}
                     </p>
-                    <div className="mt-2 flex items-center gap-1.5">
-                      <span className="inline-flex items-center rounded-full border border-slate-300 bg-white px-2 py-0.5 text-[11px] font-medium text-slate-600">
-                        {status}
-                      </span>
-                      <span className="inline-flex items-center rounded-full border border-slate-300 bg-white px-2 py-0.5 text-[11px] font-medium text-slate-600">
-                        {toLocaleDateTime(recommendation.createdAt)}
-                      </span>
-                    </div>
+                    <p className="mt-2 text-xs text-slate-500">
+                      <span className="font-semibold text-slate-700">TNA Date:</span>{" "}
+                      {toLocaleDateTime(recommendation.createdAt)}
+                    </p>
                   </button>
                 );
               })}
@@ -495,34 +446,6 @@ export default function TnaExecutionPipelinePage() {
             </div>
           ) : (
             <>
-              <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-3 border-b border-slate-200 pb-4">
-                <div>
-                  <p className={labelClassName}>Selected Recommendation</p>
-                  <h2 className="text-xl font-semibold text-slate-900">
-                    {selectedEmployeeName} | {selectedRecommendation.jobRole || "No role"}
-                  </h2>
-                  <p className="text-sm text-slate-500 mt-1">
-                    Generated: {toLocaleDateTime(selectedRecommendation.createdAt)}
-                  </p>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  <Button
-                    variant="outline"
-                    className="h-fit"
-                    onClick={() => navigate(`/${orgCode}/admin/program`)}
-                  >
-                    Open Programs
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="h-fit"
-                    onClick={() => navigate(`/${orgCode}/admin/course`)}
-                  >
-                    Open Courses
-                  </Button>
-                </div>
-              </div>
-
               <section className="rounded-xl border border-slate-200 bg-white p-3">
                 <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
                   <div>
@@ -863,23 +786,6 @@ export default function TnaExecutionPipelinePage() {
                 )}
               </section>
 
-              <section className="rounded-xl border border-slate-200 bg-white p-3">
-                <p className={labelClassName}>Suggested Carryover Values</p>
-                <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
-                  <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
-                    <p className="text-xs text-slate-500">Employee</p>
-                    <p className="font-medium text-slate-900">{selectedEmployeeName}</p>
-                  </div>
-                  <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
-                    <p className="text-xs text-slate-500">Job Role</p>
-                    <p className="font-medium text-slate-900">{selectedRecommendation.jobRole || "--"}</p>
-                  </div>
-                  <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 md:col-span-2">
-                    <p className="text-xs text-slate-500">Suggested Batch Name</p>
-                    <p className="font-medium text-slate-900">{suggestedBatchName || "--"}</p>
-                  </div>
-                </div>
-              </section>
             </>
           )}
         </main>
