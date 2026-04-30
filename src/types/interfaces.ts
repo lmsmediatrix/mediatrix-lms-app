@@ -1,4 +1,9 @@
-export type TRole = "superadmin" | "admin" | "student" | "instructor" | "employee";
+export type TRole =
+  | "superadmin"
+  | "admin"
+  | "student"
+  | "instructor"
+  | "employee";
 export type dateFilter = "today" | "week" | "month" | "year";
 type TUserStatus = "active" | "inactive" | "pending";
 export type TAttendanceStatus =

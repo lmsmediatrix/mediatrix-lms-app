@@ -1,10 +1,6 @@
 import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import {
-  FaFilter,
-  FaExclamationTriangle,
-  FaCheckCircle,
-} from "react-icons/fa";
+import { FaFilter, FaExclamationTriangle, FaCheckCircle } from "react-icons/fa";
 import { useGetPerformanceDashboard } from "../../hooks/useMetrics";
 import { useAuth } from "../../context/AuthContext";
 import { getTerm } from "../../lib/utils";
@@ -113,7 +109,6 @@ export default function AdminPerformancePage() {
             </h1>
             <HoverHelpTooltip
               text={`Oversee ${learnerTerm.toLowerCase()} compliance indicators and risk levels across the organization using lessons, attendance, and assessment outcomes.`}
-              
               className="shrink-0"
             />
           </div>
@@ -181,7 +176,10 @@ export default function AdminPerformancePage() {
       {/* Filters and Search */}
       <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex flex-col md:flex-row gap-4 justify-between items-center">
         <div className="relative w-full md:w-96">
-          <SearchIcon size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+          <SearchIcon
+            size={14}
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+          />
           <input
             type="text"
             placeholder={`Search ${learnersTerm.toLowerCase()}...`}

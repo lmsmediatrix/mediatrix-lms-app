@@ -40,17 +40,17 @@ export default function SectionPage() {
   const orgType = currentUser.user.organization.type;
   const [searchParams, setSearchParams] = useSearchParams();
   const [searchTerm, setSearchTerm] = useState(
-    searchParams.get("search") || ""
+    searchParams.get("search") || "",
   );
 
   const [selectedCourse, setSelectedCourse] = useState(
-    searchParams.get("course") || ""
+    searchParams.get("course") || "",
   );
   const [selectedInstructor, setSelectedInstructor] = useState(
-    searchParams.get("instructor") || ""
+    searchParams.get("instructor") || "",
   );
   const [archiveStatus, setArchiveStatus] = useState<"only" | "none">(
-    (searchParams.get("archiveStatus") as "only" | "none") || "none"
+    (searchParams.get("archiveStatus") as "only" | "none") || "none",
   );
   const [skipLimit, setSkipLimit] = useState({
     skip: Number(searchParams.get("page") || "1") - 1,
@@ -82,12 +82,7 @@ export default function SectionPage() {
     value: currentUser.user.organization._id,
   });
 
-  const {
-    data,
-    isLoading,
-    isFetching,
-    isError,
-  } = useAdminSections({
+  const { data, isLoading, isFetching, isError } = useAdminSections({
     skip: skipLimit.skip,
     limit: skipLimit.limit,
     searchTerm: debouncedSearchTerm,
@@ -194,7 +189,12 @@ export default function SectionPage() {
       mutationParams:
         type === "all"
           ? { limit: 1000, filters, archiveStatus }
-          : { limit: skipLimit.limit, skip: skipLimit.skip, filters, archiveStatus },
+          : {
+              limit: skipLimit.limit,
+              skip: skipLimit.skip,
+              filters,
+              archiveStatus,
+            },
       filenamePrefix: "1bislms-sections",
       toastMessages: {
         pending: `Exporting ${type} data to CSV...`,
@@ -206,7 +206,7 @@ export default function SectionPage() {
   };
 
   const sectionRows = useMemo(
-    () => ((data?.sections || []) as ISection[]),
+    () => (data?.sections || []) as ISection[],
     [data?.sections],
   );
 
@@ -301,7 +301,9 @@ export default function SectionPage() {
         sortAccessor: (row) => row.code || "",
         filterAccessor: (row) => row.code || "",
         className: "min-w-[180px]",
-        render: (row) => <span className="font-semibold text-slate-900">{row.code}</span>,
+        render: (row) => (
+          <span className="font-semibold text-slate-900">{row.code}</span>
+        ),
       },
       {
         key: "name",
@@ -370,7 +372,9 @@ export default function SectionPage() {
         filterAccessor: (row) => row.course?.title || "",
         className: "min-w-[240px]",
         render: (row) => (
-          <span className="text-sm text-slate-700">{row.course?.title || "N/A"}</span>
+          <span className="text-sm text-slate-700">
+            {row.course?.title || "N/A"}
+          </span>
         ),
       },
       {
@@ -389,7 +393,9 @@ export default function SectionPage() {
               {(row.totalStudent || 0) !== 1 ? "s" : ""}
             </span>
             {row.maxStudents && (
-              <span className="text-xs text-slate-500">Max: {row.maxStudents}</span>
+              <span className="text-xs text-slate-500">
+                Max: {row.maxStudents}
+              </span>
             )}
           </div>
         ),
@@ -406,17 +412,20 @@ export default function SectionPage() {
               {
                 key: "view",
                 label: "View",
-                onClick: () => navigate(`/${orgCode}/admin/section/${row.code}`),
+                onClick: () =>
+                  navigate(`/${orgCode}/admin/section/${row.code}`),
               },
               {
                 key: "update",
                 label: "Update",
-                onClick: () => navigate(`/${orgCode}/admin/section/${row.code}`),
+                onClick: () =>
+                  navigate(`/${orgCode}/admin/section/${row.code}`),
                 disabled: archiveStatus === "only",
               },
               {
                 key: "archive-toggle",
-                label: archiveStatus === "only" ? "Show Active" : "Show Archived",
+                label:
+                  archiveStatus === "only" ? "Show Active" : "Show Archived",
                 icon:
                   archiveStatus === "only" ? (
                     <FiToggleLeft className="size-4" />
@@ -453,17 +462,16 @@ export default function SectionPage() {
           <h1 className="text-2xl md:text-3xl font-bold text-slate-900">
             {pageTitle}
           </h1>
-          <HoverHelpTooltip
-            text={pageDescription}
-            
-            className="shrink-0"
-          />
+          <HoverHelpTooltip text={pageDescription} className="shrink-0" />
         </div>
       </div>
 
       <div className="mt-6 mb-2">
         <div className="mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatsCards stats={batchSummaryStats} isLoading={isInitialSectionsLoading} />
+          <StatsCards
+            stats={batchSummaryStats}
+            isLoading={isInitialSectionsLoading}
+          />
         </div>
       </div>
 
@@ -488,7 +496,9 @@ export default function SectionPage() {
             <Button
               variant="outline"
               onClick={() =>
-                toast.info(`Bulk import for ${sectionsTerm.toLowerCase()} is coming soon.`)
+                toast.info(
+                  `Bulk import for ${sectionsTerm.toLowerCase()} is coming soon.`,
+                )
               }
               className={`whitespace-nowrap text-sm h-[42px] transition-all duration-300 ${
                 isImportExportOpen ? "scale-100" : "scale-95"
@@ -551,7 +561,12 @@ export default function SectionPage() {
           Error loading {sectionsTerm.toLowerCase()}
         </div>
       ) : sectionRows.length === 0 &&
-        !(debouncedSearchTerm || selectedCourse || selectedInstructor || archiveStatus !== "none") ? (
+        !(
+          debouncedSearchTerm ||
+          selectedCourse ||
+          selectedInstructor ||
+          archiveStatus !== "none"
+        ) ? (
         <TableEmptyState
           title={`Create Your First ${sectionTerm}`}
           description={`Start by creating a ${sectionTerm.toLowerCase()}. You'll need courses, ${instructorTerm.toLowerCase()}s, and ${learnerTerm.toLowerCase()}s first.`}
@@ -560,7 +575,9 @@ export default function SectionPage() {
           isFiltered={false}
         />
       ) : (
-        <div className={`transition-opacity duration-200 ${isFetching ? "opacity-70" : "opacity-100"}`}>
+        <div
+          className={`transition-opacity duration-200 ${isFetching ? "opacity-70" : "opacity-100"}`}
+        >
           <GroupedDataTable
             groups={tableGroups}
             columns={tableColumns}
@@ -569,7 +586,9 @@ export default function SectionPage() {
             showPagination={false}
             cardless
             showGroupHeader={false}
-            onRowClick={(row) => navigate(`/${orgCode}/admin/section/${row.code}`)}
+            onRowClick={(row) =>
+              navigate(`/${orgCode}/admin/section/${row.code}`)
+            }
             emptyFilteredText={`No matching ${sectionsTerm.toLowerCase()} found.`}
           />
         </div>

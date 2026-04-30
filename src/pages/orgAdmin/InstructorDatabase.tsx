@@ -24,7 +24,12 @@ import HoverHelpTooltip from "../../components/common/HoverHelpTooltip";
 import ActionMenuButton from "../../components/orgAdmin/ActionMenuButton";
 import TableSkeletonClean from "../../components/skeleton/TableSkeletonClean";
 import { MdLockReset } from "react-icons/md";
-import { FiDownload, FiToggleLeft, FiToggleRight, FiUpload } from "react-icons/fi";
+import {
+  FiDownload,
+  FiToggleLeft,
+  FiToggleRight,
+  FiUpload,
+} from "react-icons/fi";
 import ResetUserPassword from "../../components/ResetUserPassword";
 import { useDebounce } from "../../hooks/useDebounce";
 import {
@@ -57,10 +62,10 @@ export default function InstructorDatabase() {
     employmentType: searchParams.get("employmentType") || "",
   });
   const [archiveStatus, setArchiveStatus] = useState<"only" | "none">(
-    (searchParams.get("archiveStatus") as "only" | "none") || "none"
+    (searchParams.get("archiveStatus") as "only" | "none") || "none",
   );
   const [searchTerm, setSearchTerm] = useState(
-    searchParams.get("search") || ""
+    searchParams.get("search") || "",
   );
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
 
@@ -90,16 +95,16 @@ export default function InstructorDatabase() {
     isPending: isTeachersPending,
     isFetching: isTeachersFetching,
   } = useSearchInstructors({
-      skip: skipLimit.skip,
-      limit: skipLimit.limit,
-      searchTerm: debouncedSearchTerm,
-      filter:
-        filtersArray.length > 0
-          ? filtersArray[0] // Use first filter for now, will need to update API to support multiple filters
-          : { key: "role", value: "instructor" },
-      organizationId: currentUser.user.organization._id,
-      archiveStatus,
-    });
+    skip: skipLimit.skip,
+    limit: skipLimit.limit,
+    searchTerm: debouncedSearchTerm,
+    filter:
+      filtersArray.length > 0
+        ? filtersArray[0] // Use first filter for now, will need to update API to support multiple filters
+        : { key: "role", value: "instructor" },
+    organizationId: currentUser.user.organization._id,
+    archiveStatus,
+  });
   const isInitialTeachersLoading = isTeachersPending && !teachersData;
 
   const modal = searchParams.get("modal");
@@ -111,7 +116,7 @@ export default function InstructorDatabase() {
 
   const handleFilterChange = (
     filterType: keyof typeof filters,
-    value: string
+    value: string,
   ) => {
     setFilters((prev) => ({ ...prev, [filterType]: value }));
     setSkipLimit((prev) => ({ ...prev, skip: 0 }));
@@ -206,7 +211,7 @@ export default function InstructorDatabase() {
   ];
 
   const instructorRows = useMemo(
-    () => ((teachersData?.instructors || []) as IInstructor[]),
+    () => (teachersData?.instructors || []) as IInstructor[],
     [teachersData?.instructors],
   );
 
@@ -232,7 +237,8 @@ export default function InstructorDatabase() {
         filterPlaceholder: `Search ${instructorTerm.toLowerCase()}`,
         filterValue: searchTerm,
         onFilterChange: handleSearchChange,
-        sortAccessor: (row) => `${row.firstName || ""} ${row.lastName || ""}`.trim(),
+        sortAccessor: (row) =>
+          `${row.firstName || ""} ${row.lastName || ""}`.trim(),
         filterAccessor: (row) =>
           `${row.firstName || ""} ${row.lastName || ""} ${row.email || ""}`.trim(),
         className: "min-w-[280px]",
@@ -314,8 +320,8 @@ export default function InstructorDatabase() {
               row.employmentType === "full_time"
                 ? "bg-blue-100 text-blue-800"
                 : row.employmentType === "part_time"
-                ? "bg-green-100 text-green-800"
-                : "bg-gray-100 text-gray-800"
+                  ? "bg-green-100 text-green-800"
+                  : "bg-gray-100 text-gray-800"
             }`}
           >
             {row.employmentType
@@ -336,7 +342,11 @@ export default function InstructorDatabase() {
         sortAccessor: (row) => new Date(row.createdAt || 0).getTime(),
         filterAccessor: (row) => formatDateMMMDDYYY(row.createdAt),
         className: "min-w-[160px]",
-        render: (row) => <span className="text-sm text-slate-600">{formatDateMMMDDYYY(row.createdAt)}</span>,
+        render: (row) => (
+          <span className="text-sm text-slate-600">
+            {formatDateMMMDDYYY(row.createdAt)}
+          </span>
+        ),
       },
       {
         key: "actions",
@@ -371,7 +381,8 @@ export default function InstructorDatabase() {
               },
               {
                 key: "archive-toggle",
-                label: archiveStatus === "only" ? "Show Active" : "Show Archived",
+                label:
+                  archiveStatus === "only" ? "Show Active" : "Show Archived",
                 icon:
                   archiveStatus === "only" ? (
                     <FiToggleLeft className="size-4" />
@@ -414,11 +425,7 @@ export default function InstructorDatabase() {
           <h1 className="text-2xl md:text-3xl font-bold text-slate-900">
             {pageTitle}
           </h1>
-          <HoverHelpTooltip
-            text={pageDescription}
-            
-            className="shrink-0"
-          />
+          <HoverHelpTooltip text={pageDescription} className="shrink-0" />
         </div>
       </div>
 
@@ -519,7 +526,11 @@ export default function InstructorDatabase() {
       {isInitialTeachersLoading ? (
         <TableSkeletonClean columns={instructorTableColumns} rows={5} />
       ) : instructorRows.length === 0 &&
-        !(debouncedSearchTerm || filters.employmentType || archiveStatus !== "none") ? (
+        !(
+          debouncedSearchTerm ||
+          filters.employmentType ||
+          archiveStatus !== "none"
+        ) ? (
         <TableEmptyState
           title={`Add Your First ${instructorTerm}`}
           description={`Start by adding ${instructorsTerm.toLowerCase()} who will teach your courses.`}
@@ -530,12 +541,16 @@ export default function InstructorDatabase() {
           isFiltered={false}
         />
       ) : (
-        <div className={`transition-opacity duration-200 ${isTeachersFetching ? "opacity-70" : "opacity-100"}`}>
+        <div
+          className={`transition-opacity duration-200 ${isTeachersFetching ? "opacity-70" : "opacity-100"}`}
+        >
           <GroupedDataTable
             groups={tableGroups}
             columns={tableColumns}
             rowKey={(row) => row._id}
-            tableMinWidthClassName={orgType === "school" ? "min-w-[1080px]" : "min-w-[900px]"}
+            tableMinWidthClassName={
+              orgType === "school" ? "min-w-[1080px]" : "min-w-[900px]"
+            }
             showPagination={false}
             cardless
             showGroupHeader={false}

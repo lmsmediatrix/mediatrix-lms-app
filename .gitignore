@@ -2,3 +2,4 @@ node_modules
 dist
 diff.log
 config.bat
+.blackboxcli/

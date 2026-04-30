@@ -14,7 +14,7 @@ export default function TakeAssessmentModal() {
 
   const assessmentId = searchParams.get("id");
   const { data: assessment, isPending } = useGetTakeAssessment(
-    assessmentId ? assessmentId : ""
+    assessmentId ? assessmentId : "",
   );
 
   if (!assessmentId) {
@@ -101,11 +101,10 @@ export default function TakeAssessmentModal() {
   const currentDate = new Date();
   const dueDate = new Date(assessment.endDate);
   const trimTime = (date: Date) => {
-  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
-};
+    return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  };
 
-const isAvailable = trimTime(currentDate) <= trimTime(dueDate);
-
+  const isAvailable = trimTime(currentDate) <= trimTime(dueDate);
 
   return (
     <Dialog
@@ -198,7 +197,7 @@ const isAvailable = trimTime(currentDate) <= trimTime(dueDate);
           variant="primary"
           onClick={() =>
             navigate(
-              `/${orgCode}/student/sections/${sectionCode}/assessment/${assessment._id}`
+              `/${orgCode}/student/sections/${sectionCode}/assessment/${assessment._id}`,
             )
           }
           disabled={assessment.remainingAttempts === 0 || !isAvailable}
