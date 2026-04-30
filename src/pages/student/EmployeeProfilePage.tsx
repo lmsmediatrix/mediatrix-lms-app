@@ -80,10 +80,33 @@ export default function EmployeeProfilePage() {
   const { data: certificatesData, isPending: isCertificatesLoading } =
     useStudentCertificates(userId, { enabled: !!userId });
 
+  const sections: Section[] = sectionsData?.sections || [];
+
+  const metrics = useMemo(
+    () => ({
+      enrolledCount: sections.length,
+      completedCount: sections.filter((section) => section.status === "completed")
+        .length,
+      lessonCount: sections.reduce((total, section) => {
+        return (
+          total +
+          (section.modules || []).reduce((sectionTotal, module) => {
+            return sectionTotal + (module.lessons?.length || 0);
+          }, 0)
+        );
+      }, 0),
+      uniqueCourseCount: new Set(
+        sections
+          .map((section) => section.course?._id)
+          .filter((courseId): courseId is string => Boolean(courseId)),
+      ).size,
+    }),
+    [sections],
+  );
+
   if (isPending) return <ProfilePageSkeleton />;
 
   const userData = data?.data as IStudent | undefined;
-  const sections: Section[] = sectionsData?.sections || [];
   const certificates = (certificatesData?.data || []) as ICertificate[];
 
   if (!userData) {
@@ -110,28 +133,6 @@ export default function EmployeeProfilePage() {
     typeof userData.directTo === "string"
       ? userData.directTo
       : `${userData.directTo?.firstName || ""} ${userData.directTo?.lastName || ""}`.trim();
-
-  const metrics = useMemo(
-    () => ({
-      enrolledCount: sections.length,
-      completedCount: sections.filter((section) => section.status === "completed")
-        .length,
-      lessonCount: sections.reduce((total, section) => {
-        return (
-          total +
-          (section.modules || []).reduce((sectionTotal, module) => {
-            return sectionTotal + (module.lessons?.length || 0);
-          }, 0)
-        );
-      }, 0),
-      uniqueCourseCount: new Set(
-        sections
-          .map((section) => section.course?._id)
-          .filter((courseId): courseId is string => Boolean(courseId)),
-      ).size,
-    }),
-    [sections],
-  );
 
   const detailItems = [
     { label: "Department", value: departmentValue || "N/A", icon: <FaBuilding /> },
