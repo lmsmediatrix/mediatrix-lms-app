@@ -63,9 +63,15 @@ export default function StatsCards({
               <div className="relative z-10 mb-1">
                 <h3 className="text-sm font-medium">{stat.title}</h3>
               </div>
-              <p className="relative z-10 mb-1 text-2xl font-bold">{stat.value}</p>
-              <p className="relative z-10 text-xs text-gray-500">{stat.change}</p>
-              <p className="mt-2 text-[11px] font-semibold text-primary">Open details</p>
+              <p className="relative z-10 mb-1 text-2xl font-bold">
+                {stat.value}
+              </p>
+              <p className="relative z-10 text-xs text-gray-500">
+                {stat.change}
+              </p>
+              <p className="mt-2 text-[11px] font-semibold text-primary">
+                Open details
+              </p>
             </button>
           );
         }
@@ -75,7 +81,9 @@ export default function StatsCards({
             <div className="relative z-10 mb-1">
               <h3 className="text-sm font-medium">{stat.title}</h3>
             </div>
-            <p className="relative z-10 mb-1 text-2xl font-bold">{stat.value}</p>
+            <p className="relative z-10 mb-1 text-2xl font-bold">
+              {stat.value}
+            </p>
             <p className="relative z-10 text-xs text-gray-500">{stat.change}</p>
           </div>
         );

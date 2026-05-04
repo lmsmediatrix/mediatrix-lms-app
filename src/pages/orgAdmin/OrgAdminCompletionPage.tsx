@@ -898,9 +898,15 @@ export default function OrgAdminCompletionPage() {
 
     const toRecords = (
       list: EmployeeCompletionRow[],
-      getScore: (entry: ReturnType<typeof aggregateByEmployee>[number]) => number,
-      getPrimaryValue: (entry: ReturnType<typeof aggregateByEmployee>[number]) => string,
-      getSecondaryValue: (entry: ReturnType<typeof aggregateByEmployee>[number]) => string,
+      getScore: (
+        entry: ReturnType<typeof aggregateByEmployee>[number],
+      ) => number,
+      getPrimaryValue: (
+        entry: ReturnType<typeof aggregateByEmployee>[number],
+      ) => string,
+      getSecondaryValue: (
+        entry: ReturnType<typeof aggregateByEmployee>[number],
+      ) => string,
     ): MetricDrawerRecord[] =>
       aggregateByEmployee(list)
         .sort((a, b) => getScore(b) - getScore(a))
@@ -940,7 +946,9 @@ export default function OrgAdminCompletionPage() {
         };
       }
       case "completedBatches": {
-        const completedRows = employees.filter((employee) => employee.status === "completed");
+        const completedRows = employees.filter(
+          (employee) => employee.status === "completed",
+        );
         const records = toRecords(
           completedRows,
           (entry) => entry.completedEnrollments,
@@ -994,7 +1002,8 @@ export default function OrgAdminCompletionPage() {
       case "assessments": {
         const records = toRecords(
           employees,
-          (entry) => buildPercent(entry.completedAssessments, entry.totalAssessments),
+          (entry) =>
+            buildPercent(entry.completedAssessments, entry.totalAssessments),
           (entry) =>
             `Assessments: ${entry.completedAssessments}/${entry.totalAssessments} (${buildPercent(entry.completedAssessments, entry.totalAssessments)}%)`,
           (entry) =>
@@ -1452,7 +1461,9 @@ export default function OrgAdminCompletionPage() {
                                 <p className="text-sm font-semibold text-slate-900">
                                   {record.name}
                                 </p>
-                                <p className="text-xs text-slate-500">{record.email}</p>
+                                <p className="text-xs text-slate-500">
+                                  {record.email}
+                                </p>
                               </div>
                               <button
                                 type="button"
@@ -1460,7 +1471,10 @@ export default function OrgAdminCompletionPage() {
                                 onClick={() => {
                                   const params = new URLSearchParams();
                                   params.set("tab", "enrollments");
-                                  params.set("batches", record.batchNames.join(" | "));
+                                  params.set(
+                                    "batches",
+                                    record.batchNames.join(" | "),
+                                  );
                                   navigate(
                                     `/${orgCode}/admin/student/${record.employeeId}?${params.toString()}`,
                                   );
@@ -1489,7 +1503,9 @@ export default function OrgAdminCompletionPage() {
                             <p className="mt-2 text-sm font-semibold text-slate-900">
                               {record.primaryValue}
                             </p>
-                            <p className="text-xs text-slate-600">{record.secondaryValue}</p>
+                            <p className="text-xs text-slate-600">
+                              {record.secondaryValue}
+                            </p>
                           </div>
                         ))
                       )}
