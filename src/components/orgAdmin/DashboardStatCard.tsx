@@ -14,21 +14,6 @@ interface DashboardStatCardProps {
   onClick?: () => void;
 }
 
-const CARD_THEMES = [
-  {
-    iconBg: "bg-blue-500",
-  },
-  {
-    iconBg: "bg-indigo-500",
-  },
-  {
-    iconBg: "bg-emerald-500",
-  },
-  {
-    iconBg: "bg-slate-700",
-  },
-];
-
 export default function DashboardStatCard({
   label,
   value,
@@ -48,7 +33,6 @@ export default function DashboardStatCard({
     { size?: number } & React.RefAttributes<AnimIconHandle>
   >;
 
-  const t = CARD_THEMES[index % CARD_THEMES.length];
   const helperText = "Current total records";
 
   return (
@@ -63,7 +47,7 @@ export default function DashboardStatCard({
       <div className="flex flex-col gap-1">
         <div className="mb-1 flex items-center gap-2">
           <span
-            className={`flex size-10 shrink-0 items-center justify-center rounded-xl border border-slate-200 text-white shadow-sm ${t.iconBg}`}
+            className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 shadow-sm"
           >
             <IconWithRef ref={iconRef} size={20} />
           </span>

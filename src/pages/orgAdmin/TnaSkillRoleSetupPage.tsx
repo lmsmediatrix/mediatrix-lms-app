@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { FaBriefcase, FaListUl, FaTable } from "react-icons/fa";
+import { FaListUl, FaTable } from "react-icons/fa";
 import { Trash } from "@/components/animate-ui/icons/trash";
 import { Navigate, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
@@ -666,20 +666,13 @@ export default function TnaSkillRoleSetupPage() {
         {activeStep === "role-requirements" && (
           <section id="role-requirements" className={`${panelClassName} space-y-4`}>
             <div className="rounded-xl border border-slate-200 bg-[linear-gradient(140deg,#ffffff,color-mix(in_srgb,var(--color-primary,#2563eb)_6%,#ffffff))] p-4 md:p-5">
-              <div className="flex items-start gap-3">
-                <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[color:color-mix(in_srgb,var(--color-primary,#2563eb)_26%,white)] bg-[color:color-mix(in_srgb,var(--color-primary,#2563eb)_10%,white)] text-[color:var(--color-primary,#2563eb)]">
-                  <FaBriefcase className="h-4 w-4" />
-                </span>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h2 className="text-xl font-semibold text-slate-900">Role and Skills Configuration</h2>
-                    <HoverHelpTooltip
-                      text="Set role expectations with required skill levels and per-skill passing thresholds."
-                      
-                      className="shrink-0"
-                    />
-                  </div>
-                </div>
+              <div className="flex items-center gap-2">
+                <h2 className="text-xl font-semibold text-slate-900">Role and Skills Configuration</h2>
+                <HoverHelpTooltip
+                  text="Set role expectations with required skill levels and per-skill passing thresholds."
+                  
+                  className="shrink-0"
+                />
               </div>
 
               <div className="mt-4 space-y-3">

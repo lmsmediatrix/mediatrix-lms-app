@@ -1,6 +1,7 @@
-import { useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useGetStudentProfile } from "../../hooks/useStudent";
+import { useGetDevelopmentPlans } from "../../hooks/useDevelopmentPlan";
 import {
   FaAngleLeft,
   FaUserCircle,
@@ -196,10 +197,23 @@ function SectionsDisplayGeneric({
   );
 }
 
-type ProfileTab = "overview" | "enrollments" | "activity" | "settings";
+type ProfileTab =
+  | "overview"
+  | "enrollments"
+  | "activity"
+  | "development-plan"
+  | "settings";
+
+const isProfileTab = (value: string | null): value is ProfileTab =>
+  value === "overview" ||
+  value === "enrollments" ||
+  value === "activity" ||
+  value === "development-plan" ||
+  value === "settings";
 
 export default function StudentDetailsPage() {
   const { id: studentId = "", orgCode = "" } = useParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { data, isPending } = useGetStudentProfile(studentId, {
     includeArchived: true,
   });
@@ -208,13 +222,44 @@ export default function StudentDetailsPage() {
   const orgType = currentUser.user.organization.type;
   const learnerTerm = getTerm("learner", orgType);
   const sectionTerm = getTerm("group", orgType);
-  const [activeTab, setActiveTab] = useState<ProfileTab>("overview");
+  const [activeTab, setActiveTab] = useState<ProfileTab>(() => {
+    const tabParam = searchParams.get("tab");
+    return isProfileTab(tabParam) ? tabParam : "overview";
+  });
   const [isArchiveModalOpen, setIsArchiveModalOpen] = useState(false);
+
+  useEffect(() => {
+    const tabParam = searchParams.get("tab");
+    if (isProfileTab(tabParam) && tabParam !== activeTab) {
+      setActiveTab(tabParam);
+      return;
+    }
+
+    if (!isProfileTab(tabParam) && activeTab !== "overview") {
+      setActiveTab("overview");
+    }
+  }, [activeTab, searchParams]);
+
+  const handleTabChange = (tab: ProfileTab) => {
+    setActiveTab(tab);
+    const nextParams = new URLSearchParams(searchParams);
+    if (tab === "overview") {
+      nextParams.delete("tab");
+    } else {
+      nextParams.set("tab", tab);
+    }
+    setSearchParams(nextParams, { replace: true });
+  };
 
   const { data: sectionsData, isPending: isSectionsPending } =
     useStudentSections({
       studentId,
     });
+  const developmentPlansQuery = useGetDevelopmentPlans({
+    employeeId: studentId,
+    limit: 50,
+    skip: 0,
+  });
   const sections: Section[] = sectionsData?.sections || [];
 
   if (isPending) return <ProfilePageSkeleton />;
@@ -372,8 +417,18 @@ export default function StudentDetailsPage() {
     { id: "overview", label: "Overview" },
     { id: "enrollments", label: "Enrollments" },
     { id: "activity", label: "Activity" },
+    ...(orgType === "corporate"
+      ? ([{ id: "development-plan", label: "Development Plan" }] as {
+          id: ProfileTab;
+          label: string;
+        }[])
+      : []),
     { id: "settings", label: "Settings" },
   ];
+
+  const developmentPlans = (
+    developmentPlansQuery.data as { data?: Array<Record<string, any>> } | undefined
+  )?.data || [];
 
   return (
     <div className="max-w-5xl mx-auto p-6">
@@ -450,7 +505,7 @@ export default function StudentDetailsPage() {
               <button
                 key={tab.id}
                 type="button"
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => handleTabChange(tab.id)}
                 className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
                   activeTab === tab.id
                     ? "bg-blue-100 text-blue-700"
@@ -574,6 +629,123 @@ export default function StudentDetailsPage() {
                 Archiving will show section/batch impact and automatically
                 detach active enrollments while preserving historical records.
               </p>
+            )}
+          </div>
+        )}
+
+        {activeTab === "development-plan" && orgType === "corporate" && (
+          <div className="p-6 border-t border-gray-100">
+            <h3 className="text-base font-medium text-gray-800 mb-4">
+              Development Plans
+            </h3>
+            {developmentPlansQuery.isLoading ? (
+              <p className="text-sm text-gray-500">Loading development plans...</p>
+            ) : developmentPlans.length === 0 ? (
+              <div className="rounded-lg border border-dashed border-gray-300 bg-gray-50 p-4 text-sm text-gray-600">
+                No development plans found for this employee.
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {developmentPlans.map((plan) => {
+                  const quarterPlans = Array.isArray(plan?.quarterPlans)
+                    ? plan.quarterPlans
+                    : [];
+                  return (
+                    <div
+                      key={String(plan?._id || `${plan?.employee}-${plan?.reviewYear}`)}
+                      className="rounded-lg border border-gray-200 p-4"
+                    >
+                      <div className="flex flex-wrap items-center gap-2 mb-2">
+                        <span className="text-sm font-semibold text-gray-800">
+                          Review Year: {plan?.reviewYear || "N/A"}
+                        </span>
+                        <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700">
+                          {String(plan?.status || "draft").replace(/_/g, " ")}
+                        </span>
+                      </div>
+
+                      {quarterPlans.length === 0 ? (
+                        <p className="text-sm text-gray-500">
+                          No quarter activities yet.
+                        </p>
+                      ) : (
+                        <div className="space-y-2">
+                          {quarterPlans.map(
+                            (quarterPlan: Record<string, any>, quarterIndex: number) => {
+                            const activities = Array.isArray(quarterPlan?.activities)
+                              ? quarterPlan.activities
+                              : [];
+                            return (
+                              <div
+                                key={String(quarterPlan?.quarter || quarterIndex)}
+                                className="rounded-md border border-gray-200 bg-gray-50 p-3"
+                              >
+                                <p className="text-sm font-semibold text-gray-800">
+                                  {quarterPlan?.quarter || "Quarter"}
+                                </p>
+                                {activities.length === 0 ? (
+                                  <p className="text-xs text-gray-500 mt-1">
+                                    No activities.
+                                  </p>
+                                ) : (
+                                  <div className="mt-2 space-y-2">
+                                    {activities.map(
+                                      (activity: Record<string, any>, activityIndex: number) => (
+                                      <div
+                                        key={String(
+                                          activity?._id || `${activity?.title}-${activityIndex}`,
+                                        )}
+                                        className="rounded-lg border border-gray-200 bg-white p-3"
+                                      >
+                                        <div className="flex flex-wrap items-center justify-between gap-2">
+                                          <p className="text-sm font-medium text-gray-800">
+                                            {activity?.title || "Untitled"}
+                                          </p>
+                                          <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-700">
+                                            {String(activity?.status || "planned").replace(
+                                              /_/g,
+                                              " ",
+                                            )}
+                                          </span>
+                                        </div>
+
+                                        <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                                          <div className="rounded-md bg-slate-50 px-2.5 py-2">
+                                            <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">
+                                              Start Batch
+                                            </p>
+                                            <p className="text-xs text-slate-700">
+                                              {activity?.startDate
+                                                ? formatDateMMMDDYYY(activity.startDate)
+                                                : "N/A"}
+                                            </p>
+                                          </div>
+                                          <div className="rounded-md bg-slate-50 px-2.5 py-2">
+                                            <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">
+                                              End Batch
+                                            </p>
+                                            <p className="text-xs text-slate-700">
+                                              {activity?.endDate
+                                                ? formatDateMMMDDYYY(activity.endDate)
+                                                : "N/A"}
+                                            </p>
+                                          </div>
+                                        </div>
+                                      </div>
+                                      ),
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                            },
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             )}
           </div>
         )}

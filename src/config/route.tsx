@@ -49,6 +49,7 @@ import TnaPage from "../pages/orgAdmin/TnaPage";
 import TnaSkillRoleSetupPage from "../pages/orgAdmin/TnaSkillRoleSetupPage";
 import TnaEmployeeRecommendationsPage from "../pages/orgAdmin/TnaEmployeeRecommendationsPage";
 import TnaExecutionPipelinePage from "../pages/orgAdmin/TnaExecutionPipelinePage";
+import EmployeeDevelopmentPlanPage from "../pages/orgAdmin/EmployeeDevelopmentPlanPage";
 import FAQ from "../pages/common/FAQ";
 import TermsAndCondition from "../pages/common/TermsAndCondition";
 import PrivacyPolicy from "../pages/common/PrivacyPolicy";
@@ -181,6 +182,10 @@ export const appRoutes = [
         element: <TnaExecutionPipelinePage />,
       },
       {
+        path: "/:orgCode/admin/tna/development-plan",
+        element: <EmployeeDevelopmentPlanPage />,
+      },
+      {
         path: "/:orgCode/admin/voucher",
         element: <Vouchers />,
       },
@@ -275,7 +280,10 @@ export const appRoutes = [
   //Student routes
   {
     element: (
-      <ProtectedRoutes element={<MainLayout />} allowedRoles={["student", "employee"]} />
+      <ProtectedRoutes
+        element={<MainLayout />}
+        allowedRoles={["student", "employee"]}
+      />
     ),
     children: [
       {
@@ -334,7 +342,13 @@ export const appRoutes = [
     element: (
       <ProtectedRoutes
         element={<MainLayout />}
-        allowedRoles={["superadmin", "admin", "instructor", "student", "employee"]}
+        allowedRoles={[
+          "superadmin",
+          "admin",
+          "instructor",
+          "student",
+          "employee",
+        ]}
       />
     ),
     children: [

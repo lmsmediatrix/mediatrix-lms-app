@@ -14,6 +14,7 @@ import {
 } from "react-icons/fa";
 import { useAuth } from "../../context/AuthContext";
 import { useGetStudentProfile } from "../../hooks/useStudent";
+import { useGetDevelopmentPlans } from "../../hooks/useDevelopmentPlan";
 import { useStudentSections } from "../../hooks/useSection";
 import { useStudentCertificates } from "../../hooks/useCertificate";
 import ProfilePageSkeleton from "../../components/skeleton/ProfilePage";
@@ -27,7 +28,12 @@ import { formatDateMMMDDYYY } from "../../lib/dateUtils";
 import { getTerm } from "../../lib/utils";
 import { ICertificate, IStudent } from "../../types/interfaces";
 
-type ProfileTab = "overview" | "enrollments" | "activity" | "settings";
+type ProfileTab =
+  | "overview"
+  | "enrollments"
+  | "activity"
+  | "development-plan"
+  | "settings";
 
 interface Section {
   _id: string;
@@ -79,6 +85,11 @@ export default function EmployeeProfilePage() {
   });
   const { data: certificatesData, isPending: isCertificatesLoading } =
     useStudentCertificates(userId, { enabled: !!userId });
+  const developmentPlansQuery = useGetDevelopmentPlans({
+    employeeId: userId,
+    limit: 50,
+    skip: 0,
+  });
 
   const sections: Section[] = sectionsData?.sections || [];
 
@@ -176,8 +187,13 @@ export default function EmployeeProfilePage() {
     { id: "overview", label: "Overview" },
     { id: "enrollments", label: "Enrollments" },
     { id: "activity", label: "Activity" },
+    { id: "development-plan", label: "Development Plan" },
     { id: "settings", label: "Settings" },
   ];
+
+  const developmentPlans = (
+    developmentPlansQuery.data as { data?: Array<Record<string, any>> } | undefined
+  )?.data || [];
 
   return (
     <div className="mx-auto max-w-5xl p-6">
@@ -344,6 +360,119 @@ export default function EmployeeProfilePage() {
             <Button onClick={() => setSearchParams({ "change-password": "true" })}>
               Change Password
             </Button>
+          </div>
+        )}
+
+        {activeTab === "development-plan" && (
+          <div className="border-t border-gray-100 p-6">
+            <h3 className="mb-4 text-base font-medium text-gray-800">
+              Development Plans
+            </h3>
+            {developmentPlansQuery.isLoading ? (
+              <p className="text-sm text-gray-500">Loading development plans...</p>
+            ) : developmentPlans.length === 0 ? (
+              <div className="rounded-lg border border-dashed border-gray-300 bg-gray-50 p-4 text-sm text-gray-600">
+                No development plans available.
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {developmentPlans.map((plan) => {
+                  const quarterPlans = Array.isArray(plan?.quarterPlans)
+                    ? plan.quarterPlans
+                    : [];
+                  return (
+                    <div
+                      key={String(plan?._id || `${plan?.employee}-${plan?.reviewYear}`)}
+                      className="rounded-lg border border-gray-200 p-4"
+                    >
+                      <div className="mb-2 flex flex-wrap items-center gap-2">
+                        <span className="text-sm font-semibold text-gray-800">
+                          Review Year: {plan?.reviewYear || "N/A"}
+                        </span>
+                        <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700">
+                          {String(plan?.status || "draft").replace(/_/g, " ")}
+                        </span>
+                      </div>
+
+                      {quarterPlans.length === 0 ? (
+                        <p className="text-sm text-gray-500">No quarter activities yet.</p>
+                      ) : (
+                        <div className="space-y-2">
+                          {quarterPlans.map(
+                            (quarterPlan: Record<string, any>, quarterIndex: number) => {
+                            const activities = Array.isArray(quarterPlan?.activities)
+                              ? quarterPlan.activities
+                              : [];
+                            return (
+                              <div
+                                key={String(quarterPlan?.quarter || quarterIndex)}
+                                className="rounded-md border border-gray-200 bg-gray-50 p-3"
+                              >
+                                <p className="text-sm font-semibold text-gray-800">
+                                  {quarterPlan?.quarter || "Quarter"}
+                                </p>
+                                {activities.length === 0 ? (
+                                  <p className="mt-1 text-xs text-gray-500">No activities.</p>
+                                ) : (
+                                  <div className="mt-2 space-y-2">
+                                    {activities.map(
+                                      (activity: Record<string, any>, activityIndex: number) => (
+                                      <div
+                                        key={String(
+                                          activity?._id || `${activity?.title}-${activityIndex}`,
+                                        )}
+                                        className="rounded-lg border border-gray-200 bg-white p-3"
+                                      >
+                                        <div className="flex flex-wrap items-center justify-between gap-2">
+                                          <p className="text-sm font-medium text-gray-800">
+                                            {activity?.title || "Untitled"}
+                                          </p>
+                                          <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-700">
+                                            {String(activity?.status || "planned").replace(
+                                              /_/g,
+                                              " ",
+                                            )}
+                                          </span>
+                                        </div>
+
+                                        <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                                          <div className="rounded-md bg-slate-50 px-2.5 py-2">
+                                            <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">
+                                              Start Batch
+                                            </p>
+                                            <p className="text-xs text-slate-700">
+                                              {activity?.startDate
+                                                ? formatDateMMMDDYYY(activity.startDate)
+                                                : "N/A"}
+                                            </p>
+                                          </div>
+                                          <div className="rounded-md bg-slate-50 px-2.5 py-2">
+                                            <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">
+                                              End Batch
+                                            </p>
+                                            <p className="text-xs text-slate-700">
+                                              {activity?.endDate
+                                                ? formatDateMMMDDYYY(activity.endDate)
+                                                : "N/A"}
+                                            </p>
+                                          </div>
+                                        </div>
+                                      </div>
+                                      ),
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                            },
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
       </div>

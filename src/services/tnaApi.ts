@@ -21,13 +21,21 @@ type AutoDeployPlanner = {
 
 class TnaService extends APIService {
   createSkill = async (body: { name: string; description?: string }) => {
-    const response = await apiClient.post(`${BASE_URL}${TNA.SKILL_CREATE}`, body, {
-      withCredentials: true,
-    });
+    const response = await apiClient.post(
+      `${BASE_URL}${TNA.SKILL_CREATE}`,
+      body,
+      {
+        withCredentials: true,
+      },
+    );
     return response.data;
   };
 
-  getSkills = async (params?: { keyword?: string; limit?: number; skip?: number }) => {
+  getSkills = async (params?: {
+    keyword?: string;
+    limit?: number;
+    skip?: number;
+  }) => {
     const response = await apiClient.get(`${BASE_URL}${TNA.SKILL_GET_ALL}`, {
       withCredentials: true,
       params,
@@ -40,7 +48,7 @@ class TnaService extends APIService {
       `${BASE_URL}${TNA.SKILL_REMOVE.replace(":id", skillId)}`,
       {
         withCredentials: true,
-      }
+      },
     );
     return response.data;
   };
@@ -70,9 +78,13 @@ class TnaService extends APIService {
     }>;
     preAssessmentThreshold?: number;
   }) => {
-    const response = await apiClient.put(`${BASE_URL}${TNA.ROLE_REQUIREMENT_UPSERT}`, body, {
-      withCredentials: true,
-    });
+    const response = await apiClient.put(
+      `${BASE_URL}${TNA.ROLE_REQUIREMENT_UPSERT}`,
+      body,
+      {
+        withCredentials: true,
+      },
+    );
     return response.data;
   };
 
@@ -81,7 +93,7 @@ class TnaService extends APIService {
       `${BASE_URL}${TNA.ROLE_REQUIREMENT_REMOVE.replace(":id", roleRequirementId)}`,
       {
         withCredentials: true,
-      }
+      },
     );
     return response.data;
   };
@@ -90,19 +102,34 @@ class TnaService extends APIService {
     employeeId: string;
     jobRole: string;
     allowRoleChange?: boolean;
-    skills: Array<{ skillId?: string; skillName?: string; currentLevel: number }>;
+    skills: Array<{
+      skillId?: string;
+      skillName?: string;
+      currentLevel: number;
+    }>;
   }) => {
-    const response = await apiClient.put(`${BASE_URL}${TNA.EMPLOYEE_SKILL_UPSERT}`, body, {
-      withCredentials: true,
-    });
+    const response = await apiClient.put(
+      `${BASE_URL}${TNA.EMPLOYEE_SKILL_UPSERT}`,
+      body,
+      {
+        withCredentials: true,
+      },
+    );
     return response.data;
   };
 
-  getEmployeeSkills = async (params?: { limit?: number; skip?: number; employeeId?: string }) => {
-    const response = await apiClient.get(`${BASE_URL}${TNA.EMPLOYEE_SKILL_GET_ALL}`, {
-      withCredentials: true,
-      params,
-    });
+  getEmployeeSkills = async (params?: {
+    limit?: number;
+    skip?: number;
+    employeeId?: string;
+  }) => {
+    const response = await apiClient.get(
+      `${BASE_URL}${TNA.EMPLOYEE_SKILL_GET_ALL}`,
+      {
+        withCredentials: true,
+        params,
+      },
+    );
     return response.data;
   };
 
@@ -115,10 +142,18 @@ class TnaService extends APIService {
       requiredLevel: number;
       passingThreshold?: number;
     }>;
-    employeeSkillsOverride?: Array<{ skillId?: string; skillName?: string; currentLevel: number }>;
+    employeeSkillsOverride?: Array<{
+      skillId?: string;
+      skillName?: string;
+      currentLevel: number;
+    }>;
     preAssessment?: { score?: number; threshold?: number };
     performanceGaps?: string[];
-    complianceRequirements?: Array<{ title: string; courseId?: string; mandatory?: boolean }>;
+    complianceRequirements?: Array<{
+      title: string;
+      courseId?: string;
+      mandatory?: boolean;
+    }>;
     managerRecommendations?: string[];
     employeeRequests?: string[];
   }) => {
@@ -134,20 +169,26 @@ class TnaService extends APIService {
     status?: "pending" | "assigned" | "completed";
     employeeId?: string;
   }) => {
-    const response = await apiClient.get(`${BASE_URL}${TNA.RECOMMENDATION_GET_ALL}`, {
-      withCredentials: true,
-      params,
-    });
+    const response = await apiClient.get(
+      `${BASE_URL}${TNA.RECOMMENDATION_GET_ALL}`,
+      {
+        withCredentials: true,
+        params,
+      },
+    );
     return response.data;
   };
 
-  getEmployeeRecommendations = async (employeeId: string, params?: { limit?: number; skip?: number }) => {
+  getEmployeeRecommendations = async (
+    employeeId: string,
+    params?: { limit?: number; skip?: number },
+  ) => {
     const response = await apiClient.get(
       `${BASE_URL}${TNA.RECOMMENDATION_BY_EMPLOYEE.replace(":employeeId", employeeId)}`,
       {
         withCredentials: true,
         params,
-      }
+      },
     );
     return response.data;
   };
@@ -157,7 +198,7 @@ class TnaService extends APIService {
       `${BASE_URL}${TNA.RECOMMENDATION_REMOVE.replace(":id", recommendationId)}`,
       {
         withCredentials: true,
-      }
+      },
     );
     return response.data;
   };
@@ -166,9 +207,13 @@ class TnaService extends APIService {
     recommendationId: string;
     status: "pending" | "assigned" | "completed";
   }) => {
-    const response = await apiClient.put(`${BASE_URL}${TNA.RECOMMENDATION_UPDATE_STATUS}`, body, {
-      withCredentials: true,
-    });
+    const response = await apiClient.put(
+      `${BASE_URL}${TNA.RECOMMENDATION_UPDATE_STATUS}`,
+      body,
+      {
+        withCredentials: true,
+      },
+    );
     return response.data;
   };
 
@@ -178,6 +223,7 @@ class TnaService extends APIService {
     speakerName?: string;
     speakerSource?: string;
     scheduledAt?: string;
+    scheduledEndAt?: string;
     scheduleNotes?: string;
     materialsPrepared?: boolean;
     materialsNotes?: string;
@@ -204,7 +250,7 @@ class TnaService extends APIService {
       body,
       {
         withCredentials: true,
-      }
+      },
     );
     return response.data;
   };
@@ -218,7 +264,7 @@ class TnaService extends APIService {
       body || {},
       {
         withCredentials: true,
-      }
+      },
     );
     return response.data;
   };

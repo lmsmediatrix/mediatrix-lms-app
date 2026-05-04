@@ -9,6 +9,7 @@ interface StatItem {
   textColor: string;
   iconBgColor: string;
   iconTextColor: string;
+  onClick?: () => void;
 }
 
 interface StatsCardsProps {
@@ -47,18 +48,38 @@ export default function StatsCards({
 
   return (
     <>
-      {stats.map((stat, index) => (
-        <div
-          key={index}
-          className="group relative overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-4 shadow-[0_12px_35px_-22px_rgba(15,23,42,0.45)] transition-all sm:p-5 hover:-translate-y-0.5 hover:shadow-[0_18px_40px_-22px_rgba(15,23,42,0.55)]"
-        >
-          <div className="relative z-10 mb-1">
-            <h3 className="text-sm font-medium">{stat.title}</h3>
+      {stats.map((stat, index) => {
+        const className =
+          "group relative w-full overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-4 text-left shadow-[0_12px_35px_-22px_rgba(15,23,42,0.45)] transition-all sm:p-5 hover:-translate-y-0.5 hover:shadow-[0_18px_40px_-22px_rgba(15,23,42,0.55)]";
+
+        if (stat.onClick) {
+          return (
+            <button
+              key={index}
+              type="button"
+              onClick={stat.onClick}
+              className={`${className} cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35`}
+            >
+              <div className="relative z-10 mb-1">
+                <h3 className="text-sm font-medium">{stat.title}</h3>
+              </div>
+              <p className="relative z-10 mb-1 text-2xl font-bold">{stat.value}</p>
+              <p className="relative z-10 text-xs text-gray-500">{stat.change}</p>
+              <p className="mt-2 text-[11px] font-semibold text-primary">Open details</p>
+            </button>
+          );
+        }
+
+        return (
+          <div key={index} className={className}>
+            <div className="relative z-10 mb-1">
+              <h3 className="text-sm font-medium">{stat.title}</h3>
+            </div>
+            <p className="relative z-10 mb-1 text-2xl font-bold">{stat.value}</p>
+            <p className="relative z-10 text-xs text-gray-500">{stat.change}</p>
           </div>
-          <p className="relative z-10 text-2xl font-bold mb-1">{stat.value}</p>
-          <p className="relative z-10 text-xs text-gray-500">{stat.change}</p>
-        </div>
-      ))}
+        );
+      })}
     </>
   );
 }

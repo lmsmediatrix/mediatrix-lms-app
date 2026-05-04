@@ -326,7 +326,6 @@ export default function SideNavigation({
       "/";
     navigate(homePath);
     setIsMobileMenuOpen(false);
-    
   };
 
   const handleLogoClick = () => {
@@ -395,7 +394,8 @@ export default function SideNavigation({
                 subItem.LABEL !== "Batch" &&
                 subItem.LABEL !== "Skill and Role" &&
                 subItem.LABEL !== "Training Needs" &&
-                subItem.LABEL !== "TNA Execution",
+                subItem.LABEL !== "TNA Execution" &&
+                subItem.LABEL !== "Development Plan",
             );
 
             if (schoolSubmenu.length === 0 && !item.PATH) {

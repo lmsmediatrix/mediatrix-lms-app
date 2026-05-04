@@ -70,15 +70,15 @@ const FLOW_STEPS: Array<{
   },
   {
     key: "analyze",
-    title: "Run TNA",
+    title: "Run TNA Diagnosis",
     description:
-      "Compare gaps and include test, manager, compliance, and request signals.",
+      "Identify current skill gaps, who needs training, and why support is needed.",
   },
   {
     key: "recommendations",
-    title: "Track Recommendations",
+    title: "Prepare Training Recommendations",
     description:
-      "Review recommendations and move their status to assigned/completed.",
+      "Convert diagnosis into training recommendations for Training Management.",
   },
 ];
 
@@ -669,7 +669,6 @@ export default function TnaPage() {
     });
   }, [analyzeJobRole, employeeSkills, roleRequirements, skills]);
 
-
   const completionByStep = useMemo<Record<StepKey, boolean>>(
     () => ({
       "employee-skills":
@@ -703,7 +702,11 @@ export default function TnaPage() {
   }, [completionByStep, activeStep, hasCompletedAnalysis]);
 
   const activeStepIndex = useMemo(
-    () => Math.max(FLOW_STEPS.findIndex((step) => step.key === activeStep), 0),
+    () =>
+      Math.max(
+        FLOW_STEPS.findIndex((step) => step.key === activeStep),
+        0,
+      ),
     [activeStep],
   );
 
@@ -1070,7 +1073,9 @@ export default function TnaPage() {
       setAnalyzeEmployeeId(employeeId);
       setIsRoleEditMode(false);
       setActiveStep("analyze");
-    } catch {}
+    } catch (error) {
+      void error;
+    }
   };
 
   const runAnalysis = async () => {
@@ -1137,7 +1142,9 @@ export default function TnaPage() {
       );
       setHasCompletedAnalysis(true);
       setActiveStep("recommendations");
-    } catch {}
+    } catch (error) {
+      void error;
+    }
   };
 
   return (
@@ -1152,10 +1159,14 @@ export default function TnaPage() {
               Training Needs Analysis
             </h1>
             <HoverHelpTooltip
-              text="This flow is focused on employee role and level capture, analysis, and recommendation tracking. Skills and role standards are configured in a separate Configuration page."
+              text="TNA is diagnosis: what is missing now, who needs support, and why. Development Plan is the action roadmap built from this diagnosis."
               className="shrink-0"
             />
           </div>
+          <p className="mt-1 text-sm text-slate-500">
+            Use this page for diagnosis only, then continue in Training
+            Management.
+          </p>
         </div>
       </section>
 
@@ -1181,7 +1192,10 @@ export default function TnaPage() {
                       >
                         {step.title}
                       </p>
-                      <HoverHelpTooltip text={step.description} className="shrink-0" />
+                      <HoverHelpTooltip
+                        text={step.description}
+                        className="shrink-0"
+                      />
                     </div>
                   </button>
                 );
@@ -1571,10 +1585,7 @@ export default function TnaPage() {
         )}
 
         {activeStep === "analyze" && (
-          <section
-            id="analyze"
-            className={`${panelClassName} space-y-4`}
-          >
+          <section id="analyze" className={`${panelClassName} space-y-4`}>
             <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-3">
               <div>
                 <div className="flex items-center gap-2">
@@ -1582,7 +1593,7 @@ export default function TnaPage() {
                 </div>
                 <div className="flex items-center gap-2">
                   <h2 className="text-xl font-semibold text-slate-900">
-                    Run TNA
+                    Run TNA Diagnosis
                   </h2>
                   <HoverHelpTooltip
                     text="Combine role standards, skill gaps, and optional signals to generate recommendations."
@@ -1896,7 +1907,7 @@ export default function TnaPage() {
                 </div>
                 <div className="flex items-center gap-2">
                   <h2 className="text-xl font-semibold text-slate-900">
-                    Track Recommendations
+                    Review Diagnosis Outputs
                   </h2>
                   <HoverHelpTooltip
                     text="Review generated recommendations and move each one through assignment and completion."
@@ -1910,7 +1921,14 @@ export default function TnaPage() {
                   onClick={() => navigate(`/${orgCode}/admin/tna/employees`)}
                   className="h-10 w-full sm:w-[200px] text-sm text-center leading-tight justify-center"
                 >
-                  View Employee TNAA
+                  View Employee TNA
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => navigate(`/${orgCode}/admin/tna/development-plan`)}
+                  className="h-10 w-full sm:w-[220px] text-sm text-center leading-tight justify-center"
+                >
+                  Open Development Plan
                 </Button>
               </div>
             </div>
