@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
+import { getRouteRoleSegment } from "../../lib/utils";
 
 export default function AvatarDropdown() {
   const [isOpen, setIsOpen] = useState(false);
@@ -9,6 +10,7 @@ export default function AvatarDropdown() {
   const { logout, currentUser } = useAuth();
   const { email, firstname, lastname, avatar, organization, role } =
     currentUser.user;
+  const routeRole = getRouteRoleSegment(role);
 
   const handleLogout = async () => {
     try {
@@ -74,7 +76,7 @@ export default function AvatarDropdown() {
             {role !== "superadmin" && (
               <button
                 onClick={() => {
-                  navigate(`/${organization.code}/${role}/profile`);
+                  navigate(`/${organization.code}/${routeRole}/profile`);
                   setIsOpen(false); // Optional: close dropdown after navigation
                 }}
                 className="text-left hover:bg-gray-100 py-2 px-4"

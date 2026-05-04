@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { useMarkAsRead, useNotification } from "../../hooks/useNotification";
 import { useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
+import { getRouteRoleSegment } from "../../lib/utils";
 
 interface INotification {
   _id: string;
@@ -59,6 +60,7 @@ export default function NotificationMenu({
   const navigate = useNavigate();
 
   const { currentUser } = useAuth();
+  const routeRole = getRouteRoleSegment(currentUser.user.role);
 
   const { data, isPending } = useNotification({
     skip: 0,
@@ -177,7 +179,7 @@ export default function NotificationMenu({
         <button
           className="text-sm text-[#3E5B93] hover:underline"
           onClick={() => {
-            navigate(`/${orgCode}/${currentUser.user.role}/notifications`);
+            navigate(`/${orgCode}/${routeRole}/notifications`);
           }}
         >
           View all notifications

@@ -1,7 +1,5 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import metricsService, {
-  CreatePerformanceActionPlanPayload,
-} from "../services/metricsApi";
+import { useQuery } from "@tanstack/react-query";
+import metricsService from "../services/metricsApi";
 
 export const useGetStudentMetrics = (userId: string, orgId: string) => {
   return useQuery({
@@ -228,14 +226,3 @@ export const useGetStudentPerformanceDetails = (studentId: string) => {
   });
 };
 
-export const useCreatePerformanceActionPlan = () => {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (body: CreatePerformanceActionPlanPayload) =>
-      metricsService.createPerformanceActionPlan(body),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["performance-dashboard"] });
-    },
-  });
-};

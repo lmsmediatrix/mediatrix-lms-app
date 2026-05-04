@@ -127,10 +127,10 @@ export const API_ENDPOINTS = {
     GET_BY_ID: "/certificate/get/:id",
     GET_BY_NUMBER: "/certificate/no/:certificateNo",
     GET_BY_STUDENT: "/certificate/student/:studentId",
+    GET_VISIBILITY: "/certificate/visibility/student/:studentId",
     GENERATE: "/certificate/generate",
     SEARCH: "/certificate/search",
   },
-
   // Lesson API Endpoint
   LESSON: {
     GET_ALL: "/lesson/get/all",
@@ -220,7 +220,6 @@ export const API_ENDPOINTS = {
     GET_ORGANIZATION_DASHBOARD: "/metric/organization/dashboard",
     GET_PERFORMANCE_DASHBOARD: "/metric/performance/dashboard",
     GET_STUDENT_PERFORMANCE_DETAILS: "/metric/performance/student",
-    CREATE_PERFORMANCE_ACTION_PLAN: "/metric/performance/action-plan/create",
   },
   // Activity Log API Endpoint
   ACTIVITY_LOG: {
@@ -312,6 +311,14 @@ export const API_ENDPOINTS = {
     RECOMMENDATION_UPDATE_STATUS: "/tna/recommendation/status/update",
     RECOMMENDATION_EXECUTION_UPSERT: "/tna/recommendation/execution/upsert",
     RECOMMENDATION_AUTO_DEPLOY: "/tna/recommendation/deploy/auto",
+    DEVELOPMENT_PLAN_GET_ALL: "/tna/development-plan/get/all",
+    DEVELOPMENT_PLAN_UPSERT: "/tna/development-plan/upsert",
+    DEVELOPMENT_PLAN_QUARTER_UPSERT: "/tna/development-plan/quarter/upsert",
+    DEVELOPMENT_PLAN_QUARTER_REMOVE: "/tna/development-plan/quarter/remove",
+    DEVELOPMENT_PLAN_ACTIVITY_UPSERT: "/tna/development-plan/quarter/activity/upsert",
+    DEVELOPMENT_PLAN_ACTIVITY_REMOVE: "/tna/development-plan/quarter/activity/remove",
+    DEVELOPMENT_PLAN_ACTIVITY_STATUS_UPDATE: "/tna/development-plan/quarter/activity/status/update",
+    DEVELOPMENT_PLAN_ACTIVITY_TNA_UPSERT: "/tna/development-plan/quarter/activity/tna/upsert",
   },
 
   //... Add more API endpoints here

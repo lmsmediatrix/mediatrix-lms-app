@@ -45,19 +45,13 @@ export const pageTitles: TitleMapping = {
   "/:orgCode/admin/tna/configuration": "Skill and Role",
   "/:orgCode/admin/tna": "Training Needs Analysis",
   "/:orgCode/admin/tna/employees": "Employee TNA Recommendations",
-  "/:orgCode/admin/tna/execution": "TNA Execution",
+  "/:orgCode/admin/tna/execution": "Training Management",
+  "/:orgCode/admin/tna/development-plan": "Employee Development Plan",
   "/:orgCode/admin/voucher": "Vouchers",
   "/:orgCode/admin/profile": "Admin Profile",
   "/:orgCode/admin/settings": "Settings",
-  "/:orgCode/admin/performance": "Compliance Management",
-  "/:orgCode/admin/compliance": "Compliance Management",
   "/:orgCode/admin/reports": "Reports",
   "/:orgCode/admin/completion": "Completion Tracker",
-  "/:orgCode/admin/performance/:studentId": () =>
-    `${getTerms().studentTerm} Compliance Details`,
-  "/:orgCode/admin/compliance/:studentId": () =>
-    `${getTerms().studentTerm} Compliance Details`,
-  "/:orgCode/admin/performance-system": "Performance System",
 
   // Instructor Routes
   "/:orgCode/instructor/dashboard": "Instructor Dashboard",
@@ -75,13 +69,7 @@ export const pageTitles: TitleMapping = {
     "Assessment Results",
   "/:orgCode/instructor/sections/:courseCode/lessons/:lessonId":
     "Lesson Details",
-  "/:orgCode/instructor/performance": "Performance System",
-  "/:orgCode/instructor/performance-system": "Performance System",
   "/:orgCode/instructor/completion": "Completion",
-  "/:orgCode/instructor/performance/:studentId": () =>
-    `${getTerms().studentTerm} Performance Details`,
-  "/:orgCode/instructor/completion/:studentId": () =>
-    `${getTerms().studentTerm} Performance Details`,
 
   // Student Routes
   "/:orgCode/student/dashboard": () => `${getTerms().studentTerm} Dashboard`,
@@ -92,7 +80,6 @@ export const pageTitles: TitleMapping = {
   "/:orgCode/student/calendar": "Calendar",
   "/:orgCode/student/portfolio": "Portfolio",
   "/:orgCode/student/inbox": "Inbox",
-  "/:orgCode/student/performance-system": "Performance System",
   "/:orgCode/student/:assessmentType/:assessmentId": "Assessment",
   "/:orgCode/student/:assessmentType/:assessmentId/submitted":
     "Assessment Submitted",

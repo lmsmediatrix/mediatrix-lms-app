@@ -39,3 +39,8 @@ export const getYearLevelText = (yearLevel: number) => {
   return `${yearLevel}${suffix} year`;
 };
 
+export const getRouteRoleSegment = (role?: string) => {
+  if (role === "employee") return "student";
+  return role || "";
+};
+

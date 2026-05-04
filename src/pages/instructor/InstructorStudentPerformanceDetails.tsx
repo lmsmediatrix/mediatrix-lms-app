@@ -10,7 +10,6 @@ import PageHeader from "../../components/common/PageHeader";
 import { toast } from "react-toastify";
 import Button from "../../components/common/Button";
 import {
-  useCreatePerformanceActionPlan,
   useGetStudentPerformanceDetails,
 } from "../../hooks/useMetrics";
 
@@ -66,7 +65,6 @@ export default function InstructorStudentPerformanceDetails() {
     isLoading,
     isError,
   } = useGetStudentPerformanceDetails(studentId);
-  const createActionPlan = useCreatePerformanceActionPlan();
 
   const details =
     (student as StudentPerformanceDetails | undefined) || FALLBACK_STUDENT;
@@ -87,24 +85,8 @@ export default function InstructorStudentPerformanceDetails() {
 
     const sectionCode = details.section?.split(",")[0]?.trim();
 
-    toast.promise(
-      createActionPlan.mutateAsync({
-        studentId,
-        sectionCode: sectionCode || undefined,
-        title: `Action Plan for ${details.name}`,
-        summary: "Created from instructor performance details page.",
-        riskLevel:
-          details.riskLevel === "Critical" ||
-          details.riskLevel === "Moderate" ||
-          details.riskLevel === "Low"
-            ? details.riskLevel
-            : undefined,
-      }),
-      {
-        pending: "Creating action plan...",
-        success: "Action plan created successfully.",
-        error: "Failed to create action plan.",
-      },
+    toast.info(
+      `Action plan feature is not available in this build for ${sectionCode || "this student"}.`,
     );
   };
 
@@ -169,8 +151,6 @@ export default function InstructorStudentPerformanceDetails() {
           <Button
             variant="primary"
             onClick={handleCreateActionPlan}
-            isLoading={createActionPlan.isPending}
-            isLoadingText="Creating..."
             disabled={!isValidStudentId}
           >
             <FaClipboardList className="mr-2" /> Create Action Plan

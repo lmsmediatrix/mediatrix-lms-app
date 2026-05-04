@@ -8,6 +8,7 @@ interface ModernDatePickerProps {
   onChange: (date: string) => void;
   max?: string;
   min?: string;
+  variant?: "dark" | "light";
 }
 
 const WEEK_DAYS = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
@@ -36,7 +37,9 @@ export default function ModernDatePicker({
   onChange,
   max,
   min,
+  variant = "dark",
 }: ModernDatePickerProps) {
+  const isLight = variant === "light";
   const [isOpen, setIsOpen] = useState(false);
   const selectedDate = useMemo(() => parseDateString(value), [value]);
   const [viewDate, setViewDate] = useState<Date>(selectedDate ?? new Date());
@@ -159,31 +162,54 @@ export default function ModernDatePicker({
         position: "fixed",
         top: popoverPosition.top,
         left: popoverPosition.left,
-        background:
-          "linear-gradient(155deg, color-mix(in srgb, var(--color-primary, #3b82f6) 35%, #020617 65%) 0%, #020617 55%, color-mix(in srgb, var(--color-primary, #3b82f6) 28%, #020617 72%) 100%)",
+        background: isLight
+          ? "linear-gradient(155deg, #ffffff 0%, #f8fafc 100%)"
+          : "linear-gradient(155deg, color-mix(in srgb, var(--color-primary, #3b82f6) 35%, #020617 65%) 0%, #020617 55%, color-mix(in srgb, var(--color-primary, #3b82f6) 28%, #020617 72%) 100%)",
+        borderColor: isLight ? "rgba(148, 163, 184, 0.35)" : undefined,
+        boxShadow: isLight
+          ? "0 24px 60px -22px rgba(15, 23, 42, 0.28)"
+          : "0 24px 60px -16px rgba(2, 6, 23, 0.9)",
       }}
     >
       <div className="mb-3 flex items-center justify-between">
         <button
           type="button"
           onClick={goPrevMonth}
-          className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-white/20 text-white/85 hover:bg-white/10"
+          className={`inline-flex h-8 w-8 items-center justify-center rounded-lg border ${
+            isLight
+              ? "border-slate-200 text-slate-600 hover:bg-slate-100"
+              : "border-white/20 text-white/85 hover:bg-white/10"
+          }`}
           aria-label="Previous month"
         >
           <FaChevronLeft className="h-3.5 w-3.5" />
         </button>
-        <p className="text-sm font-semibold tracking-wide text-white">{monthLabel}</p>
+        <p
+          className={`text-sm font-semibold tracking-wide ${
+            isLight ? "text-slate-700" : "text-white"
+          }`}
+        >
+          {monthLabel}
+        </p>
         <button
           type="button"
           onClick={goNextMonth}
-          className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-white/20 text-white/85 hover:bg-white/10"
+          className={`inline-flex h-8 w-8 items-center justify-center rounded-lg border ${
+            isLight
+              ? "border-slate-200 text-slate-600 hover:bg-slate-100"
+              : "border-white/20 text-white/85 hover:bg-white/10"
+          }`}
           aria-label="Next month"
         >
           <FaChevronRight className="h-3.5 w-3.5" />
         </button>
       </div>
 
-      <div className="mb-2 grid grid-cols-7 text-center text-[11px] font-semibold text-white/65">
+      <div
+        className={`mb-2 grid grid-cols-7 text-center text-[11px] font-semibold ${
+          isLight ? "text-slate-500" : "text-white/65"
+        }`}
+      >
         {WEEK_DAYS.map((day) => (
           <span key={day}>{day}</span>
         ))}
@@ -204,13 +230,21 @@ export default function ModernDatePicker({
               disabled={disabled}
               className={[
                 "h-9 rounded-lg text-sm transition-colors",
-                "focus:outline-none focus-visible:ring-2 focus-visible:ring-white/70",
+                `focus:outline-none focus-visible:ring-2 ${
+                  isLight ? "focus-visible:ring-slate-400/70" : "focus-visible:ring-white/70"
+                }`,
                 selected
-                  ? "text-white font-semibold shadow-[0_8px_20px_-10px_rgba(59,130,246,0.95)]"
+                  ? isLight
+                    ? "text-white font-semibold shadow-[0_8px_20px_-10px_rgba(37,99,235,0.75)]"
+                    : "text-white font-semibold shadow-[0_8px_20px_-10px_rgba(59,130,246,0.95)]"
                   : isToday
-                    ? "border text-white"
-                    : "text-white/90 hover:bg-white/12",
-                !inCurrentMonth ? "text-white/45" : "",
+                    ? isLight
+                      ? "border text-slate-700 bg-slate-50"
+                      : "border text-white"
+                    : isLight
+                      ? "text-slate-700 hover:bg-slate-100"
+                      : "text-white/90 hover:bg-white/12",
+                !inCurrentMonth ? (isLight ? "text-slate-400" : "text-white/45") : "",
                 disabled ? "opacity-35 cursor-not-allowed hover:bg-transparent" : "",
               ].join(" ")}
               style={
@@ -221,10 +255,12 @@ export default function ModernDatePicker({
                     }
                   : isToday
                     ? {
-                        borderColor:
-                          "color-mix(in srgb, var(--color-primary, #3b82f6) 72%, white 28%)",
-                        backgroundColor:
-                          "color-mix(in srgb, var(--color-primary, #3b82f6) 24%, transparent 76%)",
+                        borderColor: isLight
+                          ? "rgba(148, 163, 184, 0.55)"
+                          : "color-mix(in srgb, var(--color-primary, #3b82f6) 72%, white 28%)",
+                        backgroundColor: isLight
+                          ? "rgba(248, 250, 252, 1)"
+                          : "color-mix(in srgb, var(--color-primary, #3b82f6) 24%, transparent 76%)",
                       }
                     : undefined
               }
@@ -235,7 +271,11 @@ export default function ModernDatePicker({
         })}
       </div>
 
-      <div className="mt-3 flex items-center justify-between border-t border-white/10 pt-3">
+      <div
+        className={`mt-3 flex items-center justify-between border-t pt-3 ${
+          isLight ? "border-slate-200" : "border-white/10"
+        }`}
+      >
         <button
           type="button"
           onClick={() => {
@@ -246,14 +286,18 @@ export default function ModernDatePicker({
               setIsOpen(false);
             }
           }}
-          className="text-xs font-medium text-white/85 hover:text-white"
+          className={`text-xs font-medium ${
+            isLight ? "text-slate-600 hover:text-slate-900" : "text-white/85 hover:text-white"
+          }`}
         >
           Today
         </button>
         <button
           type="button"
           onClick={() => setIsOpen(false)}
-          className="text-xs font-medium text-white/70 hover:text-white"
+          className={`text-xs font-medium ${
+            isLight ? "text-slate-500 hover:text-slate-800" : "text-white/70 hover:text-white"
+          }`}
         >
           Close
         </button>
@@ -267,9 +311,16 @@ export default function ModernDatePicker({
         ref={triggerRef}
         type="button"
         onClick={() => setIsOpen((prev) => !prev)}
-        className="inline-flex items-center gap-2 rounded-xl border border-white/25 bg-white/12 px-3.5 py-2 text-sm font-medium text-white hover:bg-white/20 transition-all backdrop-blur-md shadow-[0_8px_25px_-16px_rgba(15,23,42,0.9)]"
+        className={`inline-flex items-center gap-2 rounded-xl border px-3.5 py-2 text-sm font-medium transition-all ${
+          isLight
+            ? "border-slate-200 bg-white text-slate-700 hover:bg-slate-50 shadow-[0_8px_24px_-18px_rgba(15,23,42,0.32)]"
+            : "border-white/25 bg-white/12 text-white hover:bg-white/20 backdrop-blur-md shadow-[0_8px_25px_-16px_rgba(15,23,42,0.9)]"
+        }`}
       >
-        <BellIcon size={12} className="text-white/70 shrink-0" />
+        <BellIcon
+          size={12}
+          className={`shrink-0 ${isLight ? "text-slate-500" : "text-white/70"}`}
+        />
         <span>{triggerLabel}</span>
       </button>
 

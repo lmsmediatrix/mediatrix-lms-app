@@ -14,7 +14,6 @@ import {
   FiCheckCircle,
   FiClipboard,
   FiList,
-  FiTrendingUp,
   FiUsers,
 } from "react-icons/fi";
 
@@ -142,16 +141,37 @@ type InstructorHierarchy = {
   averageEmployeeCompletion: number;
 };
 
+type MetricDrawerKey =
+  | "employees"
+  | "completedBatches"
+  | "modules"
+  | "lessons"
+  | "assessments"
+  | "attendance";
+
+type MetricDrawerRecord = {
+  id: string;
+  employeeId: string;
+  name: string;
+  email: string;
+  batchNames: string[];
+  instructorNames: string[];
+  primaryValue: string;
+  secondaryValue: string;
+};
+
 const statusLabelMap: Record<EmployeeCompletionRow["status"], string> = {
   completed: "Completed",
   in_progress: "In Progress",
   not_started: "Not Started",
 };
 
-const getFullName = (user?: {
-  firstName?: string;
-  lastName?: string;
-} | null): string => {
+const getFullName = (
+  user?: {
+    firstName?: string;
+    lastName?: string;
+  } | null,
+): string => {
   const name = `${user?.firstName || ""} ${user?.lastName || ""}`.trim();
   return name || "Unknown";
 };
@@ -160,7 +180,9 @@ const buildPercent = (value: number, total: number): number =>
   total > 0 ? Math.round((value / total) * 100) : 0;
 
 const normalizeSectionCode = (value?: string): string =>
-  String(value || "").trim().toLowerCase();
+  String(value || "")
+    .trim()
+    .toLowerCase();
 
 const clampPercent = (value: number): number =>
   Math.max(0, Math.min(100, Math.round(value)));
@@ -392,13 +414,21 @@ export default function OrgAdminCompletionPage() {
         const totalAssessments = Number(
           performance?.progress?.totalAssessments || 0,
         );
-        const assessmentPercent = buildPercent(completedAssessments, totalAssessments);
+        const assessmentPercent = buildPercent(
+          completedAssessments,
+          totalAssessments,
+        );
 
         const totalTrackedItems = totalLessons + totalAssessments;
         const completedTrackedItems = completedLessons + completedAssessments;
-        const overallPercent = buildPercent(completedTrackedItems, totalTrackedItems);
+        const overallPercent = buildPercent(
+          completedTrackedItems,
+          totalTrackedItems,
+        );
 
-        const attendancePercent = clampPercent(Number(performance?.attendance || 0));
+        const attendancePercent = clampPercent(
+          Number(performance?.attendance || 0),
+        );
 
         const gpaRaw = performance?.gpa;
         const gpaValue =
@@ -480,7 +510,9 @@ export default function OrgAdminCompletionPage() {
     });
 
     const sortedBatches = [...batches].sort((a, b) => {
-      const instructorCompare = a.instructorName.localeCompare(b.instructorName);
+      const instructorCompare = a.instructorName.localeCompare(
+        b.instructorName,
+      );
       if (instructorCompare !== 0) return instructorCompare;
       return `${a.batchCode}-${a.batchName}`.localeCompare(
         `${b.batchCode}-${b.batchName}`,
@@ -500,14 +532,18 @@ export default function OrgAdminCompletionPage() {
 
       const avgCompletionRaw =
         assignmentCount > 0
-          ? employees.reduce((sum, employee) => sum + employee.overallPercent, 0) /
-            assignmentCount
+          ? employees.reduce(
+              (sum, employee) => sum + employee.overallPercent,
+              0,
+            ) / assignmentCount
           : 0;
 
       const avgAttendanceRaw =
         assignmentCount > 0
-          ? employees.reduce((sum, employee) => sum + employee.attendancePercent, 0) /
-            assignmentCount
+          ? employees.reduce(
+              (sum, employee) => sum + employee.attendancePercent,
+              0,
+            ) / assignmentCount
           : 0;
 
       const completedAssessments = employees.reduce(
@@ -555,7 +591,8 @@ export default function OrgAdminCompletionPage() {
           instructor.assignmentCount > 0
             ? instructor.batches.reduce(
                 (sum, batch) =>
-                  sum + batch.averageEmployeeCompletion * batch.employees.length,
+                  sum +
+                  batch.averageEmployeeCompletion * batch.employees.length,
                 0,
               ) / instructor.assignmentCount
             : 0;
@@ -577,6 +614,7 @@ export default function OrgAdminCompletionPage() {
 
     return {
       hierarchy,
+      employeeRows,
       metrics: {
         employeesTracked: employeeIds.size,
         completedBatchRows,
@@ -590,15 +628,12 @@ export default function OrgAdminCompletionPage() {
         completedAssessmentSlots,
         totalAssessmentSlots,
         averageAttendancePercent:
-          attendanceCount > 0 ? clampPercent(attendanceSum / attendanceCount) : 0,
+          attendanceCount > 0
+            ? clampPercent(attendanceSum / attendanceCount)
+            : 0,
       },
     };
   }, [performanceByAssignment, sections]);
-
-  const overallCompletionPercent = buildPercent(
-    completionData.metrics.completedOverallSlots,
-    completionData.metrics.totalOverallSlots,
-  );
 
   const moduleCompletionPercent = buildPercent(
     completionData.metrics.completedModuleSlots,
@@ -625,6 +660,7 @@ export default function OrgAdminCompletionPage() {
         textColor: "text-blue-700",
         iconBgColor: "bg-blue-500",
         iconTextColor: "text-white",
+        onClick: () => setActiveMetricDrawer("employees"),
       },
       {
         title: `Completed ${sectionsTerm}`,
@@ -635,16 +671,7 @@ export default function OrgAdminCompletionPage() {
         textColor: "text-emerald-700",
         iconBgColor: "bg-emerald-500",
         iconTextColor: "text-white",
-      },
-      {
-        title: "Overall Completion",
-        value: `${overallCompletionPercent}%`,
-        change: `${completionData.metrics.completedOverallSlots}/${completionData.metrics.totalOverallSlots} lesson + assessment slots`,
-        icon: <FiTrendingUp className="text-lg" />,
-        bgColor: "bg-indigo-50",
-        textColor: "text-indigo-700",
-        iconBgColor: "bg-indigo-500",
-        iconTextColor: "text-white",
+        onClick: () => setActiveMetricDrawer("completedBatches"),
       },
       {
         title: "Module Completion",
@@ -655,6 +682,7 @@ export default function OrgAdminCompletionPage() {
         textColor: "text-violet-700",
         iconBgColor: "bg-violet-500",
         iconTextColor: "text-white",
+        onClick: () => setActiveMetricDrawer("modules"),
       },
       {
         title: "Lesson Completion",
@@ -665,6 +693,7 @@ export default function OrgAdminCompletionPage() {
         textColor: "text-cyan-700",
         iconBgColor: "bg-cyan-500",
         iconTextColor: "text-white",
+        onClick: () => setActiveMetricDrawer("lessons"),
       },
       {
         title: "Assessment Completion",
@@ -675,6 +704,7 @@ export default function OrgAdminCompletionPage() {
         textColor: "text-amber-700",
         iconBgColor: "bg-amber-500",
         iconTextColor: "text-white",
+        onClick: () => setActiveMetricDrawer("assessments"),
       },
       {
         title: "Average Attendance",
@@ -685,6 +715,7 @@ export default function OrgAdminCompletionPage() {
         textColor: "text-slate-700",
         iconBgColor: "bg-slate-500",
         iconTextColor: "text-white",
+        onClick: () => setActiveMetricDrawer("attendance"),
       },
     ],
     [
@@ -694,16 +725,13 @@ export default function OrgAdminCompletionPage() {
       completionData.metrics.completedBatchRows,
       completionData.metrics.completedLessonSlots,
       completionData.metrics.completedModuleSlots,
-      completionData.metrics.completedOverallSlots,
       completionData.metrics.employeesTracked,
       completionData.metrics.totalAssessmentSlots,
       completionData.metrics.totalBatchRows,
       completionData.metrics.totalLessonSlots,
       completionData.metrics.totalModuleSlots,
-      completionData.metrics.totalOverallSlots,
       lessonCompletionPercent,
       moduleCompletionPercent,
-      overallCompletionPercent,
       sectionsTerm,
     ],
   );
@@ -712,9 +740,10 @@ export default function OrgAdminCompletionPage() {
   const [selectedInstructorId, setSelectedInstructorId] = useState<string>("");
   const [selectedBatchId, setSelectedBatchId] = useState<string>("");
   const [instructorSearch, setInstructorSearch] = useState<string>("");
-  const [selectedEmployee, setSelectedEmployee] = useState<EmployeeCompletionRow | null>(
-    null,
-  );
+  const [selectedEmployee, setSelectedEmployee] =
+    useState<EmployeeCompletionRow | null>(null);
+  const [activeMetricDrawer, setActiveMetricDrawer] =
+    useState<MetricDrawerKey | null>(null);
   const detailPaneRef = useRef<HTMLDivElement | null>(null);
 
   const filteredHierarchy = useMemo(() => {
@@ -738,8 +767,9 @@ export default function OrgAdminCompletionPage() {
   const activeBatch = useMemo(() => {
     if (!activeInstructor || activeInstructor.batches.length === 0) return null;
     return (
-      activeInstructor.batches.find((batch) => batch.batchId === selectedBatchId) ||
-      activeInstructor.batches[0]
+      activeInstructor.batches.find(
+        (batch) => batch.batchId === selectedBatchId,
+      ) || activeInstructor.batches[0]
     );
   }, [activeInstructor, selectedBatchId]);
 
@@ -774,22 +804,270 @@ export default function OrgAdminCompletionPage() {
     }
   }, [activeInstructor, selectedBatchId]);
 
-  const handleSelectInstructor = (instructorId: string, firstBatchId: string) => {
+  const handleSelectInstructor = (
+    instructorId: string,
+    firstBatchId: string,
+  ) => {
     setSelectedInstructorId(instructorId);
     setSelectedBatchId(firstBatchId);
     if (typeof window !== "undefined") {
       requestAnimationFrame(() => {
-        detailPaneRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+        detailPaneRef.current?.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
       });
     }
   };
+
+  const activeMetricDrawerData = useMemo(() => {
+    if (!activeMetricDrawer) return null;
+    const employees = Array.isArray(completionData.employeeRows)
+      ? completionData.employeeRows
+      : [];
+
+    const aggregateByEmployee = (list: EmployeeCompletionRow[]) => {
+      const grouped = new Map<
+        string,
+        {
+          id: string;
+          employeeId: string;
+          name: string;
+          email: string;
+          batches: Set<string>;
+          instructors: Set<string>;
+          enrollmentCount: number;
+          completedEnrollments: number;
+          completedModules: number;
+          totalModules: number;
+          completedLessons: number;
+          totalLessons: number;
+          completedAssessments: number;
+          totalAssessments: number;
+          attendanceSum: number;
+          riskLabels: Set<string>;
+        }
+      >();
+
+      list.forEach((row) => {
+        const employeeKey =
+          String(row.employeeId || "").trim() ||
+          `${String(row.employeeName || "").trim()}::${String(row.employeeEmail || "").trim()}`;
+        const batchLabel = `${row.batchCode ? `${row.batchCode} - ` : ""}${row.batchName}`;
+
+        if (!grouped.has(employeeKey)) {
+          grouped.set(employeeKey, {
+            id: employeeKey,
+            employeeId: row.employeeId,
+            name: row.employeeName,
+            email: row.employeeEmail || "--",
+            batches: new Set<string>(),
+            instructors: new Set<string>(),
+            enrollmentCount: 0,
+            completedEnrollments: 0,
+            completedModules: 0,
+            totalModules: 0,
+            completedLessons: 0,
+            totalLessons: 0,
+            completedAssessments: 0,
+            totalAssessments: 0,
+            attendanceSum: 0,
+            riskLabels: new Set<string>(),
+          });
+        }
+
+        const entry = grouped.get(employeeKey);
+        if (!entry) return;
+
+        entry.batches.add(batchLabel);
+        entry.instructors.add(row.instructorName);
+        entry.enrollmentCount += 1;
+        if (row.status === "completed") entry.completedEnrollments += 1;
+        entry.completedModules += row.completedModules;
+        entry.totalModules += row.totalModules;
+        entry.completedLessons += row.completedLessons;
+        entry.totalLessons += row.totalLessons;
+        entry.completedAssessments += row.completedAssessments;
+        entry.totalAssessments += row.totalAssessments;
+        entry.attendanceSum += row.attendancePercent;
+        entry.riskLabels.add(getRiskDisplayText(row));
+      });
+
+      return Array.from(grouped.values());
+    };
+
+    const toRecords = (
+      list: EmployeeCompletionRow[],
+      getScore: (
+        entry: ReturnType<typeof aggregateByEmployee>[number],
+      ) => number,
+      getPrimaryValue: (
+        entry: ReturnType<typeof aggregateByEmployee>[number],
+      ) => string,
+      getSecondaryValue: (
+        entry: ReturnType<typeof aggregateByEmployee>[number],
+      ) => string,
+    ): MetricDrawerRecord[] =>
+      aggregateByEmployee(list)
+        .sort((a, b) => getScore(b) - getScore(a))
+        .map((entry) => ({
+          id: entry.id,
+          employeeId: entry.employeeId,
+          name: entry.name,
+          email: entry.email,
+          batchNames: Array.from(entry.batches.values()),
+          instructorNames: Array.from(entry.instructors.values()),
+          primaryValue: getPrimaryValue(entry),
+          secondaryValue: getSecondaryValue(entry),
+        }));
+
+    switch (activeMetricDrawer) {
+      case "employees": {
+        const records = toRecords(
+          employees,
+          (entry) =>
+            buildPercent(
+              entry.completedLessons + entry.completedAssessments,
+              entry.totalLessons + entry.totalAssessments,
+            ),
+          (entry) =>
+            `Overall: ${buildPercent(
+              entry.completedLessons + entry.completedAssessments,
+              entry.totalLessons + entry.totalAssessments,
+            )}%`,
+          (entry) =>
+            `Lessons ${entry.completedLessons}/${entry.totalLessons} • Assessments ${entry.completedAssessments}/${entry.totalAssessments}`,
+        );
+        return {
+          title: "Employees Tracked",
+          value: completionData.metrics.employeesTracked,
+          subtitle: `${records.length} unique employees with grouped batches`,
+          records,
+        };
+      }
+      case "completedBatches": {
+        const completedRows = employees.filter(
+          (employee) => employee.status === "completed",
+        );
+        const records = toRecords(
+          completedRows,
+          (entry) => entry.completedEnrollments,
+          (entry) =>
+            `Completed enrollments: ${entry.completedEnrollments}/${entry.enrollmentCount}`,
+          (entry) =>
+            `Overall ${buildPercent(
+              entry.completedLessons + entry.completedAssessments,
+              entry.totalLessons + entry.totalAssessments,
+            )}% • Avg attendance ${clampPercent(entry.attendanceSum / entry.enrollmentCount)}%`,
+        );
+        return {
+          title: `Completed ${sectionsTerm}`,
+          value: completionData.metrics.completedBatchRows,
+          subtitle: `${records.length} unique employees with completed enrollments`,
+          records,
+        };
+      }
+      case "modules": {
+        const records = toRecords(
+          employees,
+          (entry) => buildPercent(entry.completedModules, entry.totalModules),
+          (entry) =>
+            `Modules: ${entry.completedModules}/${entry.totalModules} (${buildPercent(entry.completedModules, entry.totalModules)}%)`,
+          (entry) =>
+            `Lessons ${entry.completedLessons}/${entry.totalLessons} • Enrollments ${entry.enrollmentCount}`,
+        );
+        return {
+          title: "Module Completion",
+          value: `${moduleCompletionPercent}%`,
+          subtitle: `${completionData.metrics.completedModuleSlots}/${completionData.metrics.totalModuleSlots} completed module slots`,
+          records,
+        };
+      }
+      case "lessons": {
+        const records = toRecords(
+          employees,
+          (entry) => buildPercent(entry.completedLessons, entry.totalLessons),
+          (entry) =>
+            `Lessons: ${entry.completedLessons}/${entry.totalLessons} (${buildPercent(entry.completedLessons, entry.totalLessons)}%)`,
+          (entry) =>
+            `Assessments ${entry.completedAssessments}/${entry.totalAssessments} • Enrollments ${entry.enrollmentCount}`,
+        );
+        return {
+          title: "Lesson Completion",
+          value: `${lessonCompletionPercent}%`,
+          subtitle: `${completionData.metrics.completedLessonSlots}/${completionData.metrics.totalLessonSlots} completed lesson slots`,
+          records,
+        };
+      }
+      case "assessments": {
+        const records = toRecords(
+          employees,
+          (entry) =>
+            buildPercent(entry.completedAssessments, entry.totalAssessments),
+          (entry) =>
+            `Assessments: ${entry.completedAssessments}/${entry.totalAssessments} (${buildPercent(entry.completedAssessments, entry.totalAssessments)}%)`,
+          (entry) =>
+            `Lessons ${entry.completedLessons}/${entry.totalLessons} • Enrollments ${entry.enrollmentCount}`,
+        );
+        return {
+          title: "Assessment Completion",
+          value: `${assessmentCompletionPercent}%`,
+          subtitle: `${completionData.metrics.completedAssessmentSlots}/${completionData.metrics.totalAssessmentSlots} completed assessment slots`,
+          records,
+        };
+      }
+      case "attendance": {
+        const records = toRecords(
+          employees,
+          (entry) => clampPercent(entry.attendanceSum / entry.enrollmentCount),
+          (entry) =>
+            `Attendance: ${clampPercent(entry.attendanceSum / entry.enrollmentCount)}%`,
+          (entry) =>
+            `Overall ${buildPercent(
+              entry.completedLessons + entry.completedAssessments,
+              entry.totalLessons + entry.totalAssessments,
+            )}% • Risk ${Array.from(entry.riskLabels).join(", ")}`,
+        );
+        return {
+          title: "Average Attendance",
+          value: `${completionData.metrics.averageAttendancePercent}%`,
+          subtitle: "Attendance across all employee-batch enrollments",
+          records,
+        };
+      }
+      default:
+        return null;
+    }
+  }, [
+    activeMetricDrawer,
+    assessmentCompletionPercent,
+    completionData.employeeRows,
+    completionData.metrics.averageAttendancePercent,
+    completionData.metrics.completedAssessmentSlots,
+    completionData.metrics.completedBatchRows,
+    completionData.metrics.completedLessonSlots,
+    completionData.metrics.completedModuleSlots,
+    completionData.metrics.employeesTracked,
+    completionData.metrics.totalAssessmentSlots,
+    completionData.metrics.totalBatchRows,
+    completionData.metrics.totalLessonSlots,
+    completionData.metrics.totalModuleSlots,
+    lessonCompletionPercent,
+    moduleCompletionPercent,
+    sectionsTerm,
+  ]);
 
   return (
     <div className="min-h-screen bg-slate-50">
       <div className="mx-auto max-w-[1600px] p-6 space-y-5">
         <PageHeader
           onBack={() => navigate(`/${orgCode}/admin/dashboard`)}
-          icon={<ChartBarIcon size={16} style={{ color: "var(--color-primary, #2563eb)" }} />}
+          icon={
+            <ChartBarIcon
+              size={16}
+              style={{ color: "var(--color-primary, #2563eb)" }}
+            />
+          }
           iconStyle={{
             backgroundColor:
               "color-mix(in srgb, var(--color-primary, #3b82f6) 12%, white 88%)",
@@ -811,7 +1089,7 @@ export default function OrgAdminCompletionPage() {
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="mb-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               <StatsCards stats={completionSummaryStats} />
             </div>
 
@@ -822,7 +1100,7 @@ export default function OrgAdminCompletionPage() {
                     Admin Completion Workspace
                   </h2>
                   <HoverHelpTooltip
-                    text={`Select an instructor, choose a ${sectionTerm.toLowerCase()}, then review each ${learnerTerm.toLowerCase()} in a single table. Use quick-view modal or open dedicated pages for deeper review.`}
+                    text={`Select an instructor, choose a ${sectionTerm.toLowerCase()}, then review each ${learnerTerm.toLowerCase()} in a single table. Click any summary card to open right-side metric details.`}
                     className="shrink-0"
                   />
                 </div>
@@ -830,7 +1108,11 @@ export default function OrgAdminCompletionPage() {
                   <button
                     type="button"
                     className="rounded-md border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
-                    onClick={() => navigate(`/${orgCode}/admin/section/${activeBatch.batchCode}`)}
+                    onClick={() =>
+                      navigate(
+                        `/${orgCode}/admin/section/${activeBatch.batchCode}`,
+                      )
+                    }
                     disabled={!activeBatch.batchCode}
                   >
                     Open Selected {sectionTerm}
@@ -852,19 +1134,23 @@ export default function OrgAdminCompletionPage() {
                       <input
                         type="text"
                         value={instructorSearch}
-                        onChange={(event) => setInstructorSearch(event.target.value)}
+                        onChange={(event) =>
+                          setInstructorSearch(event.target.value)
+                        }
                         placeholder="Search instructor"
                         className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 placeholder:text-slate-400 focus:border-primary/40 focus:outline-none"
                       />
                       <p className="mt-1 text-[11px] text-slate-500">
-                        {filteredHierarchy.length} of {completionData.hierarchy.length} shown
+                        {filteredHierarchy.length} of{" "}
+                        {completionData.hierarchy.length} shown
                       </p>
                     </div>
 
                     <div className="space-y-2">
                       {filteredHierarchy.map((instructor) => {
                         const isActive =
-                          instructor.instructorId === activeInstructor?.instructorId;
+                          instructor.instructorId ===
+                          activeInstructor?.instructorId;
                         return (
                           <button
                             key={instructor.instructorId}
@@ -877,7 +1163,7 @@ export default function OrgAdminCompletionPage() {
                             }
                             className={`w-full rounded-lg border px-3 py-2 text-left transition ${
                               isActive
-                                ? "border-primary/40 bg-primary/10"
+                                ? "border-[color:var(--color-primary,#2563eb)] bg-[color:color-mix(in_srgb,var(--color-primary,#2563eb)_10%,white)] shadow-[0_0_0_1px_color-mix(in_srgb,var(--color-primary,#2563eb)_35%,white)]"
                                 : "border-slate-200 bg-white hover:bg-slate-50"
                             }`}
                           >
@@ -885,9 +1171,10 @@ export default function OrgAdminCompletionPage() {
                               {instructor.instructorName}
                             </p>
                             <p className="text-[11px] text-slate-500 mt-0.5">
-                              {instructor.batches.length} {sectionsTerm.toLowerCase()} |{" "}
-                              {instructor.completedAssignments}/{instructor.assignmentCount}{" "}
-                              employees completed
+                              {instructor.batches.length}{" "}
+                              {sectionsTerm.toLowerCase()} |{" "}
+                              {instructor.completedAssignments}/
+                              {instructor.assignmentCount} employees completed
                             </p>
                             <div className="mt-2 h-1.5 rounded-full bg-slate-200 overflow-hidden">
                               <div
@@ -912,116 +1199,153 @@ export default function OrgAdminCompletionPage() {
                     ref={detailPaneRef}
                     className="rounded-xl border border-slate-200 bg-white p-3 flex flex-col min-h-[320px] md:col-span-5 lg:col-span-5 md:max-h-[72vh] min-w-0"
                   >
-                      <div className="mb-2 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                        <p className="text-[13px] font-semibold text-slate-900">
-                          {activeInstructor?.instructorName || "Instructor"}: {sectionsTerm}
-                        </p>
+                    <div className="mb-2 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                      <p className="text-[13px] font-semibold text-slate-900">
+                        {activeInstructor?.instructorName || "Instructor"}:{" "}
+                        {sectionsTerm}
+                      </p>
+                      <p className="text-[11px] text-slate-500">
+                        Pick one {sectionTerm.toLowerCase()} to update employees
+                        table.
+                      </p>
+                    </div>
+                    <div className="overflow-auto">
+                      <table className="min-w-[560px] w-full text-xs">
+                        <thead className="sticky top-0 bg-white z-10">
+                          <tr className="border-b border-slate-200 text-[10px] uppercase tracking-wide text-slate-500">
+                            <th className="py-2 pr-3 text-left">
+                              {sectionTerm}
+                            </th>
+                            <th className="py-2 px-3 text-left">
+                              {learnersTerm}
+                            </th>
+                            <th className="py-2 px-3 text-left">Completion</th>
+                            <th className="py-2 px-3 text-left">Assessment</th>
+                            <th className="py-2 px-3 text-left">Attendance</th>
+                            <th className="py-2 pl-3 text-right">Action</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {(activeInstructor?.batches || []).map((batch) => {
+                            const isActive =
+                              batch.batchId === activeBatch?.batchId;
+                            return (
+                              <tr
+                                key={batch.batchId}
+                                onClick={() =>
+                                  setSelectedBatchId(batch.batchId)
+                                }
+                                className={`cursor-pointer border-b border-slate-100 last:border-b-0 ${
+                                  isActive
+                                    ? "bg-primary/5"
+                                    : "hover:bg-slate-50"
+                                }`}
+                              >
+                                <td className="py-2.5 pr-3">
+                                  <p className="font-semibold text-[13px] leading-tight text-slate-900">
+                                    {batch.batchCode
+                                      ? `${batch.batchCode} - `
+                                      : ""}
+                                    {batch.batchName}
+                                  </p>
+                                </td>
+                                <td className="py-2.5 px-3 text-[12px] text-slate-700">
+                                  {batch.employees.length}
+                                </td>
+                                <td className="py-2.5 px-3 text-[12px] text-slate-700">
+                                  {batch.averageEmployeeCompletion}%
+                                </td>
+                                <td className="py-2.5 px-3 text-[12px] text-slate-700">
+                                  {batch.assessmentPercent}%
+                                </td>
+                                <td className="py-2.5 px-3 text-[12px] text-slate-700">
+                                  {batch.averageAttendance}%
+                                </td>
+                                <td className="py-2.5 pl-3 text-right">
+                                  <button
+                                    type="button"
+                                    className="rounded-md border border-slate-200 px-2 py-0.5 text-[11px] font-semibold text-slate-700 hover:bg-slate-50"
+                                    onClick={(event) => {
+                                      event.stopPropagation();
+                                      navigate(
+                                        `/${orgCode}/admin/section/${batch.batchCode}`,
+                                      );
+                                    }}
+                                    disabled={!batch.batchCode}
+                                  >
+                                    Open Page
+                                  </button>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  <div className="rounded-xl border border-slate-200 bg-white p-3 flex flex-col min-h-[320px] md:col-span-5 lg:col-span-5 md:max-h-[72vh] min-w-0">
+                    <div className="mb-2 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                      <p className="text-[13px] font-semibold text-slate-900">
+                        {activeBatch
+                          ? `${activeBatch.batchCode ? `${activeBatch.batchCode} - ` : ""}${activeBatch.batchName}`
+                          : `${sectionTerm} Details`}
+                      </p>
+                      {activeBatch && (
                         <p className="text-[11px] text-slate-500">
-                          Pick one {sectionTerm.toLowerCase()} to update employees table.
+                          {activeBatch.employees.length}{" "}
+                          {learnersTerm.toLowerCase()} |{" "}
+                          {activeBatch.modules.length} modules
                         </p>
+                      )}
+                    </div>
+
+                    {!activeBatch || activeBatch.employees.length === 0 ? (
+                      <div className="rounded-lg border border-dashed border-slate-200 px-3 py-6 text-sm text-slate-500">
+                        No {learnersTerm.toLowerCase()} available in the
+                        selected {sectionTerm.toLowerCase()}.
                       </div>
+                    ) : (
                       <div className="overflow-auto">
-                        <table className="min-w-[560px] w-full text-xs">
+                        <table className="min-w-[700px] w-full text-xs">
                           <thead className="sticky top-0 bg-white z-10">
                             <tr className="border-b border-slate-200 text-[10px] uppercase tracking-wide text-slate-500">
-                              <th className="py-2 pr-3 text-left">{sectionTerm}</th>
-                              <th className="py-2 px-3 text-left">{learnersTerm}</th>
-                              <th className="py-2 px-3 text-left">Completion</th>
-                              <th className="py-2 px-3 text-left">Assessment</th>
-                              <th className="py-2 px-3 text-left">Attendance</th>
-                              <th className="py-2 pl-3 text-right">Action</th>
+                              <th className="py-2 pr-3 text-left">
+                                {learnerTerm}
+                              </th>
+                              <th className="py-2 px-3 text-left">Overall</th>
+                              <th className="py-2 px-3 text-left">Lessons</th>
+                              <th className="py-2 px-3 text-left">
+                                Assessments
+                              </th>
+                              <th className="py-2 px-3 text-left">
+                                Attendance
+                              </th>
+                              <th className="py-2 px-3 text-left">Risk</th>
+                              <th className="py-2 px-3 text-left">Status</th>
+                              <th className="py-2 pl-3 text-right">Actions</th>
                             </tr>
                           </thead>
                           <tbody>
-                            {(activeInstructor?.batches || []).map((batch) => {
-                              const isActive = batch.batchId === activeBatch?.batchId;
+                            {activeBatch.employees.map((employee) => {
+                              const isSelectedEmployee =
+                                selectedEmployee?.id === employee.id;
                               return (
                                 <tr
-                                  key={batch.batchId}
-                                  onClick={() => setSelectedBatchId(batch.batchId)}
-                                  className={`cursor-pointer border-b border-slate-100 last:border-b-0 ${
-                                    isActive ? "bg-primary/5" : "hover:bg-slate-50"
-                                  }`}
-                                >
-                                  <td className="py-2.5 pr-3">
-                                    <p className="font-semibold text-[13px] leading-tight text-slate-900">
-                                      {batch.batchCode ? `${batch.batchCode} - ` : ""}
-                                      {batch.batchName}
-                                    </p>
-                                  </td>
-                                  <td className="py-2.5 px-3 text-[12px] text-slate-700">
-                                    {batch.employees.length}
-                                  </td>
-                                  <td className="py-2.5 px-3 text-[12px] text-slate-700">
-                                    {batch.averageEmployeeCompletion}%
-                                  </td>
-                                  <td className="py-2.5 px-3 text-[12px] text-slate-700">
-                                    {batch.assessmentPercent}%
-                                  </td>
-                                  <td className="py-2.5 px-3 text-[12px] text-slate-700">
-                                    {batch.averageAttendance}%
-                                  </td>
-                                  <td className="py-2.5 pl-3 text-right">
-                                    <button
-                                      type="button"
-                                      className="rounded-md border border-slate-200 px-2 py-0.5 text-[11px] font-semibold text-slate-700 hover:bg-slate-50"
-                                      onClick={(event) => {
-                                        event.stopPropagation();
-                                        navigate(`/${orgCode}/admin/section/${batch.batchCode}`);
-                                      }}
-                                      disabled={!batch.batchCode}
-                                    >
-                                      Open Page
-                                    </button>
-                                  </td>
-                                </tr>
-                              );
-                            })}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-
-                  <div className="rounded-xl border border-slate-200 bg-white p-3 flex flex-col min-h-[320px] md:col-span-5 lg:col-span-5 md:max-h-[72vh] min-w-0">
-                      <div className="mb-2 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                        <p className="text-[13px] font-semibold text-slate-900">
-                          {activeBatch
-                            ? `${activeBatch.batchCode ? `${activeBatch.batchCode} - ` : ""}${activeBatch.batchName}`
-                            : `${sectionTerm} Details`}
-                        </p>
-                        {activeBatch && (
-                          <p className="text-[11px] text-slate-500">
-                            {activeBatch.employees.length} {learnersTerm.toLowerCase()} |{" "}
-                            {activeBatch.modules.length} modules
-                          </p>
-                        )}
-                      </div>
-
-                      {!activeBatch || activeBatch.employees.length === 0 ? (
-                        <div className="rounded-lg border border-dashed border-slate-200 px-3 py-6 text-sm text-slate-500">
-                          No {learnersTerm.toLowerCase()} available in the selected{" "}
-                          {sectionTerm.toLowerCase()}.
-                        </div>
-                      ) : (
-                        <div className="overflow-auto">
-                          <table className="min-w-[700px] w-full text-xs">
-                            <thead className="sticky top-0 bg-white z-10">
-                              <tr className="border-b border-slate-200 text-[10px] uppercase tracking-wide text-slate-500">
-                                <th className="py-2 pr-3 text-left">{learnerTerm}</th>
-                                <th className="py-2 px-3 text-left">Overall</th>
-                                <th className="py-2 px-3 text-left">Lessons</th>
-                                <th className="py-2 px-3 text-left">Assessments</th>
-                                <th className="py-2 px-3 text-left">Attendance</th>
-                                <th className="py-2 px-3 text-left">Risk</th>
-                                <th className="py-2 px-3 text-left">Status</th>
-                                <th className="py-2 pl-3 text-right">Actions</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {activeBatch.employees.map((employee) => (
-                                <tr
                                   key={employee.id}
-                                  className="border-b border-slate-100 last:border-b-0 hover:bg-slate-50"
+                                  className={`border-b border-slate-100 last:border-b-0 ${
+                                    isSelectedEmployee
+                                      ? "bg-[color:color-mix(in_srgb,var(--color-primary,#2563eb)_8%,white)]"
+                                      : "hover:bg-slate-50"
+                                  }`}
+                                  style={
+                                    isSelectedEmployee
+                                      ? {
+                                          boxShadow:
+                                            "inset 0 0 0 1px color-mix(in srgb, var(--color-primary, #2563eb) 40%, white)",
+                                        }
+                                      : undefined
+                                  }
                                 >
                                   <td className="py-2.5 pr-3">
                                     <p className="font-semibold text-[13px] leading-tight text-slate-900">
@@ -1035,10 +1359,12 @@ export default function OrgAdminCompletionPage() {
                                     {employee.overallPercent}%
                                   </td>
                                   <td className="py-2.5 px-3 text-[12px] text-slate-700">
-                                    {employee.completedLessons}/{employee.totalLessons}
+                                    {employee.completedLessons}/
+                                    {employee.totalLessons}
                                   </td>
                                   <td className="py-2.5 px-3 text-[12px] text-slate-700">
-                                    {employee.completedAssessments}/{employee.totalAssessments}
+                                    {employee.completedAssessments}/
+                                    {employee.totalAssessments}
                                   </td>
                                   <td className="py-2.5 px-3 text-[12px] text-slate-700">
                                     {employee.attendancePercent}%
@@ -1054,7 +1380,9 @@ export default function OrgAdminCompletionPage() {
                                       <button
                                         type="button"
                                         className="rounded-md border border-slate-200 px-2 py-0.5 text-[11px] font-semibold text-slate-700 hover:bg-slate-50"
-                                        onClick={() => setSelectedEmployee(employee)}
+                                        onClick={() =>
+                                          setSelectedEmployee(employee)
+                                        }
                                       >
                                         Quick View
                                       </button>
@@ -1063,7 +1391,7 @@ export default function OrgAdminCompletionPage() {
                                         className="rounded-md border border-slate-200 px-2 py-0.5 text-[11px] font-semibold text-slate-700 hover:bg-slate-50"
                                         onClick={() =>
                                           navigate(
-                                            `/${orgCode}/admin/performance/${employee.employeeId}`,
+                                            `/${orgCode}/admin/student/${employee.employeeId}`,
                                           )
                                         }
                                         disabled={!employee.employeeId}
@@ -1073,15 +1401,119 @@ export default function OrgAdminCompletionPage() {
                                     </div>
                                   </td>
                                 </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      )}
-                    </div>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
             </section>
+
+            {activeMetricDrawerData && (
+              <div
+                className="fixed inset-0 z-40 flex justify-end bg-slate-900/35"
+                onClick={() => setActiveMetricDrawer(null)}
+              >
+                <aside
+                  className="h-full w-full max-w-2xl border-l border-slate-200 bg-white shadow-2xl"
+                  onClick={(event) => event.stopPropagation()}
+                >
+                  <div className="flex h-full flex-col">
+                    <div className="border-b border-slate-200 p-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="text-sm font-semibold text-slate-900">
+                            {activeMetricDrawerData.title}
+                          </p>
+                          <p className="mt-1 text-2xl font-bold text-slate-900">
+                            {activeMetricDrawerData.value}
+                          </p>
+                          <p className="mt-1 text-xs text-slate-500">
+                            {activeMetricDrawerData.subtitle}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          className="rounded-md border border-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                          onClick={() => setActiveMetricDrawer(null)}
+                        >
+                          Close
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="flex-1 space-y-3 overflow-y-auto p-4">
+                      {activeMetricDrawerData.records.length === 0 ? (
+                        <div className="rounded-lg border border-dashed border-slate-200 px-4 py-8 text-sm text-slate-500">
+                          No records found for this metric.
+                        </div>
+                      ) : (
+                        activeMetricDrawerData.records.map((record) => (
+                          <div
+                            key={record.id}
+                            className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm"
+                          >
+                            <div className="flex items-start justify-between gap-3">
+                              <div>
+                                <p className="text-sm font-semibold text-slate-900">
+                                  {record.name}
+                                </p>
+                                <p className="text-xs text-slate-500">
+                                  {record.email}
+                                </p>
+                              </div>
+                              <button
+                                type="button"
+                                className="rounded-md border border-slate-200 px-2 py-0.5 text-[11px] font-semibold text-slate-700 hover:bg-slate-50"
+                                onClick={() => {
+                                  const params = new URLSearchParams();
+                                  params.set("tab", "enrollments");
+                                  params.set(
+                                    "batches",
+                                    record.batchNames.join(" | "),
+                                  );
+                                  navigate(
+                                    `/${orgCode}/admin/student/${record.employeeId}?${params.toString()}`,
+                                  );
+                                }}
+                                disabled={!record.employeeId}
+                              >
+                                Open
+                              </button>
+                            </div>
+                            <p className="mt-2 text-xs font-semibold text-slate-700">
+                              Batches ({record.batchNames.length})
+                            </p>
+                            <div className="mt-1 flex flex-wrap gap-1.5">
+                              {record.batchNames.map((batchName) => (
+                                <span
+                                  key={`${record.id}-${batchName}`}
+                                  className="inline-flex items-center rounded-md border border-[color:color-mix(in_srgb,var(--color-primary,#2563eb)_28%,white)] bg-[color:color-mix(in_srgb,var(--color-primary,#2563eb)_10%,white)] px-2 py-0.5 text-[11px] font-medium text-[color:color-mix(in_srgb,var(--color-primary,#2563eb)_78%,black)]"
+                                >
+                                  {batchName}
+                                </span>
+                              ))}
+                            </div>
+                            <p className="mt-1 text-xs text-slate-500">
+                              Instructor(s): {record.instructorNames.join(", ")}
+                            </p>
+                            <p className="mt-2 text-sm font-semibold text-slate-900">
+                              {record.primaryValue}
+                            </p>
+                            <p className="text-xs text-slate-600">
+                              {record.secondaryValue}
+                            </p>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                </aside>
+              </div>
+            )}
 
             {selectedEmployee && (
               <div
@@ -1112,16 +1544,22 @@ export default function OrgAdminCompletionPage() {
 
                   <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-2.5">
                     <div className="rounded-md border border-slate-200 bg-slate-50 p-2.5">
-                      <p className="text-xs font-semibold uppercase text-slate-500">Modules</p>
+                      <p className="text-xs font-semibold uppercase text-slate-500">
+                        Modules
+                      </p>
                       <p className="text-sm font-semibold text-slate-900 mt-1">
-                        {selectedEmployee.completedModules}/{selectedEmployee.totalModules} (
+                        {selectedEmployee.completedModules}/
+                        {selectedEmployee.totalModules} (
                         {selectedEmployee.modulePercent}%)
                       </p>
                     </div>
                     <div className="rounded-md border border-slate-200 bg-slate-50 p-2.5">
-                      <p className="text-xs font-semibold uppercase text-slate-500">Lessons</p>
+                      <p className="text-xs font-semibold uppercase text-slate-500">
+                        Lessons
+                      </p>
                       <p className="text-sm font-semibold text-slate-900 mt-1">
-                        {selectedEmployee.completedLessons}/{selectedEmployee.totalLessons} (
+                        {selectedEmployee.completedLessons}/
+                        {selectedEmployee.totalLessons} (
                         {selectedEmployee.lessonPercent}%)
                       </p>
                     </div>
@@ -1147,7 +1585,9 @@ export default function OrgAdminCompletionPage() {
                       </p>
                     </div>
                     <div className="rounded-md border border-slate-200 bg-slate-50 p-2.5">
-                      <p className="text-[11px] uppercase font-semibold text-slate-500">Grade</p>
+                      <p className="text-[11px] uppercase font-semibold text-slate-500">
+                        Grade
+                      </p>
                       <p className="text-sm font-semibold text-slate-900 mt-1">
                         {selectedEmployee.gpa}
                       </p>
@@ -1177,7 +1617,9 @@ export default function OrgAdminCompletionPage() {
                       type="button"
                       className="rounded-md border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
                       onClick={() =>
-                        navigate(`/${orgCode}/admin/performance/${selectedEmployee.employeeId}`)
+                        navigate(
+                          `/${orgCode}/admin/student/${selectedEmployee.employeeId}`,
+                        )
                       }
                       disabled={!selectedEmployee.employeeId}
                     >

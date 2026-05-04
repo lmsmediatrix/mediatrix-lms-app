@@ -451,6 +451,80 @@ export default function CoursePage() {
       archiveStatus !== "none",
   );
 
+  const tableToolbarActions = (
+    <div className="flex gap-2 flex-shrink-0 flex-wrap md:flex-nowrap md:items-center justify-end">
+      <Button
+        variant="primary"
+        onClick={() => setSearchParams({ modal: "create-course" })}
+        className="whitespace-nowrap text-sm h-[42px] flex-1 md:flex-initial"
+      >
+        <FaPlus />
+        <span className="hidden sm:inline">Add Course</span>
+        <span className="sm:hidden">Add</span>
+      </Button>
+      <div
+        className={`flex items-center gap-2 overflow-hidden transition-all duration-300 ease-out ${
+          isImportExportOpen
+            ? "max-w-[520px] opacity-100 translate-x-0"
+            : "max-w-0 opacity-0 -translate-x-2 pointer-events-none"
+        }`}
+      >
+        <Button
+          variant="outline"
+          onClick={() => toast.info("Bulk import for courses is coming soon.")}
+          className={`whitespace-nowrap text-sm h-[42px] transition-all duration-300 ${
+            isImportExportOpen ? "scale-100" : "scale-95"
+          }`}
+        >
+          <FiUpload className="size-4" />
+          <span>Import</span>
+        </Button>
+        <Button
+          variant="outline"
+          onClick={() => setIsExportModalOpen(true)}
+          className={`whitespace-nowrap text-sm h-[42px] transition-all duration-300 ${
+            isImportExportOpen ? "scale-100" : "scale-95"
+          }`}
+        >
+          <FiDownload className="size-4" />
+          <span>Export</span>
+        </Button>
+      </div>
+      <Button
+        variant={isImportExportOpen ? "outline" : "primary"}
+        onClick={() => setIsImportExportOpen((prev) => !prev)}
+        className="text-sm h-[42px] !px-4 md:!px-4"
+      >
+        <PanelLeft
+          size={15}
+          animate={isImportExportOpen ? "default" : false}
+          animateOnHover
+        />
+        <span className="sr-only">Toggle import and export actions</span>
+      </Button>
+      <div className="flex items-center gap-2">
+        <button
+          onClick={toggleArchiveStatus}
+          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-[#3E5B93] focus:ring-offset-2 ${
+            archiveStatus === "only" ? "bg-gray-200" : "bg-primary"
+          }`}
+        >
+          <span
+            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+              archiveStatus === "only" ? "translate-x-1" : "translate-x-6"
+            }`}
+          />
+        </button>
+        <span className="text-sm text-gray-600 hidden lg:inline whitespace-nowrap">
+          {archiveStatus === "only" ? "Archived" : "Active"}
+        </span>
+        <span className="text-sm text-gray-600 lg:hidden">
+          {archiveStatus === "only" ? "Archived" : "Active"}
+        </span>
+      </div>
+    </div>
+  );
+
   return (
     <div className=" pt-14 pb-6 px-6 lg:p-6">
       <div className="flex items-center gap-2">
@@ -464,85 +538,9 @@ export default function CoursePage() {
         />
       </div>
 
-      <div className="mt-6 mb-2">
-        <div className="mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="mt-6 mb-6">
+        <div className="mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           <StatsCards stats={courseSummaryStats} isLoading={isLoading} />
-        </div>
-      </div>
-
-      <div className="flex flex-col gap-4 py-6 md:flex-row md:items-center md:justify-end">
-        {/* Action Buttons */}
-        <div className="flex gap-2 flex-shrink-0 flex-wrap md:flex-nowrap md:items-center">
-          <Button
-            variant="primary"
-            onClick={() => setSearchParams({ modal: "create-course" })}
-            className="whitespace-nowrap text-sm h-[42px] flex-1 md:flex-initial"
-          >
-            <FaPlus />
-            <span className="hidden sm:inline">Add Course</span>
-            <span className="sm:hidden">Add</span>
-          </Button>
-          <div
-            className={`flex items-center gap-2 overflow-hidden transition-all duration-300 ease-out ${
-              isImportExportOpen
-                ? "max-w-[520px] opacity-100 translate-x-0"
-                : "max-w-0 opacity-0 -translate-x-2 pointer-events-none"
-            }`}
-          >
-            <Button
-              variant="outline"
-              onClick={() => toast.info("Bulk import for courses is coming soon.")}
-              className={`whitespace-nowrap text-sm h-[42px] transition-all duration-300 ${
-                isImportExportOpen ? "scale-100" : "scale-95"
-              }`}
-            >
-              <FiUpload className="size-4" />
-              <span>Import</span>
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => setIsExportModalOpen(true)}
-              className={`whitespace-nowrap text-sm h-[42px] transition-all duration-300 ${
-                isImportExportOpen ? "scale-100" : "scale-95"
-              }`}
-            >
-              <FiDownload className="size-4" />
-              <span>Export</span>
-            </Button>
-          </div>
-          <Button
-            variant={isImportExportOpen ? "outline" : "primary"}
-            onClick={() => setIsImportExportOpen((prev) => !prev)}
-            className="text-sm h-[42px] !px-4 md:!px-4"
-          >
-            <PanelLeft
-              size={15}
-              animate={isImportExportOpen ? "default" : false}
-              animateOnHover
-            />
-            <span className="sr-only">Toggle import and export actions</span>
-          </Button>
-          {/* Archive Status Toggle Switch */}
-          <div className="flex items-center gap-2">
-            <button
-              onClick={toggleArchiveStatus}
-              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-[#3E5B93] focus:ring-offset-2 ${
-                archiveStatus === "only" ? "bg-gray-200" : "bg-primary"
-              }`}
-            >
-              <span
-                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                  archiveStatus === "only" ? "translate-x-1" : "translate-x-6"
-                }`}
-              />
-            </button>
-            <span className="text-sm text-gray-600 hidden lg:inline whitespace-nowrap">
-              {archiveStatus === "only" ? "Archived" : "Active"}
-            </span>
-            <span className="text-sm text-gray-600 lg:hidden">
-              {archiveStatus === "only" ? "Archived" : "Active"}
-            </span>
-          </div>
         </div>
       </div>
 
@@ -565,6 +563,7 @@ export default function CoursePage() {
           groups={tableGroups}
           columns={tableColumns}
           rowKey={(row) => row._id}
+          toolbarRight={tableToolbarActions}
           tableMinWidthClassName={isCorporate ? "min-w-[980px]" : "min-w-[1120px]"}
           showPagination={false}
           cardless

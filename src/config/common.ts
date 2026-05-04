@@ -119,15 +119,14 @@ export const BASE_NAVIGATION: {
           PATH: "/:code/admin/tna",
         },
         {
-          LABEL: "TNA Execution",
+          LABEL: "Training Management",
           PATH: "/:code/admin/tna/execution",
         },
+        {
+          LABEL: "Development Plan",
+          PATH: "/:code/admin/tna/development-plan",
+        },
       ],
-    },
-    {
-      LABEL: "Compliance",
-      PATH: "/:code/admin/compliance",
-      ICON: ChartNoAxesCombinedIcon,
     },
     {
       LABEL: "Reports",
@@ -158,6 +157,23 @@ export const BASE_NAVIGATION: {
     },
   ],
   STUDENT: [
+    {
+      LABEL: "Dashboard",
+      PATH: "/:code/student/dashboard",
+      ICON: HouseIcon,
+    },
+    {
+      LABEL: "My Sections",
+      PATH: "/:code/student/sections",
+      ICON: LayoutGridIcon,
+    },
+    {
+      LABEL: "Schedule",
+      PATH: "/:code/student/calendar",
+      ICON: BellIcon,
+    },
+  ],
+  EMPLOYEE: [
     {
       LABEL: "Dashboard",
       PATH: "/:code/student/dashboard",

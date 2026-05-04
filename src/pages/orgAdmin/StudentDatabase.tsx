@@ -535,6 +535,80 @@ export default function StudentDatabase() {
     toggleArchiveStatus,
   ]);
 
+  const tableToolbarActions = (
+    <div className="flex gap-2 flex-shrink-0 flex-wrap md:flex-nowrap md:items-center">
+      <Button
+        variant="primary"
+        onClick={() => setSearchParams({ modal: "create-student" })}
+        className="whitespace-nowrap text-sm h-[42px]"
+      >
+        <PlusIcon size={14} />
+        <span className="hidden sm:inline">Add {learnerTerm}</span>
+        <span className="sm:hidden">Add</span>
+      </Button>
+      <div
+        className={`flex items-center gap-2 overflow-hidden transition-all duration-300 ease-out ${
+          isImportExportOpen
+            ? "max-w-[520px] opacity-100 translate-x-0"
+            : "max-w-0 opacity-0 -translate-x-2 pointer-events-none"
+        }`}
+      >
+        <Button
+          variant="outline"
+          onClick={() => setIsBulkImportOpen(true)}
+          className={`whitespace-nowrap text-sm h-[42px] transition-all duration-300 ${
+            isImportExportOpen ? "scale-100" : "scale-95"
+          }`}
+        >
+          <FiUpload className="size-4" />
+          <span>Import</span>
+        </Button>
+        <Button
+          variant="outline"
+          onClick={() => setIsExportModalOpen(true)}
+          className={`whitespace-nowrap text-sm h-[42px] transition-all duration-300 ${
+            isImportExportOpen ? "scale-100" : "scale-95"
+          }`}
+        >
+          <FiDownload className="size-4" />
+          <span>Export</span>
+        </Button>
+      </div>
+      <Button
+        variant={isImportExportOpen ? "outline" : "primary"}
+        onClick={() => setIsImportExportOpen((prev) => !prev)}
+        className="text-sm h-[42px] !px-4 md:!px-4"
+      >
+        <PanelLeft
+          size={15}
+          animate={isImportExportOpen ? "default" : false}
+          animateOnHover
+        />
+        <span className="sr-only">Toggle import and export actions</span>
+      </Button>
+      <div className="flex items-center gap-2">
+        <button
+          onClick={toggleArchiveStatus}
+          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-[#3E5B93] focus:ring-offset-2 ${
+            archiveStatus === "only" ? "bg-gray-200" : "bg-primary"
+          }`}
+        >
+          <span
+            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+              archiveStatus === "only" ? "translate-x-1" : "translate-x-6"
+            }`}
+          />
+        </button>
+        <span className="text-sm text-gray-600 hidden lg:inline whitespace-nowrap">
+          {archiveStatus === "only" ? "Archived" : "Active"}
+        </span>
+        <span className="text-sm text-gray-600 lg:hidden">
+          {archiveStatus === "only" ? "Archived" : "Active"}
+        </span>
+      </div>
+    </div>
+  );
+
   return (
     <div className="pt-14 pb-6 px-6 lg:p-6">
       <div className="mb-6">
@@ -552,27 +626,27 @@ export default function StudentDatabase() {
 
       {/* Overview Cards Section */}
       {orgType === "school" && (
-        <>
+        <div className="mb-6">
           <Suspense
             fallback={
-              <div className="mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 ">
+              <div className="mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 ">
                 <StatsCards stats={[]} isLoading={true} />
               </div>
             }
           >
-            <div className="mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 ">
+            <div className="mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 ">
               <StatsCards
                 stats={generateStats(metricsData, "student", selectedPeriod)}
                 isLoading={isMetricsDataPending}
               />
             </div>
           </Suspense>
-        </>
+        </div>
       )}
 
       {orgType === "corporate" && (
-        <div className="mb-2">
-          <div className="mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="mb-6">
+          <div className="mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             <StatsCards
               stats={employeeSummaryStats}
               isLoading={isInitialStudentsLoading}
@@ -580,81 +654,6 @@ export default function StudentDatabase() {
           </div>
         </div>
       )}
-
-      {/* Table Section */}
-      <div className="flex flex-col gap-4 py-6 md:flex-row md:items-center md:justify-end">
-        <div className="flex gap-2 flex-shrink-0 flex-wrap md:flex-nowrap md:items-center">
-          <Button
-            variant="primary"
-            onClick={() => setSearchParams({ modal: "create-student" })}
-            className="whitespace-nowrap text-sm h-[42px] flex-1 md:flex-initial"
-          >
-            <PlusIcon size={14} />
-            <span className="hidden sm:inline">Add {learnerTerm}</span>
-            <span className="sm:hidden">Add</span>
-          </Button>
-          <div
-            className={`flex items-center gap-2 overflow-hidden transition-all duration-300 ease-out ${
-              isImportExportOpen
-                ? "max-w-[520px] opacity-100 translate-x-0"
-                : "max-w-0 opacity-0 -translate-x-2 pointer-events-none"
-            }`}
-          >
-            <Button
-              variant="outline"
-              onClick={() => setIsBulkImportOpen(true)}
-              className={`whitespace-nowrap text-sm h-[42px] transition-all duration-300 ${
-                isImportExportOpen ? "scale-100" : "scale-95"
-              }`}
-            >
-              <FiUpload className="size-4" />
-              <span>Import</span>
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => setIsExportModalOpen(true)}
-              className={`whitespace-nowrap text-sm h-[42px] transition-all duration-300 ${
-                isImportExportOpen ? "scale-100" : "scale-95"
-              }`}
-            >
-              <FiDownload className="size-4" />
-              <span>Export</span>
-            </Button>
-          </div>
-          <Button
-            variant={isImportExportOpen ? "outline" : "primary"}
-            onClick={() => setIsImportExportOpen((prev) => !prev)}
-            className="text-sm h-[42px] !px-4 md:!px-4"
-          >
-            <PanelLeft
-              size={15}
-              animate={isImportExportOpen ? "default" : false}
-              animateOnHover
-            />
-            <span className="sr-only">Toggle import and export actions</span>
-          </Button>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={toggleArchiveStatus}
-              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-[#3E5B93] focus:ring-offset-2 ${
-                archiveStatus === "only" ? "bg-gray-200" : "bg-primary"
-              }`}
-            >
-              <span
-                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                  archiveStatus === "only" ? "translate-x-1" : "translate-x-6"
-                }`}
-              />
-            </button>
-            <span className="text-sm text-gray-600 hidden lg:inline whitespace-nowrap">
-              {archiveStatus === "only" ? "Archived" : "Active"}
-            </span>
-            <span className="text-sm text-gray-600 lg:hidden">
-              {archiveStatus === "only" ? "Archived" : "Active"}
-            </span>
-          </div>
-        </div>
-      </div>
 
       {isInitialStudentsLoading ? (
         <TableSkeletonClean columns={studentTableColumns} rows={5} />
@@ -680,6 +679,7 @@ export default function StudentDatabase() {
             cardless
             showGroupHeader={false}
             onRowClick={(row) => navigate(row._id)}
+            toolbarRight={tableToolbarActions}
             emptyFilteredText={`No matching ${learnersTerm.toLowerCase()} found.`}
           />
         </div>

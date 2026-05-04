@@ -14,29 +14,6 @@ interface DashboardStatCardProps {
   onClick?: () => void;
 }
 
-const CARD_THEMES = [
-  {
-    cardBg: "bg-blue-50",
-    border: "border-blue-100",
-    iconBg: "bg-blue-500",
-  },
-  {
-    cardBg: "bg-indigo-50",
-    border: "border-indigo-100",
-    iconBg: "bg-indigo-500",
-  },
-  {
-    cardBg: "bg-emerald-50",
-    border: "border-emerald-100",
-    iconBg: "bg-emerald-500",
-  },
-  {
-    cardBg: "bg-slate-50",
-    border: "border-slate-200",
-    iconBg: "bg-indigo-950",
-  },
-];
-
 export default function DashboardStatCard({
   label,
   value,
@@ -56,7 +33,6 @@ export default function DashboardStatCard({
     { size?: number } & React.RefAttributes<AnimIconHandle>
   >;
 
-  const t = CARD_THEMES[index % CARD_THEMES.length];
   const helperText = "Current total records";
 
   return (
@@ -66,12 +42,12 @@ export default function DashboardStatCard({
       onClick={onClick}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      className={`rounded-lg border cursor-pointer select-none p-4 transition-all ${t.cardBg} ${t.border}`}
+      className="cursor-pointer select-none rounded-2xl border border-slate-200/80 bg-white p-4 shadow-[0_12px_35px_-22px_rgba(15,23,42,0.45)] transition-all hover:-translate-y-0.5 hover:shadow-[0_18px_40px_-22px_rgba(15,23,42,0.55)]"
     >
       <div className="flex flex-col gap-1">
         <div className="mb-1 flex items-center gap-2">
           <span
-            className={`flex size-10 shrink-0 items-center justify-center rounded-lg text-white ${t.iconBg}`}
+            className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 shadow-sm"
           >
             <IconWithRef ref={iconRef} size={20} />
           </span>

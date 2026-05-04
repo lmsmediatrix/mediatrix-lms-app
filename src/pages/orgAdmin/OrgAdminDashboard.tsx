@@ -99,7 +99,7 @@ type ModernChartCardProps = {
   label: string;
   percent: number;
   detail: string;
-  color: string;
+  color?: string;
 };
 
 function ModernChartCard({
@@ -108,16 +108,17 @@ function ModernChartCard({
   detail,
   color,
 }: ModernChartCardProps) {
+  const themeColor = color || "var(--color-primary, #2563eb)";
   const clampedPercent = Math.max(0, Math.min(100, percent));
   const radius = 34;
   const circumference = 2 * Math.PI * radius;
   const dashOffset = circumference - (clampedPercent / 100) * circumference;
 
   return (
-    <div className="group relative overflow-hidden rounded-2xl border border-slate-200/80 bg-gradient-to-br from-white via-white to-slate-50 p-4 shadow-[0_10px_30px_-22px_rgba(15,23,42,0.45)]">
+    <div className="group relative overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-4 shadow-[0_10px_30px_-22px_rgba(15,23,42,0.45)]">
       <span
         className="absolute right-3 top-3 h-2.5 w-2.5 rounded-full"
-        style={{ backgroundColor: color }}
+        style={{ backgroundColor: themeColor }}
       />
       <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500">
         {label}
@@ -138,7 +139,7 @@ function ModernChartCard({
               cy="44"
               r={radius}
               fill="none"
-              stroke={color}
+              stroke={themeColor}
               strokeWidth="8"
               strokeLinecap="round"
               strokeDasharray={circumference}
@@ -160,7 +161,7 @@ function ModernChartCard({
           <div className="mt-2 h-1.5 rounded-full bg-slate-200 overflow-hidden">
             <div
               className="h-full rounded-full transition-all duration-500"
-              style={{ width: `${clampedPercent}%`, backgroundColor: color }}
+              style={{ width: `${clampedPercent}%`, backgroundColor: themeColor }}
             />
           </div>
         </div>
@@ -541,7 +542,7 @@ export default function OrgAdminDashboard() {
       {/* Main Layout */}
       <div className="w-full p-4">
         {/* Main Panel */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
           {dashboardData.stats.map(
             (
               stat: {
@@ -570,9 +571,6 @@ export default function OrgAdminDashboard() {
         <div className="rounded-3xl border border-slate-200/80 bg-white p-6 mb-4 shadow-[0_14px_40px_-28px_rgba(15,23,42,0.5)]">
           <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-3 mb-5">
             <div className="flex flex-col gap-1.5">
-              <span className="inline-flex w-fit items-center rounded-full border border-blue-200 bg-blue-50 px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-blue-700">
-                Live Progress
-              </span>
               <div className="flex items-center gap-2">
                 <h3 className="text-lg font-semibold text-slate-900">
                   Completion Progress
@@ -592,31 +590,31 @@ export default function OrgAdminDashboard() {
             </button>
           </div>
 
-          <div className="rounded-2xl border border-slate-200 bg-gradient-to-br from-slate-50 via-white to-sky-50/40 p-4 mb-5">
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 mb-5">
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
               <ModernChartCard
                 label={`Completed ${sectionsTerm}`}
                 percent={completionHierarchy.completion.completedBatchPercent}
                 detail={`${completionHierarchy.completion.completedBatches}/${completionHierarchy.completion.totalBatches} completed`}
-                color="#2563eb"
+                color="var(--color-primary, #2563eb)"
               />
               <ModernChartCard
                 label="Module Completion"
                 percent={completionHierarchy.completion.modulePercent}
                 detail={`${completionHierarchy.completion.completedModuleSlots}/${completionHierarchy.completion.totalModuleSlots} module slots`}
-                color="#8b5cf6"
+                color="var(--color-primary, #2563eb)"
               />
               <ModernChartCard
                 label="Lesson Completion"
                 percent={completionHierarchy.completion.lessonPercent}
                 detail={`${completionHierarchy.completion.completedLessonSlots}/${completionHierarchy.completion.totalLessonSlots} lesson slots`}
-                color="#10b981"
+                color="var(--color-primary, #2563eb)"
               />
             </div>
           </div>
 
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
-            <div className="rounded-2xl border border-slate-200 bg-gradient-to-br from-white to-slate-50 p-3.5 shadow-sm">
+            <div className="rounded-2xl border border-slate-200 bg-white p-3.5 shadow-sm">
               <p className="text-[11px] uppercase tracking-wide text-slate-500 font-semibold">
                 Instructors
               </p>
@@ -624,7 +622,7 @@ export default function OrgAdminDashboard() {
                 {completionHierarchy.totals.instructors}
               </p>
             </div>
-            <div className="rounded-2xl border border-slate-200 bg-gradient-to-br from-white to-slate-50 p-3.5 shadow-sm">
+            <div className="rounded-2xl border border-slate-200 bg-white p-3.5 shadow-sm">
               <p className="text-[11px] uppercase tracking-wide text-slate-500 font-semibold">
                 Batches
               </p>
@@ -632,7 +630,7 @@ export default function OrgAdminDashboard() {
                 {completionHierarchy.totals.batches}
               </p>
             </div>
-            <div className="rounded-2xl border border-slate-200 bg-gradient-to-br from-white to-slate-50 p-3.5 shadow-sm">
+            <div className="rounded-2xl border border-slate-200 bg-white p-3.5 shadow-sm">
               <p className="text-[11px] uppercase tracking-wide text-slate-500 font-semibold">
                 Modules
               </p>
@@ -640,7 +638,7 @@ export default function OrgAdminDashboard() {
                 {completionHierarchy.totals.modules}
               </p>
             </div>
-            <div className="rounded-2xl border border-slate-200 bg-gradient-to-br from-white to-slate-50 p-3.5 shadow-sm">
+            <div className="rounded-2xl border border-slate-200 bg-white p-3.5 shadow-sm">
               <p className="text-[11px] uppercase tracking-wide text-slate-500 font-semibold">
                 Lessons
               </p>
@@ -663,7 +661,7 @@ export default function OrgAdminDashboard() {
               {completionHierarchy.instructors.map((instructor, instructorIdx) => (
                 <details
                   key={instructor.id}
-                  className="group rounded-2xl border border-slate-200 bg-gradient-to-r from-white via-slate-50/70 to-white shadow-sm"
+                  className="group rounded-2xl border border-slate-200 bg-white shadow-sm"
                 >
                   <summary className="cursor-pointer list-none px-4 py-3">
                     <div className="flex items-center justify-between gap-4">

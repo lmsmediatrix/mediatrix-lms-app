@@ -1,9 +1,8 @@
 import { useMemo, useState } from "react";
-import { FaBriefcase, FaEdit, FaListUl, FaTable, FaThLarge } from "react-icons/fa";
+import { FaListUl, FaTable } from "react-icons/fa";
 import { Trash } from "@/components/animate-ui/icons/trash";
 import { Navigate, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
-import { Lightbulb } from "@/components/animate-ui/icons/lightbulb";
 import { SearchableSelect } from "../../components/SearchableSelect";
 import Button from "../../components/common/Button";
 import Dialog from "../../components/common/Dialog";
@@ -142,7 +141,6 @@ export default function TnaSkillRoleSetupPage() {
     { skillId: "", level: 1, passingThreshold: 70 },
   ]);
   const [editingRoleRequirementId, setEditingRoleRequirementId] = useState<string | null>(null);
-  const [roleStandardsView, setRoleStandardsView] = useState<"card" | "table">("card");
   const [deletingSkillId, setDeletingSkillId] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
   const [requiredSkillsPreviewRole, setRequiredSkillsPreviewRole] = useState<any | null>(null);
@@ -158,12 +156,6 @@ export default function TnaSkillRoleSetupPage() {
   const fieldLabelClassName = "text-xs font-semibold uppercase tracking-wider text-slate-500";
   const fieldHintClassName = "mt-1 text-xs text-slate-500";
   const sectionSurfaceClassName = "rounded-xl border border-slate-200 bg-white p-3.5";
-  const primaryIconButtonClassName =
-    "inline-flex h-7 w-7 items-center justify-center rounded-full border border-[color:color-mix(in_srgb,var(--color-primary,#2563eb)_30%,white)] bg-[color:color-mix(in_srgb,var(--color-primary,#2563eb)_10%,white)] text-[color:var(--color-primary,#2563eb)] transition-colors hover:bg-[color:color-mix(in_srgb,var(--color-primary,#2563eb)_18%,white)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:color-mix(in_srgb,var(--color-primary,#2563eb)_28%,transparent)]";
-  const secondaryIconButtonClassName =
-    "inline-flex h-7 w-7 items-center justify-center rounded-full border border-[color:color-mix(in_srgb,var(--color-secondary,#0ea5e9)_30%,white)] bg-[color:color-mix(in_srgb,var(--color-secondary,#0ea5e9)_10%,white)] text-[color:var(--color-secondary,#0ea5e9)] transition-colors hover:bg-[color:color-mix(in_srgb,var(--color-secondary,#0ea5e9)_18%,white)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:color-mix(in_srgb,var(--color-secondary,#0ea5e9)_28%,transparent)]";
-  const dangerIconButtonClassName =
-    "inline-flex h-7 w-7 items-center justify-center rounded-full border border-rose-200 bg-rose-50 text-rose-600 transition-colors hover:bg-rose-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-300";
   const canSaveSkill = Boolean(skillName.trim());
   const hasRoleName = Boolean(jobRole.trim());
   const hasRequiredSkill = requiredSkills.some((item) => Boolean(String(item.skillId || "").trim()));
@@ -506,68 +498,40 @@ export default function TnaSkillRoleSetupPage() {
 
   return (
     <div className="pt-14 pb-6 px-4 md:px-6 lg:p-6 space-y-6">
-      <section
-        className="rounded-2xl border border-slate-200 p-5 md:p-6"
-        style={{
-          background:
-            "linear-gradient(135deg, color-mix(in srgb, var(--color-primary) 15%, #ffffff), #ffffff 55%, color-mix(in srgb, var(--color-secondary) 15%, #ffffff))",
-        }}
-      >
-        <div className="flex flex-col gap-5">
-          <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">Configuration</p>
-              <div className="mt-1 flex items-center gap-2">
-                <h1 className="text-3xl font-bold text-slate-900">Skill and Role</h1>
-                <HoverHelpTooltip
-                  text="Manage reusable skills and role standards here. Training Needs Analysis will only handle employee profile inputs and execution."
-                  
-                  className="shrink-0"
-                />
-              </div>
-            </div>
-            <Button
-              variant="outline"
-              className="h-10 w-full md:w-72 md:shrink-0 text-center whitespace-nowrap"
-              onClick={() => navigate(`/${orgCode}/admin/tna`)}
-            >
-              Open Training Needs Analysis
-            </Button>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div className="rounded-xl border border-slate-200 bg-white/80 p-4">
-              <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Skills</p>
-              <p className="text-2xl font-bold text-slate-900 mt-2">{skills.length}</p>
-              <p className="text-xs text-slate-500 mt-1">Reusable skills available</p>
-            </div>
-            <div className="rounded-xl border border-slate-200 bg-white/80 p-4">
-              <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Role Standards</p>
-              <p className="text-2xl font-bold text-slate-900 mt-2">{roleRequirements.length}</p>
-              <p className="text-xs text-slate-500 mt-1">Configured role requirement profiles</p>
-            </div>
+      <section className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">Configuration</p>
+          <div className="mt-1 flex items-center gap-2">
+            <h1 className="text-2xl font-bold text-slate-900">Skill and Role</h1>
+            <HoverHelpTooltip
+              text="Manage reusable skills and role standards here. Training Needs Analysis will only handle employee profile inputs and execution."
+              className="shrink-0"
+            />
           </div>
         </div>
+        <Button
+          variant="outline"
+          className="h-10 w-full md:w-72 md:shrink-0 text-center whitespace-nowrap"
+          onClick={() => navigate(`/${orgCode}/admin/tna`)}
+        >
+          Open Training Needs Analysis
+        </Button>
       </section>
 
       <section>
-        <div className="rounded-xl border border-slate-200 bg-slate-50/90 p-1.5 md:p-2">
-          <div className="relative grid grid-cols-1 gap-1.5 sm:grid-cols-2">
-            <div
-              className="pointer-events-none absolute left-0 top-0 hidden h-full w-1/2 rounded-lg border border-primary/20 bg-white shadow-[0_10px_20px_-16px_rgba(37,99,235,0.7)] transition-transform duration-300"
-            />
+        <div className="rounded-xl border border-slate-200 bg-white p-4">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {SETUP_TABS.map((step) => {
               const isActive = activeStep === step.key;
-
               return (
                 <button
                   key={step.key}
                   type="button"
                   onClick={() => setActiveStep(step.key)}
-                  className={`relative rounded-lg border px-3 py-2.5 text-left transition-all duration-200 ${
+                  className={`rounded-lg border px-3 py-2.5 text-left transition-all duration-200 ${
                     isActive
-                      ? "border-primary/30 bg-white text-slate-900 shadow-[0_8px_18px_-16px_rgba(37,99,235,0.8)]"
-                      : "border-transparent text-slate-500 hover:border-slate-200 hover:bg-white/70 hover:text-slate-700"
+                      ? "border-[color:var(--color-primary,#2563eb)] bg-[color:color-mix(in_srgb,var(--color-primary,#2563eb)_10%,white)] text-slate-900"
+                      : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
                   }`}
                 >
                   <p className="text-sm font-semibold">{step.title}</p>
@@ -702,20 +666,13 @@ export default function TnaSkillRoleSetupPage() {
         {activeStep === "role-requirements" && (
           <section id="role-requirements" className={`${panelClassName} space-y-4`}>
             <div className="rounded-xl border border-slate-200 bg-[linear-gradient(140deg,#ffffff,color-mix(in_srgb,var(--color-primary,#2563eb)_6%,#ffffff))] p-4 md:p-5">
-              <div className="flex items-start gap-3">
-                <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[color:color-mix(in_srgb,var(--color-primary,#2563eb)_26%,white)] bg-[color:color-mix(in_srgb,var(--color-primary,#2563eb)_10%,white)] text-[color:var(--color-primary,#2563eb)]">
-                  <FaBriefcase className="h-4 w-4" />
-                </span>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h2 className="text-xl font-semibold text-slate-900">Role and Skills Configuration</h2>
-                    <HoverHelpTooltip
-                      text="Set role expectations with required skill levels and per-skill passing thresholds."
-                      
-                      className="shrink-0"
-                    />
-                  </div>
-                </div>
+              <div className="flex items-center gap-2">
+                <h2 className="text-xl font-semibold text-slate-900">Role and Skills Configuration</h2>
+                <HoverHelpTooltip
+                  text="Set role expectations with required skill levels and per-skill passing thresholds."
+                  
+                  className="shrink-0"
+                />
               </div>
 
               <div className="mt-4 space-y-3">
@@ -925,37 +882,9 @@ export default function TnaSkillRoleSetupPage() {
                 <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
                   Existing Role Standards
                 </p>
-                <div className="ml-auto inline-flex items-center rounded-lg border border-slate-200 bg-slate-50 p-1">
-                  <button
-                    type="button"
-                    onClick={() => setRoleStandardsView("card")}
-                    className={`inline-flex h-8 w-8 items-center justify-center rounded-md transition-colors ${
-                      roleStandardsView === "card"
-                        ? "bg-[color:var(--color-primary,#2563eb)] text-white shadow-sm"
-                        : "text-slate-500 hover:bg-white hover:text-slate-700"
-                    }`}
-                    aria-label="Card view"
-                    title="Card view"
-                    aria-pressed={roleStandardsView === "card"}
-                  >
-                    <FaThLarge className="h-3.5 w-3.5" />
-                    <span className="sr-only">Card view</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setRoleStandardsView("table")}
-                    className={`inline-flex h-8 w-8 items-center justify-center rounded-md transition-colors ${
-                      roleStandardsView === "table"
-                        ? "bg-[color:var(--color-primary,#2563eb)] text-white shadow-sm"
-                        : "text-slate-500 hover:bg-white hover:text-slate-700"
-                    }`}
-                    aria-label="Table view"
-                    title="Table view"
-                    aria-pressed={roleStandardsView === "table"}
-                  >
-                    <FaTable className="h-3.5 w-3.5" />
-                    <span className="sr-only">Table view</span>
-                  </button>
+                <div className="ml-auto inline-flex items-center rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-xs font-semibold text-slate-600">
+                  <FaTable className="mr-1.5 h-3.5 w-3.5" />
+                  Table View
                 </div>
               </div>
               {roleRequirementsQuery.isLoading ? (
@@ -963,129 +892,18 @@ export default function TnaSkillRoleSetupPage() {
               ) : roleRequirements.length === 0 ? (
                 <p className="text-sm text-slate-500">No role standards yet. Save your first role profile above.</p>
               ) : (
-                roleStandardsView === "card" ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                    {roleRequirements.map((roleRequirement: any) => {
-                      const roleRequiredSkills = Array.isArray(roleRequirement.requiredSkills)
-                        ? roleRequirement.requiredSkills
-                        : [];
-
-                      return (
-                        <div
-                          key={String(roleRequirement._id || roleRequirement.jobRole)}
-                          tabIndex={0}
-                          className="relative rounded-xl border border-slate-200 bg-slate-50/60 px-3.5 py-3 pr-32 outline-none transition-colors focus-visible:bg-white focus-visible:ring-2 focus-visible:ring-[color:color-mix(in_srgb,var(--color-primary,#2563eb)_28%,transparent)]"
-                        >
-                          <div className="absolute right-2 top-2 flex items-center gap-1">
-                            <button
-                              type="button"
-                              aria-label="Edit role standard"
-                              className={primaryIconButtonClassName}
-                              onClick={() => startEditRoleRequirement(roleRequirement)}
-                            >
-                              <FaEdit className="h-3 w-3" />
-                            </button>
-
-                            <button
-                              type="button"
-                              aria-label="Delete role standard"
-                              className={dangerIconButtonClassName}
-                              onClick={() => {
-                                setDeleteTarget({
-                                  type: "role",
-                                  id: String(roleRequirement?._id || ""),
-                                  label: String(roleRequirement?.jobRole || "this role standard"),
-                                });
-                              }}
-                              disabled={deleteRoleRequirementMutation.isPending}
-                            >
-                              <Trash animateOnHover size={14} />
-                            </button>
-
-                            <div className="group/required-skills-preview relative">
-                              <button
-                                type="button"
-                                aria-label="Preview required skills"
-                                className={`group ${secondaryIconButtonClassName}`}
-                              >
-                                <Lightbulb animateOnHover size={14} />
-                              </button>
-
-                              <div className="pointer-events-none invisible absolute right-0 top-full z-20 mt-2 w-[340px] max-w-[70vw] translate-y-1 rounded-xl border border-slate-200 bg-white p-3 shadow-xl opacity-0 transition-all duration-150 group-hover/required-skills-preview:visible group-hover/required-skills-preview:translate-y-0 group-hover/required-skills-preview:opacity-100 group-focus-within/required-skills-preview:visible group-focus-within/required-skills-preview:translate-y-0 group-focus-within/required-skills-preview:opacity-100">
-                                <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-                                  Required Skills | {String(roleRequirement?.jobRole || "Role")}
-                                </p>
-                                <p className="mt-1 text-xs text-slate-700">
-                                  Pre-test threshold: {Number(roleRequirement.preAssessmentThreshold) || 70}% |
-                                  Skills: {roleRequiredSkills.length}
-                                </p>
-
-                                {roleRequiredSkills.length === 0 ? (
-                                  <p className="mt-2 text-xs text-slate-500">No required skills configured.</p>
-                                ) : (
-                                  <div className="mt-2 max-h-48 overflow-y-auto rounded-md border border-slate-200">
-                                    <table className="w-full min-w-[300px]">
-                                      <thead className="sticky top-0 bg-slate-100/95">
-                                        <tr className="text-left text-[10px] font-semibold uppercase tracking-wider text-slate-500">
-                                          <th className="px-2 py-1.5 w-9">#</th>
-                                          <th className="px-2 py-1.5">Skill</th>
-                                          <th className="px-2 py-1.5 w-16">Lvl</th>
-                                          <th className="px-2 py-1.5 w-16">Thr</th>
-                                        </tr>
-                                      </thead>
-                                      <tbody className="divide-y divide-slate-200 bg-white">
-                                        {roleRequiredSkills.map((skillItem: any, index: number) => {
-                                          const preview = getRequiredSkillPreview(skillItem);
-                                          return (
-                                            <tr
-                                              key={`${String(roleRequirement?._id || "role-preview")}-${preview.name}-${index}`}
-                                            >
-                                              <td className="px-2 py-1.5 text-xs text-slate-500">{index + 1}</td>
-                                              <td className="px-2 py-1.5 text-xs font-medium text-slate-800">
-                                                {preview.name}
-                                              </td>
-                                              <td className="px-2 py-1.5 text-xs text-slate-700">
-                                                {preview.level}
-                                              </td>
-                                              <td className="px-2 py-1.5 text-xs text-slate-700">
-                                                {preview.passingThreshold}%
-                                              </td>
-                                            </tr>
-                                          );
-                                        })}
-                                      </tbody>
-                                    </table>
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-
-                          <p className="text-sm font-semibold text-slate-900">
-                            {String(roleRequirement.jobRole || "Unnamed role")}
-                          </p>
-                          <p className="mt-1 text-xs text-slate-500">
-                            Pre-test threshold: {Number(roleRequirement.preAssessmentThreshold) || 70}% | Skills:{" "}
-                            {roleRequiredSkills.length}
-                          </p>
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
-                    <GroupedDataTable
-                      groups={roleStandardsTableGroups}
-                      columns={roleStandardsTableColumns}
-                      rowKey={(row) => String(row?._id || row?.jobRole || "")}
-                      tableMinWidthClassName="min-w-[980px]"
-                      showPagination={false}
-                      cardless
-                      showGroupHeader={false}
-                      emptyFilteredText="No matching role standards found."
-                    />
-                  </div>
-                )
+                <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+                  <GroupedDataTable
+                    groups={roleStandardsTableGroups}
+                    columns={roleStandardsTableColumns}
+                    rowKey={(row) => String(row?._id || row?.jobRole || "")}
+                    tableMinWidthClassName="min-w-[980px]"
+                    showPagination={false}
+                    cardless
+                    showGroupHeader={false}
+                    emptyFilteredText="No matching role standards found."
+                  />
+                </div>
               )}
             </div>
           </section>

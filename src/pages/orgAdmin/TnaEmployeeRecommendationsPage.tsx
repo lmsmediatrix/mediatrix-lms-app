@@ -14,7 +14,10 @@ import {
   default as GroupedDataTable,
 } from "../../components/common/GroupedDataTable";
 import { useSearchStudents } from "../../hooks/useStudent";
-import { useDeleteTnaRecommendation, useGetTnaRecommendations } from "../../hooks/useTna";
+import {
+  useDeleteTnaRecommendation,
+  useGetTnaRecommendations,
+} from "../../hooks/useTna";
 import { getTerm } from "../../lib/utils";
 
 type EmployeeOption = {
@@ -54,14 +57,20 @@ type RecommendationEmployeeSkill = {
 
 type TnaRecommendation = {
   _id: string;
-  employee?: { _id: string; firstName?: string; lastName?: string; email?: string } | string;
+  employee?:
+    | { _id: string; firstName?: string; lastName?: string; email?: string }
+    | string;
   jobRole?: string;
   createdAt?: string;
   status?: string;
   employeeSkills?: RecommendationEmployeeSkill[];
   skillGaps?: RecommendationSkillGap[];
   recommendedTrainings?: RecommendationTraining[];
-  preAssessment?: { score?: number; threshold?: number; requiresTraining?: boolean };
+  preAssessment?: {
+    score?: number;
+    threshold?: number;
+    requiresTraining?: boolean;
+  };
   performanceGaps?: string[];
   managerRecommendations?: string[];
   employeeRequests?: string[];
@@ -87,7 +96,10 @@ const normalizeStatus = (status?: string): RecommendationStatus => {
   return "pending";
 };
 
-const STATUS_FILTER_OPTIONS: Array<{ value: RecommendationStatusFilter; label: string }> = [
+const STATUS_FILTER_OPTIONS: Array<{
+  value: RecommendationStatusFilter;
+  label: string;
+}> = [
   { value: "pending", label: "Pending" },
   { value: "assigned", label: "Assigned" },
   { value: "completed", label: "Completed" },
@@ -128,7 +140,8 @@ const formatLatestTnaDateTime = (dateValue?: string) => {
 const getEmployeeIdFromRecommendation = (
   recommendation: TnaRecommendation,
 ): string | null => {
-  if (typeof recommendation.employee === "string") return recommendation.employee;
+  if (typeof recommendation.employee === "string")
+    return recommendation.employee;
   if (recommendation.employee?._id) return recommendation.employee._id;
   return null;
 };
@@ -147,7 +160,9 @@ const formatReasonType = (reasonType?: string): string => {
   return reasonType.replace(/_/g, " ");
 };
 
-const getCourseLabel = (course?: RecommendationCourse | string): string | null => {
+const getCourseLabel = (
+  course?: RecommendationCourse | string,
+): string | null => {
   if (!course || typeof course === "string") return null;
   const label = [course.code, course.title].filter(Boolean).join(" - ").trim();
   return label || null;
@@ -156,15 +171,22 @@ const getCourseLabel = (course?: RecommendationCourse | string): string | null =
 const getErrorMessage = (error: unknown): string => {
   if (error && typeof error === "object") {
     const err = error as {
-      response?: { data?: { message?: string; error?: { message?: string } | string } };
+      response?: {
+        data?: { message?: string; error?: { message?: string } | string };
+      };
       message?: string;
     };
     const nestedError = err.response?.data?.error;
     if (typeof nestedError === "string") return nestedError;
-    if (nestedError && typeof nestedError === "object" && typeof nestedError.message === "string") {
+    if (
+      nestedError &&
+      typeof nestedError === "object" &&
+      typeof nestedError.message === "string"
+    ) {
       return nestedError.message;
     }
-    if (typeof err.response?.data?.message === "string") return err.response.data.message;
+    if (typeof err.response?.data?.message === "string")
+      return err.response.data.message;
     if (typeof err.message === "string") return err.message;
   }
   return "Something went wrong";
@@ -193,9 +215,13 @@ export default function TnaEmployeeRecommendationsPage() {
   const deleteRecommendationMutation = useDeleteTnaRecommendation();
 
   const employees = useMemo(() => {
-    const response = studentsQuery.data as { students?: EmployeeOption[] } | undefined;
+    const response = studentsQuery.data as
+      | { students?: EmployeeOption[] }
+      | undefined;
     const students = Array.isArray(response?.students) ? response.students : [];
-    return students.filter((student) => isTnaEligibleLearnerRole(student?.role));
+    return students.filter((student) =>
+      isTnaEligibleLearnerRole(student?.role),
+    );
   }, [studentsQuery.data]);
 
   const recommendations = useMemo(() => {
@@ -322,8 +348,12 @@ export default function TnaEmployeeRecommendationsPage() {
     const rows = employees.map((employee) => {
       const latest = latestRecommendationByEmployee.get(employee._id);
       const hasTna = Boolean(latest);
-      const skillGapCount = Array.isArray(latest?.skillGaps) ? latest?.skillGaps.length : 0;
-      const recommendedTrainingCount = Array.isArray(latest?.recommendedTrainings)
+      const skillGapCount = Array.isArray(latest?.skillGaps)
+        ? latest?.skillGaps.length
+        : 0;
+      const recommendedTrainingCount = Array.isArray(
+        latest?.recommendedTrainings,
+      )
         ? latest.recommendedTrainings.length
         : 0;
 
@@ -340,14 +370,17 @@ export default function TnaEmployeeRecommendationsPage() {
       const aHasTna = a.hasTna ? 1 : 0;
       const bHasTna = b.hasTna ? 1 : 0;
       if (aHasTna !== bHasTna) return bHasTna - aHasTna;
-      return getEmployeeDisplayName(a.employee).localeCompare(getEmployeeDisplayName(b.employee));
+      return getEmployeeDisplayName(a.employee).localeCompare(
+        getEmployeeDisplayName(b.employee),
+      );
     });
   }, [employees, latestRecommendationByEmployee]);
 
   const employeesWithTna = useMemo(
     () =>
-      employees.filter((employee) => latestRecommendationByEmployee.has(employee._id))
-        .length,
+      employees.filter((employee) =>
+        latestRecommendationByEmployee.has(employee._id),
+      ).length,
     [employees, latestRecommendationByEmployee],
   );
 
@@ -382,7 +415,9 @@ export default function TnaEmployeeRecommendationsPage() {
             <p className="text-sm font-semibold text-slate-900">
               {getEmployeeDisplayName(row.employee)}
             </p>
-            <p className="text-xs text-slate-500">{row.employee.email || "--"}</p>
+            <p className="text-xs text-slate-500">
+              {row.employee.email || "--"}
+            </p>
           </div>
         ),
       },
@@ -395,7 +430,11 @@ export default function TnaEmployeeRecommendationsPage() {
         sortAccessor: (row) => row.latest?.jobRole || "",
         filterAccessor: (row) => row.latest?.jobRole || "",
         className: "min-w-[150px]",
-        render: (row) => <span className="text-sm text-slate-700">{row.latest?.jobRole || "--"}</span>,
+        render: (row) => (
+          <span className="text-sm text-slate-700">
+            {row.latest?.jobRole || "--"}
+          </span>
+        ),
       },
       {
         key: "latestTna",
@@ -403,17 +442,24 @@ export default function TnaEmployeeRecommendationsPage() {
         sortable: true,
         filterable: true,
         filterPlaceholder: "Search date",
-        sortAccessor: (row) => (row.latest?.createdAt ? new Date(row.latest.createdAt).getTime() : 0),
+        sortAccessor: (row) =>
+          row.latest?.createdAt ? new Date(row.latest.createdAt).getTime() : 0,
         filterAccessor: (row) =>
-          row.latest?.createdAt ? new Date(row.latest.createdAt).toLocaleString() : "",
+          row.latest?.createdAt
+            ? new Date(row.latest.createdAt).toLocaleString()
+            : "",
         className: "min-w-[200px] hidden md:table-cell",
         render: (row) => {
           const formatted = formatLatestTnaDateTime(row.latest?.createdAt);
           return (
             <div className="space-y-0.5">
-              <p className="text-sm text-slate-700 whitespace-nowrap">{formatted.date}</p>
+              <p className="text-sm text-slate-700 whitespace-nowrap">
+                {formatted.date}
+              </p>
               {formatted.time ? (
-                <p className="text-xs text-slate-500 whitespace-nowrap">{formatted.time}</p>
+                <p className="text-xs text-slate-500 whitespace-nowrap">
+                  {formatted.time}
+                </p>
               ) : null}
             </div>
           );
@@ -449,7 +495,9 @@ export default function TnaEmployeeRecommendationsPage() {
         filterAccessor: (row) => String(row.skillGapCount),
         align: "right",
         className: "min-w-[120px]",
-        render: (row) => <span className="text-sm text-slate-700">{row.skillGapCount}</span>,
+        render: (row) => (
+          <span className="text-sm text-slate-700">{row.skillGapCount}</span>
+        ),
       },
       {
         key: "recommended",
@@ -461,7 +509,11 @@ export default function TnaEmployeeRecommendationsPage() {
         filterAccessor: (row) => String(row.recommendedTrainingCount),
         align: "right",
         className: "min-w-[130px]",
-        render: (row) => <span className="text-sm text-slate-700">{row.recommendedTrainingCount}</span>,
+        render: (row) => (
+          <span className="text-sm text-slate-700">
+            {row.recommendedTrainingCount}
+          </span>
+        ),
       },
       {
         key: "preTest",
@@ -476,7 +528,8 @@ export default function TnaEmployeeRecommendationsPage() {
             : "",
         className: "min-w-[170px] hidden md:table-cell",
         render: (row) => {
-          const hasPreTest = typeof row.latest?.preAssessment?.score === "number";
+          const hasPreTest =
+            typeof row.latest?.preAssessment?.score === "number";
           return (
             <span className="text-sm text-slate-700 whitespace-nowrap">
               {hasPreTest
@@ -548,7 +601,7 @@ export default function TnaEmployeeRecommendationsPage() {
 
   return (
     <div className="pt-14 pb-6 px-4 md:px-6 lg:p-6 space-y-6">
-      <section className="rounded-2xl border border-slate-200 bg-white p-5 md:p-6 shadow-sm">
+      <section className="p-1 md:p-0">
         <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
           <div className="flex items-start gap-3">
             <button
@@ -565,11 +618,10 @@ export default function TnaEmployeeRecommendationsPage() {
               </p>
               <div className="mt-1 flex items-center gap-2">
                 <h1 className="text-2xl font-bold text-slate-900">
-                  {employeeTerm} TNA Recommendations
+                  {employeeTerm} TNA Diagnosis Outputs
                 </h1>
                 <HoverHelpTooltip
-                  text="View who has TNA results, plus detailed skill gaps and training recommendations."
-                  
+                  text="This page lists diagnosis outputs from TNA. Use Training Management for training delivery and execution."
                   className="shrink-0"
                 />
               </div>
@@ -579,15 +631,21 @@ export default function TnaEmployeeRecommendationsPage() {
           <div className="grid grid-cols-2 gap-2 text-sm min-w-[230px]">
             <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
               <p className="text-xs text-slate-500">Total {employeesTerm}</p>
-              <p className="text-lg font-semibold text-slate-900">{employees.length}</p>
+              <p className="text-lg font-semibold text-slate-900">
+                {employees.length}
+              </p>
             </div>
             <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2">
               <p className="text-xs text-emerald-700">With TNA</p>
-              <p className="text-lg font-semibold text-emerald-700">{employeesWithTna}</p>
+              <p className="text-lg font-semibold text-emerald-700">
+                {employeesWithTna}
+              </p>
             </div>
             <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 col-span-2">
               <p className="text-xs text-amber-700">Without TNA</p>
-              <p className="text-lg font-semibold text-amber-700">{employeesWithoutTna}</p>
+              <p className="text-lg font-semibold text-amber-700">
+                {employeesWithoutTna}
+              </p>
             </div>
           </div>
         </div>
@@ -600,10 +658,11 @@ export default function TnaEmployeeRecommendationsPage() {
               All {employeesTerm}
             </p>
             <div className="mt-1 flex items-center gap-2">
-              <h2 className="text-xl font-semibold text-slate-900">Employee TNA Summary Table</h2>
+              <h2 className="text-xl font-semibold text-slate-900">
+                Employee TNA Summary Table
+              </h2>
               <HoverHelpTooltip
                 text="One row per employee. Click a row (or view) to open full skill gaps and recommendations."
-                
                 className="shrink-0"
               />
             </div>
@@ -611,7 +670,9 @@ export default function TnaEmployeeRecommendationsPage() {
         </div>
 
         {studentsQuery.isLoading ? (
-          <p className="text-sm text-slate-500">Loading {employeesTerm.toLowerCase()}...</p>
+          <p className="text-sm text-slate-500">
+            Loading {employeesTerm.toLowerCase()}...
+          </p>
         ) : employeeRows.length === 0 ? (
           <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-5 text-sm text-slate-600">
             No matching {employeesTerm.toLowerCase()} found.
@@ -640,8 +701,10 @@ export default function TnaEmployeeRecommendationsPage() {
         <div className="space-y-4">
           <p className="text-gray-700">
             Are you sure you want to delete the latest TNA recommendation for{" "}
-            <span className="font-semibold">"{deleteTarget?.employeeName}"</span>? This action
-            cannot be undone.
+            <span className="font-semibold">
+              "{deleteTarget?.employeeName}"
+            </span>
+            ? This action cannot be undone.
           </p>
 
           <div className="flex gap-2 justify-end mt-6">
@@ -661,7 +724,9 @@ export default function TnaEmployeeRecommendationsPage() {
               className="bg-red-600 text-white hover:bg-red-700"
               disabled={deleteRecommendationMutation.isPending}
             >
-              {deleteRecommendationMutation.isPending ? "Deleting..." : "Delete Recommendation"}
+              {deleteRecommendationMutation.isPending
+                ? "Deleting..."
+                : "Delete Recommendation"}
             </Button>
           </div>
         </div>
@@ -671,166 +736,213 @@ export default function TnaEmployeeRecommendationsPage() {
         detailsModalHost &&
         createPortal(
           <div className="absolute inset-0 z-[80] flex items-center justify-center bg-slate-900/45 backdrop-blur-[2px] p-4">
-          <div className="w-full max-w-5xl rounded-2xl border border-slate-200 bg-white shadow-2xl max-h-[88vh] overflow-hidden">
-            <div className="flex items-center gap-2 border-b border-slate-200 px-5 py-4">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-                  {selectedRecommendation ? "TNA Recommendation Details" : "TNA Status"}
-                </p>
-                <h3 className="text-lg font-semibold text-slate-900 mt-1">
-                  {getEmployeeDisplayName(viewDetails.employee)} |{" "}
-                  {selectedRecommendation?.jobRole || "No TNA Yet"}
-                </h3>
-                {selectedRecommendation ? (
-                  <p className="text-xs text-slate-500 mt-1">
-                    {new Date(selectedRecommendation.createdAt || Date.now()).toLocaleString()} | status:{" "}
-                    <span className="capitalize">{normalizeStatus(selectedRecommendation.status)}</span>
+            <div className="w-full max-w-5xl rounded-2xl border border-slate-200 bg-white shadow-2xl max-h-[88vh] overflow-hidden">
+              <div className="flex items-center gap-2 border-b border-slate-200 px-5 py-4">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                    {selectedRecommendation
+                      ? "TNA Recommendation Details"
+                      : "TNA Status"}
                   </p>
+                  <h3 className="text-lg font-semibold text-slate-900 mt-1">
+                    {getEmployeeDisplayName(viewDetails.employee)} |{" "}
+                    {selectedRecommendation?.jobRole || "No TNA Yet"}
+                  </h3>
+                  {selectedRecommendation ? (
+                    <p className="text-xs text-slate-500 mt-1">
+                      {new Date(
+                        selectedRecommendation.createdAt || Date.now(),
+                      ).toLocaleString()}{" "}
+                      | status:{" "}
+                      <span className="capitalize">
+                        {normalizeStatus(selectedRecommendation.status)}
+                      </span>
+                    </p>
+                  ) : (
+                    <p className="text-xs text-slate-500 mt-1">
+                      This employee does not have a generated TNA recommendation
+                      yet.
+                    </p>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setViewDetails(null)}
+                  className="ml-auto inline-flex h-9 w-9 items-center justify-center rounded-md border border-slate-200 text-slate-600 hover:bg-slate-50"
+                  aria-label="Close details modal"
+                >
+                  <span className="text-base leading-none">x</span>
+                </button>
+              </div>
+
+              <div className="max-h-[calc(88vh-80px)] overflow-y-auto px-5 py-4 space-y-4">
+                {!selectedRecommendation ? (
+                  <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-6">
+                    <p className="text-sm font-semibold text-slate-800">
+                      No TNA record available yet
+                    </p>
+                    <HoverHelpTooltip
+                      text="Run TNA analysis for this employee to generate skill gaps and training recommendations."
+                      className="mt-1"
+                    />
+                  </div>
                 ) : (
-                  <p className="text-xs text-slate-500 mt-1">
-                    This employee does not have a generated TNA recommendation yet.
-                  </p>
+                  <>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-xs">
+                      <div className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2">
+                        <p className="font-semibold text-slate-600 mb-1">
+                          Skill Gaps
+                        </p>
+                        <p className="text-slate-800">
+                          {Array.isArray(selectedRecommendation.skillGaps)
+                            ? selectedRecommendation.skillGaps.length
+                            : 0}
+                        </p>
+                      </div>
+                      <div className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2">
+                        <p className="font-semibold text-slate-600 mb-1">
+                          Recommended Trainings
+                        </p>
+                        <p className="text-slate-800">
+                          {Array.isArray(
+                            selectedRecommendation.recommendedTrainings,
+                          )
+                            ? selectedRecommendation.recommendedTrainings.length
+                            : 0}
+                        </p>
+                      </div>
+                      <div className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2">
+                        <p className="font-semibold text-slate-600 mb-1">
+                          Pre-test
+                        </p>
+                        <p className="text-slate-800">
+                          {typeof selectedRecommendation.preAssessment
+                            ?.score === "number"
+                            ? `${selectedRecommendation.preAssessment.score}% (threshold ${selectedRecommendation.preAssessment.threshold ?? 70}%)`
+                            : "--"}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                      <div className="rounded-lg border border-slate-200 bg-white p-3">
+                        <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                          Skill Gaps
+                        </p>
+                        {!Array.isArray(selectedRecommendation.skillGaps) ||
+                        selectedRecommendation.skillGaps.length === 0 ? (
+                          <p className="text-sm text-slate-500 mt-2">
+                            No skill gaps.
+                          </p>
+                        ) : (
+                          <ul className="mt-2 space-y-1.5 text-sm text-slate-700">
+                            {selectedRecommendation.skillGaps.map(
+                              (gapItem, index) => (
+                                <li
+                                  key={`${selectedRecommendation._id}-gap-${index}`}
+                                >
+                                  <span className="font-medium">
+                                    {gapItem.skillName || "Unnamed skill"}
+                                  </span>{" "}
+                                  - required {gapItem.requiredLevel ?? 0},
+                                  current {gapItem.currentLevel ?? 0}, gap{" "}
+                                  {gapItem.gap ?? 0}
+                                </li>
+                              ),
+                            )}
+                          </ul>
+                        )}
+                      </div>
+
+                      <div className="rounded-lg border border-slate-200 bg-white p-3">
+                        <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                          Recommended Trainings
+                        </p>
+                        {!Array.isArray(
+                          selectedRecommendation.recommendedTrainings,
+                        ) ||
+                        selectedRecommendation.recommendedTrainings.length ===
+                          0 ? (
+                          <p className="text-sm text-slate-500 mt-2">
+                            No training recommendations generated.
+                          </p>
+                        ) : (
+                          <ul className="mt-2 space-y-2 text-sm text-slate-700">
+                            {selectedRecommendation.recommendedTrainings.map(
+                              (item, index) => {
+                                const courseLabel = getCourseLabel(item.course);
+                                return (
+                                  <li
+                                    key={`${selectedRecommendation._id}-training-${index}`}
+                                    className="rounded-md border border-slate-200 bg-slate-50 px-2.5 py-2"
+                                  >
+                                    <p className="font-medium text-slate-900">
+                                      {item.title || "Untitled training"}
+                                    </p>
+                                    <p className="text-xs text-slate-500 mt-0.5">
+                                      {formatReasonType(item.reasonType)} |
+                                      priority: {item.priority || "medium"} |{" "}
+                                      {item.mandatory
+                                        ? "mandatory"
+                                        : "optional"}
+                                    </p>
+                                    {item.reasonDetail && (
+                                      <p className="text-xs text-slate-500 mt-0.5">
+                                        {item.reasonDetail}
+                                      </p>
+                                    )}
+                                    {courseLabel && (
+                                      <p className="text-xs text-slate-500 mt-0.5">
+                                        Linked course: {courseLabel}
+                                      </p>
+                                    )}
+                                  </li>
+                                );
+                              },
+                            )}
+                          </ul>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-xs">
+                      <div className="rounded-md border border-slate-200 bg-white px-2.5 py-2">
+                        <p className="font-semibold text-slate-600 mb-1">
+                          Performance Gaps
+                        </p>
+                        <p className="text-slate-500">
+                          {(selectedRecommendation.performanceGaps || []).join(
+                            ", ",
+                          ) || "--"}
+                        </p>
+                      </div>
+                      <div className="rounded-md border border-slate-200 bg-white px-2.5 py-2">
+                        <p className="font-semibold text-slate-600 mb-1">
+                          Manager Recommendations
+                        </p>
+                        <p className="text-slate-500">
+                          {(
+                            selectedRecommendation.managerRecommendations || []
+                          ).join(", ") || "--"}
+                        </p>
+                      </div>
+                      <div className="rounded-md border border-slate-200 bg-white px-2.5 py-2">
+                        <p className="font-semibold text-slate-600 mb-1">
+                          Employee Requests
+                        </p>
+                        <p className="text-slate-500">
+                          {(selectedRecommendation.employeeRequests || []).join(
+                            ", ",
+                          ) || "--"}
+                        </p>
+                      </div>
+                    </div>
+                  </>
                 )}
               </div>
-              <button
-                type="button"
-                onClick={() => setViewDetails(null)}
-                className="ml-auto inline-flex h-9 w-9 items-center justify-center rounded-md border border-slate-200 text-slate-600 hover:bg-slate-50"
-                aria-label="Close details modal"
-              >
-                <span className="text-base leading-none">x</span>
-              </button>
             </div>
-
-            <div className="max-h-[calc(88vh-80px)] overflow-y-auto px-5 py-4 space-y-4">
-              {!selectedRecommendation ? (
-                <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-6">
-                  <p className="text-sm font-semibold text-slate-800">No TNA record available yet</p>
-                  <HoverHelpTooltip
-                    text="Run TNA analysis for this employee to generate skill gaps and training recommendations."
-                    className="mt-1"
-                  />
-                </div>
-              ) : (
-                <>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-xs">
-                    <div className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2">
-                      <p className="font-semibold text-slate-600 mb-1">Skill Gaps</p>
-                      <p className="text-slate-800">
-                        {Array.isArray(selectedRecommendation.skillGaps)
-                          ? selectedRecommendation.skillGaps.length
-                          : 0}
-                      </p>
-                    </div>
-                    <div className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2">
-                      <p className="font-semibold text-slate-600 mb-1">Recommended Trainings</p>
-                      <p className="text-slate-800">
-                        {Array.isArray(selectedRecommendation.recommendedTrainings)
-                          ? selectedRecommendation.recommendedTrainings.length
-                          : 0}
-                      </p>
-                    </div>
-                    <div className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2">
-                      <p className="font-semibold text-slate-600 mb-1">Pre-test</p>
-                      <p className="text-slate-800">
-                        {typeof selectedRecommendation.preAssessment?.score === "number"
-                          ? `${selectedRecommendation.preAssessment.score}% (threshold ${selectedRecommendation.preAssessment.threshold ?? 70}%)`
-                          : "--"}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-                    <div className="rounded-lg border border-slate-200 bg-white p-3">
-                      <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-                        Skill Gaps
-                      </p>
-                      {!Array.isArray(selectedRecommendation.skillGaps) ||
-                      selectedRecommendation.skillGaps.length === 0 ? (
-                        <p className="text-sm text-slate-500 mt-2">No skill gaps.</p>
-                      ) : (
-                        <ul className="mt-2 space-y-1.5 text-sm text-slate-700">
-                          {selectedRecommendation.skillGaps.map((gapItem, index) => (
-                            <li key={`${selectedRecommendation._id}-gap-${index}`}>
-                              <span className="font-medium">{gapItem.skillName || "Unnamed skill"}</span>{" "}
-                              - required {gapItem.requiredLevel ?? 0}, current{" "}
-                              {gapItem.currentLevel ?? 0}, gap {gapItem.gap ?? 0}
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                    </div>
-
-                    <div className="rounded-lg border border-slate-200 bg-white p-3">
-                      <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-                        Recommended Trainings
-                      </p>
-                      {!Array.isArray(selectedRecommendation.recommendedTrainings) ||
-                      selectedRecommendation.recommendedTrainings.length === 0 ? (
-                        <p className="text-sm text-slate-500 mt-2">
-                          No training recommendations generated.
-                        </p>
-                      ) : (
-                        <ul className="mt-2 space-y-2 text-sm text-slate-700">
-                          {selectedRecommendation.recommendedTrainings.map((item, index) => {
-                            const courseLabel = getCourseLabel(item.course);
-                            return (
-                              <li
-                                key={`${selectedRecommendation._id}-training-${index}`}
-                                className="rounded-md border border-slate-200 bg-slate-50 px-2.5 py-2"
-                              >
-                                <p className="font-medium text-slate-900">
-                                  {item.title || "Untitled training"}
-                                </p>
-                                <p className="text-xs text-slate-500 mt-0.5">
-                                  {formatReasonType(item.reasonType)} | priority:{" "}
-                                  {item.priority || "medium"} |{" "}
-                                  {item.mandatory ? "mandatory" : "optional"}
-                                </p>
-                                {item.reasonDetail && (
-                                  <p className="text-xs text-slate-500 mt-0.5">
-                                    {item.reasonDetail}
-                                  </p>
-                                )}
-                                {courseLabel && (
-                                  <p className="text-xs text-slate-500 mt-0.5">
-                                    Linked course: {courseLabel}
-                                  </p>
-                                )}
-                              </li>
-                            );
-                          })}
-                        </ul>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-xs">
-                    <div className="rounded-md border border-slate-200 bg-white px-2.5 py-2">
-                      <p className="font-semibold text-slate-600 mb-1">Performance Gaps</p>
-                      <p className="text-slate-500">
-                        {(selectedRecommendation.performanceGaps || []).join(", ") || "--"}
-                      </p>
-                    </div>
-                    <div className="rounded-md border border-slate-200 bg-white px-2.5 py-2">
-                      <p className="font-semibold text-slate-600 mb-1">Manager Recommendations</p>
-                      <p className="text-slate-500">
-                        {(selectedRecommendation.managerRecommendations || []).join(", ") || "--"}
-                      </p>
-                    </div>
-                    <div className="rounded-md border border-slate-200 bg-white px-2.5 py-2">
-                      <p className="font-semibold text-slate-600 mb-1">Employee Requests</p>
-                      <p className="text-slate-500">
-                        {(selectedRecommendation.employeeRequests || []).join(", ") || "--"}
-                      </p>
-                    </div>
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
-        </div>,
-          detailsModalHost
+          </div>,
+          detailsModalHost,
         )}
     </div>
   );

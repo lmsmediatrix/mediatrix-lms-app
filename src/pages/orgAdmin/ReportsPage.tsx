@@ -1,5 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
-import { startTransition, useMemo, useState } from "react";
+import {
+  startTransition,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import Button from "../../components/common/Button";
 import GroupedDataTable, {
@@ -34,6 +41,7 @@ import {
   FiUserCheck,
   FiUsers,
 } from "react-icons/fi";
+import { PanelLeft } from "@/components/animate-ui/icons/panel-left";
 
 type ReportTabId =
   | "students"
@@ -189,8 +197,10 @@ interface ReportPanelShellProps {
   note?: string;
   isExportingExcel?: boolean;
   isExportingPdf?: boolean;
-  onExportExcel: () => void;
-  onExportPdf: () => void;
+  onExportExcelCurrentPage: () => void;
+  onExportExcelAllRows: () => void;
+  onExportPdfCurrentPage: () => void;
+  onExportPdfAllRows: () => void;
   onOpenPage?: () => void;
   openPageLabel?: string;
   children: React.ReactNode;
@@ -675,6 +685,7 @@ const buildBatchProgressRows = (
 
 interface UseReportExportActionsOptions<Row> {
   rows: Row[];
+  currentPageRows?: Row[];
   columns: ReportExportColumn<Row>[];
   filenamePrefix: string;
   sheetName: string;
@@ -684,6 +695,7 @@ interface UseReportExportActionsOptions<Row> {
 
 function useReportExportActions<Row>({
   rows,
+  currentPageRows,
   columns,
   filenamePrefix,
   sheetName,
@@ -694,22 +706,29 @@ function useReportExportActions<Row>({
     null,
   );
 
-  const runExport = (format: ReportExportFormat) => {
+  const runExport = (format: ReportExportFormat, scope: "all" | "current") => {
     void (async () => {
       setActiveFormat(format);
+      const selectedRows =
+        scope === "current"
+          ? currentPageRows && currentPageRows.length > 0
+            ? currentPageRows
+            : rows.slice(0, REPORT_PAGE_SIZE)
+          : rows;
+      const scopeLabel = scope === "current" ? "current page" : "all loaded rows";
 
       try {
         if (format === "excel") {
           await exportRowsToExcel({
-            rows,
+            rows: selectedRows,
             columns,
             filenamePrefix,
             sheetName,
             pdfTitle,
             toastMessages: {
-              pending: `Exporting ${reportLabel} to Excel...`,
-              success: `${reportLabel} exported to Excel`,
-              error: `Failed to export ${reportLabel} to Excel`,
+              pending: `Exporting ${scopeLabel} of ${reportLabel} to Excel...`,
+              success: `${scopeLabel} of ${reportLabel} exported to Excel`,
+              error: `Failed to export ${scopeLabel} of ${reportLabel} to Excel`,
             },
           });
 
@@ -717,15 +736,15 @@ function useReportExportActions<Row>({
         }
 
         await exportRowsToPdf({
-          rows,
+          rows: selectedRows,
           columns,
           filenamePrefix,
           sheetName,
           pdfTitle,
           toastMessages: {
-            pending: `Exporting ${reportLabel} to PDF...`,
-            success: `${reportLabel} exported to PDF`,
-            error: `Failed to export ${reportLabel} to PDF`,
+            pending: `Exporting ${scopeLabel} of ${reportLabel} to PDF...`,
+            success: `${scopeLabel} of ${reportLabel} exported to PDF`,
+            error: `Failed to export ${scopeLabel} of ${reportLabel} to PDF`,
           },
         });
       } finally {
@@ -735,10 +754,37 @@ function useReportExportActions<Row>({
   };
 
   return {
-    exportExcel: () => runExport("excel"),
-    exportPdf: () => runExport("pdf"),
+    exportExcelCurrentPage: () => runExport("excel", "current"),
+    exportExcelAllRows: () => runExport("excel", "all"),
+    exportPdfCurrentPage: () => runExport("pdf", "current"),
+    exportPdfAllRows: () => runExport("pdf", "all"),
     isExportingExcel: activeFormat === "excel",
     isExportingPdf: activeFormat === "pdf",
+  };
+}
+
+function useCurrentVisibleRows<Row>() {
+  const [currentPageRows, setCurrentPageRows] = useState<Row[]>([]);
+
+  const handleVisibleRowsChange = useCallback(
+    (rowsByGroup: Record<string, Row[]>) => {
+      const firstGroupRows = Object.values(rowsByGroup)[0] || [];
+      setCurrentPageRows((previousRows) => {
+        if (
+          previousRows.length === firstGroupRows.length &&
+          previousRows.every((row, index) => row === firstGroupRows[index])
+        ) {
+          return previousRows;
+        }
+        return firstGroupRows;
+      });
+    },
+    [],
+  );
+
+  return {
+    currentPageRows,
+    handleVisibleRowsChange,
   };
 }
 
@@ -785,17 +831,46 @@ function ReportTabButton({
 
 function ReportPanelShell({
   title,
-  description,
+  description: _description,
   totalLabel,
-  note,
+  note: _note,
   isExportingExcel = false,
   isExportingPdf = false,
-  onExportExcel,
-  onExportPdf,
+  onExportExcelCurrentPage,
+  onExportExcelAllRows,
+  onExportPdfCurrentPage,
+  onExportPdfAllRows,
   onOpenPage,
   openPageLabel = "Open Source Page",
   children,
 }: ReportPanelShellProps) {
+  const [isActionMenuOpen, setIsActionMenuOpen] = useState(false);
+  const actionMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!isActionMenuOpen) return;
+
+    const handleDocumentClick = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (actionMenuRef.current?.contains(target)) return;
+      setIsActionMenuOpen(false);
+    };
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setIsActionMenuOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleDocumentClick);
+    document.addEventListener("keydown", handleEscape);
+
+    return () => {
+      document.removeEventListener("mousedown", handleDocumentClick);
+      document.removeEventListener("keydown", handleEscape);
+    };
+  }, [isActionMenuOpen]);
+
   return (
     <section className="overflow-hidden rounded-[28px] border border-slate-200/90 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
       <div className="border-b border-slate-100 px-5 py-5 lg:px-6">
@@ -809,47 +884,95 @@ function ReportPanelShell({
                 {totalLabel}
               </span>
             </div>
-            <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
-              {description}
-            </p>
-            {note ? (
-              <p className="mt-3 max-w-3xl rounded-xl border border-amber-200 bg-amber-50/70 px-3 py-2 text-xs leading-5 text-amber-800">
-                {note}
-              </p>
-            ) : null}
           </div>
         </div>
 
         <div className="mt-4 flex flex-wrap items-center gap-2 xl:mt-0 xl:justify-end">
-          {onOpenPage ? (
+          <div className="relative" ref={actionMenuRef}>
             <Button
-              variant="outline"
-              onClick={onOpenPage}
-              className="h-10 shrink-0 whitespace-nowrap !rounded-xl !px-4 !py-2 text-sm"
+              variant={isActionMenuOpen ? "outline" : "primary"}
+              onClick={() => setIsActionMenuOpen((previous) => !previous)}
+              className="h-10 shrink-0 !rounded-xl !px-4"
             >
-              {openPageLabel}
+              <PanelLeft
+                size={15}
+                animate={isActionMenuOpen ? "default" : false}
+                animateOnHover
+              />
+              <span className="sr-only">Toggle report action menu</span>
             </Button>
-          ) : null}
-          <Button
-            variant="outline"
-            onClick={onExportExcel}
-            className="h-10 shrink-0 whitespace-nowrap !rounded-xl !px-4 !py-2 text-sm"
-            isLoading={isExportingExcel}
-            isLoadingText="Exporting..."
-          >
-            <FiDownload size={16} />
-            Export Excel
-          </Button>
-          <Button
-            variant="primary"
-            onClick={onExportPdf}
-            className="h-10 shrink-0 whitespace-nowrap !rounded-xl !px-4 !py-2 text-sm"
-            isLoading={isExportingPdf}
-            isLoadingText="Exporting..."
-          >
-            <FiDownload size={16} />
-            Export PDF
-          </Button>
+
+            {isActionMenuOpen ? (
+              <div className="absolute right-0 top-12 z-30 w-[280px] rounded-2xl border border-slate-200 bg-white p-3 shadow-[0_18px_45px_-24px_rgba(15,23,42,0.5)]">
+                <div className="grid gap-2">
+                  {onOpenPage ? (
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setIsActionMenuOpen(false);
+                        onOpenPage();
+                      }}
+                      className="h-10 w-full justify-start whitespace-nowrap !rounded-xl !px-4 !py-2 text-sm"
+                    >
+                      {openPageLabel}
+                    </Button>
+                  ) : null}
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setIsActionMenuOpen(false);
+                      onExportExcelCurrentPage();
+                    }}
+                    className="h-10 w-full justify-start whitespace-nowrap !rounded-xl !px-4 !py-2 text-sm"
+                    isLoading={isExportingExcel}
+                    isLoadingText="Exporting..."
+                  >
+                    <FiDownload size={16} />
+                    Export Current Page
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setIsActionMenuOpen(false);
+                      onExportExcelAllRows();
+                    }}
+                    className="h-10 w-full justify-start whitespace-nowrap !rounded-xl !px-4 !py-2 text-sm"
+                    isLoading={isExportingExcel}
+                    isLoadingText="Exporting..."
+                  >
+                    <FiDownload size={16} />
+                    Export All
+                  </Button>
+                  <Button
+                    variant="primary"
+                    onClick={() => {
+                      setIsActionMenuOpen(false);
+                      onExportPdfCurrentPage();
+                    }}
+                    className="h-10 w-full justify-start whitespace-nowrap !rounded-xl !px-4 !py-2 text-sm"
+                    isLoading={isExportingPdf}
+                    isLoadingText="Exporting..."
+                  >
+                    <FiDownload size={16} />
+                    Export PDF Current Page
+                  </Button>
+                  <Button
+                    variant="primary"
+                    onClick={() => {
+                      setIsActionMenuOpen(false);
+                      onExportPdfAllRows();
+                    }}
+                    className="h-10 w-full justify-start whitespace-nowrap !rounded-xl !px-4 !py-2 text-sm"
+                    isLoading={isExportingPdf}
+                    isLoadingText="Exporting..."
+                  >
+                    <FiDownload size={16} />
+                    Export PDF All
+                  </Button>
+                </div>
+              </div>
+            ) : null}
+          </div>
         </div>
       </div>
 
@@ -1069,6 +1192,8 @@ function StudentReportTab({
     ],
     [learnersTerm, rows, totalItems],
   );
+  const { currentPageRows, handleVisibleRowsChange } =
+    useCurrentVisibleRows<IStudent>();
 
   const exportColumns = useMemo((): ReportExportColumn<IStudent>[] => {
     const baseColumns: ReportExportColumn<IStudent>[] = [
@@ -1123,6 +1248,7 @@ function StudentReportTab({
 
   const reportExporter = useReportExportActions({
     rows,
+    currentPageRows,
     columns: exportColumns,
     filenamePrefix: "admin-reports-students",
     sheetName: learnersTerm,
@@ -1136,8 +1262,10 @@ function StudentReportTab({
       description={`Review the active ${learnersTerm.toLowerCase()} directory in table form, filter columns directly in the datatable, and export the rows loaded in this report to Excel or PDF.`}
       totalLabel={`${formatCount(totalItems)} active ${learnersTerm.toLowerCase()}`}
       note={note}
-      onExportExcel={reportExporter.exportExcel}
-      onExportPdf={reportExporter.exportPdf}
+      onExportExcelCurrentPage={reportExporter.exportExcelCurrentPage}
+      onExportExcelAllRows={reportExporter.exportExcelAllRows}
+      onExportPdfCurrentPage={reportExporter.exportPdfCurrentPage}
+      onExportPdfAllRows={reportExporter.exportPdfAllRows}
       isExportingExcel={reportExporter.isExportingExcel}
       isExportingPdf={reportExporter.isExportingPdf}
       onOpenPage={() => navigate(`/${orgCode}/admin/student`)}
@@ -1182,6 +1310,7 @@ function StudentReportTab({
           pageSize={REPORT_PAGE_SIZE}
           showGroupHeader={false}
           cardless={true}
+          onVisibleRowsChange={handleVisibleRowsChange}
           tableMinWidthClassName={
             orgType === "school" ? "min-w-[1100px]" : "min-w-[1180px]"
           }
@@ -1341,6 +1470,8 @@ function InstructorReportTab({
     ],
     [instructorsTerm, rows, totalItems],
   );
+  const { currentPageRows, handleVisibleRowsChange } =
+    useCurrentVisibleRows<IInstructor>();
 
   const exportColumns = useMemo((): ReportExportColumn<IInstructor>[] => {
     const baseColumns: ReportExportColumn<IInstructor>[] = [
@@ -1382,6 +1513,7 @@ function InstructorReportTab({
 
   const reportExporter = useReportExportActions({
     rows,
+    currentPageRows,
     columns: exportColumns,
     filenamePrefix: "admin-reports-instructors",
     sheetName: instructorsTerm,
@@ -1395,8 +1527,10 @@ function InstructorReportTab({
       description={`Inspect the active ${instructorsTerm.toLowerCase()} directory in datatable format and export the rows loaded in this report to Excel or PDF.`}
       totalLabel={`${formatCount(totalItems)} active ${instructorsTerm.toLowerCase()}`}
       note={note}
-      onExportExcel={reportExporter.exportExcel}
-      onExportPdf={reportExporter.exportPdf}
+      onExportExcelCurrentPage={reportExporter.exportExcelCurrentPage}
+      onExportExcelAllRows={reportExporter.exportExcelAllRows}
+      onExportPdfCurrentPage={reportExporter.exportPdfCurrentPage}
+      onExportPdfAllRows={reportExporter.exportPdfAllRows}
       isExportingExcel={reportExporter.isExportingExcel}
       isExportingPdf={reportExporter.isExportingPdf}
       onOpenPage={() => navigate(`/${orgCode}/admin/instructor`)}
@@ -1439,6 +1573,7 @@ function InstructorReportTab({
           pageSize={REPORT_PAGE_SIZE}
           showGroupHeader={false}
           cardless={true}
+          onVisibleRowsChange={handleVisibleRowsChange}
           tableMinWidthClassName={
             orgType === "school" ? "min-w-[1080px]" : "min-w-[980px]"
           }
@@ -1608,6 +1743,8 @@ function SectionReportTab({
     ],
     [rows, sectionsTerm, totalItems],
   );
+  const { currentPageRows, handleVisibleRowsChange } =
+    useCurrentVisibleRows<ISection>();
 
   const exportColumns = useMemo((): ReportExportColumn<ISection>[] => {
     return [
@@ -1646,6 +1783,7 @@ function SectionReportTab({
 
   const reportExporter = useReportExportActions({
     rows,
+    currentPageRows,
     columns: exportColumns,
     filenamePrefix: "admin-reports-sections",
     sheetName: sectionsTerm,
@@ -1659,8 +1797,10 @@ function SectionReportTab({
       description={`Use this report tab to review active ${sectionsTerm.toLowerCase()}, filter by code, course, instructor, status, and export the rows loaded in this report to Excel or PDF.`}
       totalLabel={`${formatCount(totalItems)} active ${sectionsTerm.toLowerCase()}`}
       note={note}
-      onExportExcel={reportExporter.exportExcel}
-      onExportPdf={reportExporter.exportPdf}
+      onExportExcelCurrentPage={reportExporter.exportExcelCurrentPage}
+      onExportExcelAllRows={reportExporter.exportExcelAllRows}
+      onExportPdfCurrentPage={reportExporter.exportPdfCurrentPage}
+      onExportPdfAllRows={reportExporter.exportPdfAllRows}
       isExportingExcel={reportExporter.isExportingExcel}
       isExportingPdf={reportExporter.isExportingPdf}
       onOpenPage={() => navigate(`/${orgCode}/admin/section`)}
@@ -1695,6 +1835,7 @@ function SectionReportTab({
           pageSize={REPORT_PAGE_SIZE}
           showGroupHeader={false}
           cardless={true}
+          onVisibleRowsChange={handleVisibleRowsChange}
           tableMinWidthClassName="min-w-[1180px]"
           emptyFilteredText={`No matching ${sectionsTerm.toLowerCase()} found.`}
         />
@@ -1840,6 +1981,8 @@ function CourseReportTab({ orgId, orgCode, isCorporate }: CourseReportProps) {
     ],
     [rows, totalItems],
   );
+  const { currentPageRows, handleVisibleRowsChange } =
+    useCurrentVisibleRows<CourseRow>();
 
   const exportColumns = useMemo((): ReportExportColumn<CourseRow>[] => {
     const baseColumns: ReportExportColumn<CourseRow>[] = [
@@ -1879,6 +2022,7 @@ function CourseReportTab({ orgId, orgCode, isCorporate }: CourseReportProps) {
 
   const reportExporter = useReportExportActions({
     rows,
+    currentPageRows,
     columns: exportColumns,
     filenamePrefix: "admin-reports-courses",
     sheetName: "Courses",
@@ -1892,8 +2036,10 @@ function CourseReportTab({ orgId, orgCode, isCorporate }: CourseReportProps) {
       description="Browse the course catalog in datatable form, filter by code, title, level, status, and export the rows loaded in this report to Excel or PDF."
       totalLabel={`${formatCount(totalItems)} active courses`}
       note={note}
-      onExportExcel={reportExporter.exportExcel}
-      onExportPdf={reportExporter.exportPdf}
+      onExportExcelCurrentPage={reportExporter.exportExcelCurrentPage}
+      onExportExcelAllRows={reportExporter.exportExcelAllRows}
+      onExportPdfCurrentPage={reportExporter.exportPdfCurrentPage}
+      onExportPdfAllRows={reportExporter.exportPdfAllRows}
       isExportingExcel={reportExporter.isExportingExcel}
       isExportingPdf={reportExporter.isExportingPdf}
       onOpenPage={() => navigate(`/${orgCode}/admin/course`)}
@@ -1938,6 +2084,7 @@ function CourseReportTab({ orgId, orgCode, isCorporate }: CourseReportProps) {
           pageSize={REPORT_PAGE_SIZE}
           showGroupHeader={false}
           cardless={true}
+          onVisibleRowsChange={handleVisibleRowsChange}
           tableMinWidthClassName={
             isCorporate ? "min-w-[980px]" : "min-w-[1120px]"
           }
@@ -2110,7 +2257,7 @@ function PerformanceReportTab({
         render: (row) => (
           <button
             type="button"
-            onClick={() => navigate(`/${orgCode}/admin/performance/${row._id}`)}
+            onClick={() => navigate(`/${orgCode}/admin/student/${row._id}`)}
             className="text-sm font-medium text-primary hover:text-primary/80"
           >
             View Details
@@ -2131,6 +2278,8 @@ function PerformanceReportTab({
     ],
     [rows],
   );
+  const { currentPageRows, handleVisibleRowsChange } =
+    useCurrentVisibleRows<PerformanceStudentRow>();
 
   const exportColumns = useMemo(
     (): ReportExportColumn<PerformanceStudentRow>[] => [
@@ -2179,6 +2328,7 @@ function PerformanceReportTab({
 
   const reportExporter = useReportExportActions({
     rows,
+    currentPageRows,
     columns: exportColumns,
     filenamePrefix: "admin-reports-performance",
     sheetName: "Performance",
@@ -2191,12 +2341,14 @@ function PerformanceReportTab({
       title="Performance Report"
       description={`Track ${learnersTerm.toLowerCase()} performance, attendance, progress, standing, and risk level in one datatable, then export the loaded rows to Excel or PDF.`}
       totalLabel={`${formatCount(rows.length)} tracked ${learnersTerm.toLowerCase()}`}
-      onExportExcel={reportExporter.exportExcel}
-      onExportPdf={reportExporter.exportPdf}
+      onExportExcelCurrentPage={reportExporter.exportExcelCurrentPage}
+      onExportExcelAllRows={reportExporter.exportExcelAllRows}
+      onExportPdfCurrentPage={reportExporter.exportPdfCurrentPage}
+      onExportPdfAllRows={reportExporter.exportPdfAllRows}
       isExportingExcel={reportExporter.isExportingExcel}
       isExportingPdf={reportExporter.isExportingPdf}
-      onOpenPage={() => navigate(`/${orgCode}/admin/performance`)}
-      openPageLabel="Open Performance Page"
+      onOpenPage={() => navigate(`/${orgCode}/admin/completion`)}
+      openPageLabel="Open Progress Page"
     >
       {isPending ? (
         <TableSkeletonClean
@@ -2230,6 +2382,7 @@ function PerformanceReportTab({
           pageSize={REPORT_PAGE_SIZE}
           showGroupHeader={false}
           cardless={true}
+          onVisibleRowsChange={handleVisibleRowsChange}
           tableMinWidthClassName="min-w-[1360px]"
           emptyFilteredText={`No matching ${learnersTerm.toLowerCase()} found.`}
         />
@@ -2528,6 +2681,8 @@ function IndividualGradesReportTab({
     ],
     [rows],
   );
+  const { currentPageRows, handleVisibleRowsChange } =
+    useCurrentVisibleRows<IndividualGradeRow>();
 
   const exportColumns = useMemo(
     (): ReportExportColumn<IndividualGradeRow>[] => [
@@ -2581,6 +2736,7 @@ function IndividualGradesReportTab({
 
   const reportExporter = useReportExportActions({
     rows,
+    currentPageRows,
     columns: exportColumns,
     filenamePrefix: "admin-reports-individual-grades",
     sheetName: "Individual Grades",
@@ -2594,8 +2750,10 @@ function IndividualGradesReportTab({
       description={`Flatten grade results across the loaded ${sectionsTerm.toLowerCase()} into one datatable, then export the grade entries to Excel or PDF.`}
       totalLabel={`${formatCount(rows.length)} grade entries across ${formatCount(loadedSectionsCount)} loaded ${sectionsTerm.toLowerCase()}`}
       note={note}
-      onExportExcel={reportExporter.exportExcel}
-      onExportPdf={reportExporter.exportPdf}
+      onExportExcelCurrentPage={reportExporter.exportExcelCurrentPage}
+      onExportExcelAllRows={reportExporter.exportExcelAllRows}
+      onExportPdfCurrentPage={reportExporter.exportPdfCurrentPage}
+      onExportPdfAllRows={reportExporter.exportPdfAllRows}
       isExportingExcel={reportExporter.isExportingExcel}
       isExportingPdf={reportExporter.isExportingPdf}
       onOpenPage={() => navigate(`/${orgCode}/admin/section`)}
@@ -2638,6 +2796,7 @@ function IndividualGradesReportTab({
           pageSize={REPORT_PAGE_SIZE}
           showGroupHeader={false}
           cardless={true}
+          onVisibleRowsChange={handleVisibleRowsChange}
           tableMinWidthClassName="min-w-[1480px]"
           emptyFilteredText={`No matching ${learnersTerm.toLowerCase()} grades found.`}
         />
@@ -2862,6 +3021,8 @@ function BatchProgressReportTab({
     ],
     [rows, sectionsTerm],
   );
+  const { currentPageRows, handleVisibleRowsChange } =
+    useCurrentVisibleRows<BatchProgressRow>();
 
   const exportColumns = useMemo(
     (): ReportExportColumn<BatchProgressRow>[] => [
@@ -2913,6 +3074,7 @@ function BatchProgressReportTab({
 
   const reportExporter = useReportExportActions({
     rows,
+    currentPageRows,
     columns: exportColumns,
     filenamePrefix: "admin-reports-batch-progress",
     sheetName: "Batch Progress",
@@ -2926,8 +3088,10 @@ function BatchProgressReportTab({
       description={`Review lesson completion, assessment completion, average progress, and attendance across all loaded ${sectionsTerm.toLowerCase()}, then export the summary to Excel or PDF.`}
       totalLabel={`${formatCount(rows.length)} loaded ${sectionsTerm.toLowerCase()}`}
       note="This report combines the current completion overview with the performance dashboard snapshot."
-      onExportExcel={reportExporter.exportExcel}
-      onExportPdf={reportExporter.exportPdf}
+      onExportExcelCurrentPage={reportExporter.exportExcelCurrentPage}
+      onExportExcelAllRows={reportExporter.exportExcelAllRows}
+      onExportPdfCurrentPage={reportExporter.exportPdfCurrentPage}
+      onExportPdfAllRows={reportExporter.exportPdfAllRows}
       isExportingExcel={reportExporter.isExportingExcel}
       isExportingPdf={reportExporter.isExportingPdf}
       onOpenPage={() => navigate(`/${orgCode}/admin/completion`)}
@@ -2965,6 +3129,7 @@ function BatchProgressReportTab({
           pageSize={REPORT_PAGE_SIZE}
           showGroupHeader={false}
           cardless={true}
+          onVisibleRowsChange={handleVisibleRowsChange}
           tableMinWidthClassName="min-w-[1450px]"
           emptyFilteredText={`No matching ${sectionsTerm.toLowerCase()} found.`}
         />
@@ -3120,60 +3285,28 @@ export default function ReportsPage() {
 
   return (
     <div className="mx-auto max-w-[1600px] space-y-4 p-4 sm:p-6">
-      <section className="overflow-hidden rounded-[28px] border border-slate-200/90 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
-        <div className="border-b border-slate-100 px-5 py-5 lg:px-6">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-            <div className="max-w-3xl">
-              <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">
-                Admin Reports
-              </span>
-              <div className="mt-3 flex items-center gap-2">
-                <h1 className="text-3xl font-semibold tracking-tight text-slate-900">
-                  Reports
-                </h1>
-                <HoverHelpTooltip
-                  text="Each report tab loads a separate admin dataset, renders it in a datatable, and exports the loaded rows to Excel or PDF."
-                  className="shrink-0"
-                />
-              </div>
-              <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600">
-                Review roster, delivery, performance, grades, and batch
-                progress from one clean reporting workspace.
-              </p>
-            </div>
-
-            <div className="lg:text-right">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
-                Current View
-              </p>
-              <p className="mt-1 text-base font-semibold text-slate-900">
-                {activeTabMeta.label}
-              </p>
-            </div>
-          </div>
+      <section className="space-y-3">
+        <div className="flex items-center gap-2">
+          <h1 className="text-3xl font-semibold tracking-tight text-slate-900">
+            Reports
+          </h1>
+          <HoverHelpTooltip
+            text={`${activeTabMeta.label} report`}
+            className="shrink-0"
+          />
         </div>
-
-        <div className="px-5 py-4 lg:px-6">
-          <div className="flex flex-wrap items-center gap-2">
-            {tabs.map((tab) => (
-              <ReportTabButton
-                key={tab.id}
-                id={tab.id}
-                label={tab.label}
-                description={tab.description}
-                icon={tab.icon}
-                isActive={activeTab === tab.id}
-                onClick={handleTabChange}
-              />
-            ))}
-          </div>
-
-          <div className="mt-4 flex flex-col gap-2 border-t border-slate-100 pt-4 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-sm text-slate-600">{activeTabMeta.description}</p>
-            <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
-              {formatCount(tabs.length)} report views
-            </span>
-          </div>
+        <div className="flex flex-wrap items-center gap-2">
+          {tabs.map((tab) => (
+            <ReportTabButton
+              key={tab.id}
+              id={tab.id}
+              label={tab.label}
+              description={tab.description}
+              icon={tab.icon}
+              isActive={activeTab === tab.id}
+              onClick={handleTabChange}
+            />
+          ))}
         </div>
       </section>
 
@@ -3181,3 +3314,5 @@ export default function ReportsPage() {
     </div>
   );
 }
+
+

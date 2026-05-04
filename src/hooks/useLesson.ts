@@ -21,6 +21,7 @@ export const useGetLessonById = (lessonId: string) => {
         "duration",
         "author",
         "files",
+        "certificateEnabled",
         "createdAt",
         "updatedAt",
       ]);
@@ -47,7 +48,7 @@ export const useGetLessonBySectionCode = (
             populate: {
               path: "lessons",
               select:
-                "title description mainContent information category videoUrl startDate endDate time isPublished liveDiscussion duration author files progress assessments createdAt updatedAt",
+                "title description mainContent information category videoUrl startDate endDate time isPublished liveDiscussion duration author files progress assessments certificateEnabled createdAt updatedAt",
               populate: {
                 path: "assessments",
                 select:

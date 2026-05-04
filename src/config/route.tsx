@@ -49,16 +49,13 @@ import TnaPage from "../pages/orgAdmin/TnaPage";
 import TnaSkillRoleSetupPage from "../pages/orgAdmin/TnaSkillRoleSetupPage";
 import TnaEmployeeRecommendationsPage from "../pages/orgAdmin/TnaEmployeeRecommendationsPage";
 import TnaExecutionPipelinePage from "../pages/orgAdmin/TnaExecutionPipelinePage";
+import EmployeeDevelopmentPlanPage from "../pages/orgAdmin/EmployeeDevelopmentPlanPage";
 import FAQ from "../pages/common/FAQ";
 import TermsAndCondition from "../pages/common/TermsAndCondition";
 import PrivacyPolicy from "../pages/common/PrivacyPolicy";
-import PerformanceSystemRedirect from "../pages/common/PerformanceSystemRedirect";
 import Settings from "../pages/orgAdmin/Settings";
-import AdminPerformancePage from "../pages/orgAdmin/AdminPerformancePage";
-import AdminStudentPerformanceDetails from "../pages/orgAdmin/AdminStudentPerformanceDetails";
 import ReportsPage from "../pages/orgAdmin/ReportsPage";
 import WeeklySchedule from "../pages/instructor/WeeklySchedule";
-import InstructorStudentPerformanceDetails from "../pages/instructor/InstructorStudentPerformanceDetails";
 import InstructorCompletionPage from "../pages/instructor/InstructorCompletionPage";
 import InstructorGradingPage from "../pages/instructor/InstructorGradingPage";
 import InstructorLateMissingPage from "../pages/instructor/InstructorLateMissingPage";
@@ -185,6 +182,10 @@ export const appRoutes = [
         element: <TnaExecutionPipelinePage />,
       },
       {
+        path: "/:orgCode/admin/tna/development-plan",
+        element: <EmployeeDevelopmentPlanPage />,
+      },
+      {
         path: "/:orgCode/admin/voucher",
         element: <Vouchers />,
       },
@@ -201,28 +202,8 @@ export const appRoutes = [
         element: <Settings />,
       },
       {
-        path: "/:orgCode/admin/performance",
-        element: <AdminPerformancePage />,
-      },
-      {
-        path: "/:orgCode/admin/compliance",
-        element: <AdminPerformancePage />,
-      },
-      {
         path: "/:orgCode/admin/reports",
         element: <ReportsPage />,
-      },
-      {
-        path: "/:orgCode/admin/performance/:studentId",
-        element: <AdminStudentPerformanceDetails />,
-      },
-      {
-        path: "/:orgCode/admin/compliance/:studentId",
-        element: <AdminStudentPerformanceDetails />,
-      },
-      {
-        path: "/:orgCode/admin/performance-system",
-        element: <PerformanceSystemRedirect />,
       },
     ],
   },
@@ -278,24 +259,8 @@ export const appRoutes = [
         element: <Notifications />,
       },
       {
-        path: "/:orgCode/instructor/performance",
-        element: <PerformanceSystemRedirect />,
-      },
-      {
         path: "/:orgCode/instructor/completion",
         element: <InstructorCompletionPage />,
-      },
-      {
-        path: "/:orgCode/instructor/performance-system",
-        element: <PerformanceSystemRedirect />,
-      },
-      {
-        path: "/:orgCode/instructor/performance/:studentId",
-        element: <InstructorStudentPerformanceDetails />,
-      },
-      {
-        path: "/:orgCode/instructor/completion/:studentId",
-        element: <InstructorStudentPerformanceDetails />,
       },
       {
         path: "/:orgCode/instructor/grading",
@@ -315,7 +280,10 @@ export const appRoutes = [
   //Student routes
   {
     element: (
-      <ProtectedRoutes element={<MainLayout />} allowedRoles={["student"]} />
+      <ProtectedRoutes
+        element={<MainLayout />}
+        allowedRoles={["student", "employee"]}
+      />
     ),
     children: [
       {
@@ -347,10 +315,6 @@ export const appRoutes = [
         element: <StudentDashboard />,
       },
       {
-        path: "/:orgCode/student/performance-system",
-        element: <PerformanceSystemRedirect />,
-      },
-      {
         path: "/:orgCode/student/sections/:sectionCode/assessment/:assessmentId",
         element: <AssessmentPage />,
       },
@@ -378,7 +342,13 @@ export const appRoutes = [
     element: (
       <ProtectedRoutes
         element={<MainLayout />}
-        allowedRoles={["superadmin", "admin", "instructor", "student"]}
+        allowedRoles={[
+          "superadmin",
+          "admin",
+          "instructor",
+          "student",
+          "employee",
+        ]}
       />
     ),
     children: [

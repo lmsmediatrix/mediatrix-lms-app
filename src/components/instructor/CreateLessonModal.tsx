@@ -68,6 +68,7 @@ const lessonSchema = z.object({
     .min(10, "Description must be at least 10 characters")
     .max(500, "Description cannot exceed 500 characters"),
   information: z.string().optional(),
+  certificateEnabled: z.boolean().optional(),
   mainContent: z.any().optional(),
   additionalFiles: z.any().optional(),
 });
@@ -138,6 +139,7 @@ export default function CreateLessonModal({
       endDate: "",
       description: "",
       information: "",
+      certificateEnabled: false,
       mainContent: "",
     },
   });
@@ -222,6 +224,7 @@ export default function CreateLessonModal({
       setValue("endDate", endDate);
       setValue("description", lessonData.data.description);
       setValue("information", incomingInformation);
+      setValue("certificateEnabled", Boolean(lessonData.data.certificateEnabled));
 
       if (incomingInformation) {
         setRichTextContent(incomingInformation);
@@ -372,6 +375,7 @@ export default function CreateLessonModal({
       ...data,
       moduleId,
       lessonId,
+      certificateEnabled: Boolean(data.certificateEnabled),
       mainContent: resolvedMainContent,
       information: resolvedInformation,
       additionalFiles: uploadedFiles,
@@ -759,6 +763,15 @@ export default function CreateLessonModal({
                   {errors.title.message}
                 </p>
               )}
+              <label className="mt-4 inline-flex items-center gap-2 text-sm text-gray-700">
+                <input
+                  type="checkbox"
+                  {...register("certificateEnabled")}
+                  className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                  disabled={isSubmitting}
+                />
+                Enable lesson completion certificate
+              </label>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
