@@ -284,6 +284,8 @@ export default function EmployeeDevelopmentPlanPage() {
         const trainingId = String(training?._id || "").trim();
         const title = String(training?.title || "").trim();
         if (!trainingId || !title) continue;
+        const trainingKey = `${recommendationId}:${trainingId}`;
+        if (sectionReferenceByTrainingKey.has(trainingKey)) continue;
 
         const courseValue = training?.course;
         const courseId =
@@ -292,7 +294,7 @@ export default function EmployeeDevelopmentPlanPage() {
             : String(courseValue?._id || "").trim() || undefined;
 
         options.push({
-          key: `${recommendationId}:${trainingId}`,
+          key: trainingKey,
           recommendationId,
           trainingId,
           title,

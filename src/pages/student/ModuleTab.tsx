@@ -1,22 +1,27 @@
 import { BsPlayCircle } from "react-icons/bs";
 import { GrAnnounce } from "react-icons/gr";
 import { IoSync } from "react-icons/io5";
-import { FaLightbulb } from "react-icons/fa";
+import { FaLightbulb, FaLock } from "react-icons/fa";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import Accordion from "../../components/common/Accordion";
-import { IModule } from "../../types/interfaces";
+import { ICertificate, IModule } from "../../types/interfaces";
 import { formatDateMMMDDYYY } from "../../lib/dateUtils";
 import InstructorTableEmptyState from "../../components/instructor/InstructorTableEmptyState";
 import { useAuth } from "../../context/AuthContext";
 import { useSectionModule, useSectionAssessment } from "../../hooks/useSection";
-import { useStudentCompletedAssessments } from "../../hooks/useStudentAssessmentGrade";
 import ModuleTabSkeleton from "../../components/skeleton/ModuleTabSkeleton";
 import { useModuleAssessmentDraft } from "../../hooks/useModule";
 import { toast } from "react-toastify";
 import Dialog from "../../components/common/Dialog";
 import Button from "../../components/common/Button";
 import CreateAssessmentModal from "../../components/instructor/CreateAssessmentModal";
+import {
+  useGenerateCertificate,
+  useStudentCertificates,
+} from "../../hooks/useCertificate";
+import CertificatePreviewModal from "../../components/student/CertificatePreviewModal";
+import { downloadCertificatePdf } from "../../lib/certificatePdf";
 
 interface ModuleTabProps {
   sectionCode: string;
@@ -37,6 +42,8 @@ export default function ModuleTab({
   const [moduleToSync, setModuleToSync] = useState<IModule | null>(null);
   const [prefillAssessment, setPrefillAssessment] = useState<any>(null);
   const [isAssessmentModalOpen, setIsAssessmentModalOpen] = useState(false);
+  const [previewCertificate, setPreviewCertificate] = useState<ICertificate | null>(null);
+  const [isPreviewLocked, setIsPreviewLocked] = useState(false);
   const modules = data?.modules.data;
   const userId = currentUser.user.id;
   const isLearner =
@@ -46,9 +53,20 @@ export default function ModuleTab({
   const { data: assessmentData } = useSectionAssessment(
     isLearner ? sectionCode : "",
   );
-  const { data: completedAssessmentIds } = useStudentCompletedAssessments(
-    isLearner ? userId : "",
-  );
+  const { data: certificatesResponse } = useStudentCertificates(userId, {
+    sectionId,
+    enabled: isLearner && !!userId,
+  });
+  const generateCertificateMutation = useGenerateCertificate();
+  const learnerName = `${
+    (currentUser?.user as any)?.firstName ||
+    (currentUser?.user as any)?.firstname ||
+    ""
+  } ${
+    (currentUser?.user as any)?.lastName ||
+    (currentUser?.user as any)?.lastname ||
+    ""
+  }`.trim() || "Learner";
   const totalAssessments = assessmentData?.data?.totalAssessments || 0;
   const completedAssessments = totalAssessments
     ? totalAssessments - (assessmentData?.data?.pendingAssessment || 0)
@@ -98,6 +116,82 @@ export default function ModuleTab({
         error: "Failed to build module assessment draft",
       },
     );
+  };
+
+  const certificates = Array.isArray((certificatesResponse as any)?.data)
+    ? (certificatesResponse as any).data
+    : [];
+
+  const getModuleCertificate = (moduleId: string): ICertificate | undefined =>
+    certificates.find(
+      (certificate: ICertificate) =>
+        (certificate.scopeType === "module" || !certificate.scopeType) &&
+        String(certificate.moduleId) === String(moduleId),
+    );
+
+  const buildLockedCertificatePreview = (module: IModule): ICertificate => ({
+    _id: `locked-${module._id}`,
+    organizationId: String(currentUser?.user?.organization?._id || ""),
+    studentId: userId,
+    sectionId: String(sectionId || ""),
+    moduleId: module._id,
+    scopeType: "module",
+    scopeId: module._id,
+    certificateNo: "LOCKED",
+    title: "Certificate of Completion",
+    subtitle: `Complete all lessons in ${module.title} to unlock this module certificate.`,
+    issueDate: new Date().toISOString(),
+    issuerName: currentUser?.user?.organization?.name || "LMS",
+    signatoryName: "Authorized Signatory",
+    status: "active",
+  });
+
+  const handlePreviewModuleCertificate = async (
+    module: IModule,
+    moduleCertificateUnlocked: boolean,
+    existingCertificate?: ICertificate,
+  ) => {
+    try {
+      if (!moduleCertificateUnlocked) {
+        setIsPreviewLocked(true);
+        setPreviewCertificate(buildLockedCertificatePreview(module));
+        return;
+      }
+
+      let certificate = existingCertificate;
+      if (!certificate) {
+        const response = await toast.promise(
+          generateCertificateMutation.mutateAsync({
+            studentId: userId,
+            moduleId: module._id,
+            scopeType: "module",
+            scopeId: module._id,
+            sectionId,
+          }),
+          {
+            pending: "Preparing module certificate...",
+            success: "Module certificate is ready",
+            error: "Failed to generate module certificate",
+          },
+        );
+        certificate = response?.data as ICertificate;
+      }
+
+      setIsPreviewLocked(false);
+      setPreviewCertificate(certificate || null);
+    } catch {
+      // Error toast is handled by toast.promise above.
+    }
+  };
+
+  const handleDownloadCertificate = async () => {
+    if (!previewCertificate || isPreviewLocked) return;
+    await downloadCertificatePdf({
+      certificate: previewCertificate,
+      learnerName,
+      organizationName: currentUser?.user?.organization?.name,
+    });
+    setPreviewCertificate(null);
   };
 
   const handleCloseSyncDialog = () => {
@@ -151,6 +245,7 @@ export default function ModuleTab({
         {modules?.length > 0 ? (
           <div className="space-y-3">
             {modules.map((module: IModule) => {
+              const existingModuleCertificate = getModuleCertificate(module._id);
               const publishedLessons = module.lessons.filter(
                 (l) => l.status === "published",
               );
@@ -166,13 +261,8 @@ export default function ModuleTab({
               const moduleLessonsComplete =
                 publishedLessons.length > 0 &&
                 moduleCompleted === publishedLessons.length;
-              const moduleAssessmentsComplete =
-                moduleAssessments.length === 0 ||
-                moduleAssessments.every((assessment) =>
-                  completedAssessmentIds?.has(assessment._id?.toString()),
-                );
               const moduleCertificateUnlocked =
-                moduleLessonsComplete && moduleAssessmentsComplete;
+                moduleLessonsComplete;
 
               return (
                 <Accordion
@@ -235,9 +325,35 @@ export default function ModuleTab({
                           }`}
                         >
                           {moduleCertificateUnlocked
-                            ? "Unlocked - you can view or generate your certificate."
+                            ? existingModuleCertificate
+                              ? `Unlocked - ${existingModuleCertificate.certificateNo}`
+                              : "Unlocked - you can view or generate your certificate."
                             : "Locked - complete all required module lessons to unlock certificate."}
                         </p>
+                        <div className="mt-3 flex items-center gap-2">
+                          <button
+                            onClick={() =>
+                              void handlePreviewModuleCertificate(
+                                module,
+                                moduleCertificateUnlocked,
+                                existingModuleCertificate,
+                              )
+                            }
+                            className={`rounded-lg px-3 py-2 text-xs font-semibold ${
+                              moduleCertificateUnlocked
+                                ? "border border-emerald-200 bg-white text-emerald-700 hover:bg-emerald-50"
+                                : "border border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
+                            }`}
+                          >
+                            Preview Certificate
+                          </button>
+                          {!moduleCertificateUnlocked && (
+                            <span className="inline-flex items-center rounded-full border border-slate-300 bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-600">
+                              <FaLock className="mr-1 h-3 w-3" />
+                              Locked
+                            </span>
+                          )}
+                        </div>
                       </div>
                     )}
                     {publishedLessons.map((lesson) => (
@@ -403,6 +519,18 @@ export default function ModuleTab({
           prefillData={prefillAssessment}
         />
       )}
+      <CertificatePreviewModal
+        isOpen={!!previewCertificate}
+        onClose={() => {
+          setPreviewCertificate(null);
+          setIsPreviewLocked(false);
+        }}
+        onDownload={handleDownloadCertificate}
+        certificate={previewCertificate}
+        learnerName={learnerName}
+        organizationName={currentUser?.user?.organization?.name}
+        isLocked={isPreviewLocked}
+      />
     </>
   );
 }
