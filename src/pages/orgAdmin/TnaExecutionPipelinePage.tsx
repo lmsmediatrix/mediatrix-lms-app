@@ -46,6 +46,12 @@ type TnaRecommendation = {
     mandatory?: boolean;
     progressStatus?: TrainingProgressStatus;
   }>;
+  execution?: {
+    stage?: string;
+    examScore?: number;
+    passingScore?: number;
+    examPassed?: boolean;
+  };
 };
 
 type AutoDeploySummary = {
@@ -343,6 +349,58 @@ export default function TnaExecutionPipelinePage() {
       pending: Math.max(trainings.length - completed - inProgress, 0),
     };
   }, [selectedRecommendation]);
+
+  const tnaOutcomeSummary = useMemo(() => {
+    if (!selectedRecommendation) {
+      return {
+        isTrainingCompleted: false,
+        hasExamSignal: false,
+        examPassed: false,
+        examSummary: "--",
+        trainingPassStatus: "pending" as "pending" | "passed" | "failed",
+        levelUpStatus: "pending" as "pending" | "eligible" | "updated",
+      };
+    }
+
+    const isTrainingCompleted =
+      trainingProgressSummary.total > 0 &&
+      trainingProgressSummary.completed === trainingProgressSummary.total;
+    const hasExamSignal =
+      typeof selectedRecommendation.execution?.examScore === "number";
+    const examPassed = Boolean(selectedRecommendation.execution?.examPassed);
+    const examScore = selectedRecommendation.execution?.examScore;
+    const passingScore = selectedRecommendation.execution?.passingScore;
+
+    const examSummary =
+      typeof examScore === "number"
+        ? `${examScore}%${typeof passingScore === "number" ? ` / ${passingScore}%` : ""}`
+        : "--";
+
+    const trainingPassStatus: "pending" | "passed" | "failed" =
+      !isTrainingCompleted
+        ? "pending"
+        : hasExamSignal
+          ? examPassed
+            ? "passed"
+            : "failed"
+          : "passed";
+
+    const levelUpStatus: "pending" | "eligible" | "updated" =
+      trainingPassStatus === "passed"
+        ? selectedRecommendation.status === "completed"
+          ? "updated"
+          : "eligible"
+        : "pending";
+
+    return {
+      isTrainingCompleted,
+      hasExamSignal,
+      examPassed,
+      examSummary,
+      trainingPassStatus,
+      levelUpStatus,
+    };
+  }, [selectedRecommendation, trainingProgressSummary]);
 
   const runAutoDeployFromTna = async (planner?: AutoCreatePlannerPayload) => {
     const recommendationIds = selectedRecommendation?._id
@@ -926,6 +984,74 @@ export default function TnaExecutionPipelinePage() {
                     </div>
                   </div>
                 )}
+              </section>
+
+              <section className="rounded-xl border border-slate-200 bg-white p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className={labelClassName}>TNA Outcome Signals</p>
+                    <p className="mt-1 text-xs text-slate-500">
+                      Use completion and grades to decide if this training is passed and whether
+                      role/skill level-up should proceed.
+                    </p>
+                  </div>
+                  <span
+                    className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold ${
+                      tnaOutcomeSummary.trainingPassStatus === "passed"
+                        ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                        : tnaOutcomeSummary.trainingPassStatus === "failed"
+                          ? "border-red-200 bg-red-50 text-red-700"
+                          : "border-slate-200 bg-slate-50 text-slate-600"
+                    }`}
+                  >
+                    {tnaOutcomeSummary.trainingPassStatus === "passed"
+                      ? "Training Passed"
+                      : tnaOutcomeSummary.trainingPassStatus === "failed"
+                        ? "Training Not Passed"
+                        : "Pass Pending"}
+                  </span>
+                </div>
+
+                <div className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-3 text-xs">
+                  <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+                    <p className="font-semibold text-slate-600">Completion</p>
+                    <p className="mt-1 text-slate-800">
+                      {trainingProgressSummary.completed}/{trainingProgressSummary.total} completed
+                    </p>
+                  </div>
+                  <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+                    <p className="font-semibold text-slate-600">Assessment Check</p>
+                    <p className="mt-1 text-slate-800">
+                      {tnaOutcomeSummary.examSummary}
+                      {tnaOutcomeSummary.hasExamSignal &&
+                      tnaOutcomeSummary.isTrainingCompleted ? (
+                        <span className="ml-1">
+                          ({tnaOutcomeSummary.examPassed ? "passed" : "failed"})
+                        </span>
+                      ) : (
+                        ""
+                      )}
+                    </p>
+                  </div>
+                  <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+                    <p className="font-semibold text-slate-600">Role/Skill Level-up</p>
+                    <p className="mt-1 text-slate-800">
+                      {tnaOutcomeSummary.levelUpStatus === "updated"
+                        ? "Updated"
+                        : tnaOutcomeSummary.levelUpStatus === "eligible"
+                          ? "Eligible"
+                          : "Pending"}
+                    </p>
+                  </div>
+                </div>
+
+                <p className="mt-3 text-xs text-slate-500">
+                  {tnaOutcomeSummary.levelUpStatus === "updated"
+                    ? "Training is passed and recommendation is completed. Skill level updates are expected to be synced."
+                    : tnaOutcomeSummary.levelUpStatus === "eligible"
+                      ? "Training is passed. Mark recommendation as completed to finalize role/skill level-up sync."
+                      : "Complete in-progress items and pass the assessment threshold to unlock role/skill level-up."}
+                </p>
               </section>
             </>
           )}
