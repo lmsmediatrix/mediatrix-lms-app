@@ -1,4 +1,5 @@
 import Dialog from "../common/Dialog";
+import { FaLock } from "react-icons/fa";
 import { ICertificate } from "../../types/interfaces";
 
 interface CertificatePreviewModalProps {
@@ -8,6 +9,7 @@ interface CertificatePreviewModalProps {
   certificate: ICertificate | null;
   learnerName: string;
   organizationName?: string;
+  isLocked?: boolean;
 }
 
 const formatIssueDate = (value?: string) => {
@@ -28,6 +30,7 @@ export default function CertificatePreviewModal({
   certificate,
   learnerName,
   organizationName,
+  isLocked = false,
 }: CertificatePreviewModalProps) {
   if (!certificate) return null;
 
@@ -41,8 +44,18 @@ export default function CertificatePreviewModal({
     >
       <div className="space-y-4">
         <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-          <article className="mx-auto max-w-3xl rounded-lg border-2 border-slate-800 bg-white p-8 shadow-sm">
-            <div className="rounded-lg border border-slate-300 p-6 text-center">
+          <article className="relative mx-auto max-w-3xl rounded-lg border-2 border-slate-800 bg-white p-8 shadow-sm">
+            {isLocked && (
+              <div className="absolute right-4 top-4 inline-flex items-center gap-1 rounded-full border border-amber-300 bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-700">
+                <FaLock className="h-3 w-3" />
+                Locked
+              </div>
+            )}
+            <div
+              className={`rounded-lg border border-slate-300 p-6 text-center ${
+                isLocked ? "blur-[2px]" : ""
+              }`}
+            >
               <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">
                 Certificate
               </p>
@@ -82,12 +95,14 @@ export default function CertificatePreviewModal({
           >
             Close
           </button>
-          <button
-            onClick={onDownload}
-            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
-          >
-            Download PDF
-          </button>
+          {!isLocked && (
+            <button
+              onClick={onDownload}
+              className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+            >
+              Download PDF
+            </button>
+          )}
         </div>
       </div>
     </Dialog>

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import BreadCrumbs from "../../components/common/BreadCrumbs";
 import { IoMdDownload } from "react-icons/io";
@@ -9,7 +9,6 @@ import {
   useGetLessonBySectionCode,
   useUpdateLessonProgress,
 } from "../../hooks/useLesson";
-import { useSectionModule } from "../../hooks/useSection";
 import { useAuth } from "../../context/AuthContext";
 import { formatDateMMMDDYYY } from "../../lib/dateUtils";
 import CreateAssessmentModal from "../../components/instructor/CreateAssessmentModal";
@@ -110,7 +109,6 @@ export default function LessonsPage() {
     lessonId,
     moduleId,
   );
-  const { data: moduleData } = useSectionModule(sectionCode);
   const { mutate: updateProgress, isPending: isUpdating } =
     useUpdateLessonProgress();
   const generateCertificateMutation = useGenerateCertificate();
@@ -125,24 +123,7 @@ export default function LessonsPage() {
     (p: { userId: string }) => p.userId === userId,
   );
   const progressStatus = progressEntry?.status || "not-started";
-  const currentModule = useMemo(
-    () =>
-      moduleData?.modules?.data?.find(
-        (module: { _id: string }) => module._id === moduleId,
-      ),
-    [moduleData?.modules?.data, moduleId],
-  );
-  const certificateEnabled = !!currentModule?.certificateEnabled;
   const lessonCertificateEnabled = Boolean((lesson as any)?.certificateEnabled);
-  const {
-    data: moduleCertificateVisibility,
-    isPending: isModuleCertificateLoading,
-    isError: isModuleCertificateError,
-  } = useCertificateVisibility(userId || "", {
-    scopeType: "module",
-    moduleId,
-    enabled: isStudent && !!userId && !!moduleId && certificateEnabled,
-  });
   const {
     data: lessonCertificateVisibility,
     isPending: isLessonCertificateLoading,
@@ -153,7 +134,6 @@ export default function LessonsPage() {
     moduleId,
     enabled: isStudent && !!userId && !!lessonId && lessonCertificateEnabled,
   });
-  const moduleCertificate = moduleCertificateVisibility?.data?.certificate;
   const lessonCertificate = lessonCertificateVisibility?.data?.certificate;
   const learnerName = `${
     (currentUser?.user as any)?.firstName ||
@@ -380,62 +360,8 @@ export default function LessonsPage() {
         </div>
       </div>
 
-      {isStudent && (certificateEnabled || lessonCertificateEnabled) && (
-        <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
-          {certificateEnabled && (
-            <div
-              className={`rounded-lg border p-3 ${
-                moduleCertificateVisibility?.data?.locked
-                  ? "border-slate-200 bg-slate-100"
-                  : "border-blue-200 bg-blue-50"
-              }`}
-            >
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-600">
-                Module Certificate
-              </p>
-              {isModuleCertificateLoading ? (
-                <p className="mt-1 text-sm text-slate-600">Checking certificate...</p>
-              ) : (
-                <div className={moduleCertificateVisibility?.data?.locked ? "blur-[1px]" : ""}>
-                  <p className="mt-1 text-sm text-slate-700">
-                    {moduleCertificateVisibility?.data?.locked
-                      ? "Complete all required module lessons to unlock certificate."
-                      : moduleCertificate
-                      ? `Unlocked - ${moduleCertificate.certificateNo}`
-                      : "Unlocked - certificate ready to generate."}
-                  </p>
-                </div>
-              )}
-              {!isModuleCertificateLoading && moduleCertificateVisibility?.data?.locked && (
-                <div className="mt-2 inline-flex items-center gap-1 text-xs text-slate-600">
-                  <FaLock className="h-3.5 w-3.5" /> Locked
-                </div>
-              )}
-              {!isModuleCertificateLoading &&
-                !moduleCertificateVisibility?.data?.locked &&
-                !moduleCertificate && (
-                  <button
-                    onClick={() => onGenerateCertificate("module")}
-                    disabled={generateCertificateMutation.isPending}
-                    className="mt-2 rounded-lg bg-blue-600 px-3 py-2 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-60"
-                  >
-                    {generateCertificateMutation.isPending ? "Generating..." : "Generate"}
-                  </button>
-                )}
-              {!isModuleCertificateLoading && moduleCertificate && (
-                <button
-                  onClick={() => onPreviewCertificate(moduleCertificate)}
-                  className="mt-2 rounded-lg border border-blue-200 bg-white px-3 py-2 text-xs font-medium text-blue-700 hover:bg-blue-50"
-                >
-                  Preview PDF
-                </button>
-              )}
-              {isModuleCertificateError && (
-                <p className="mt-2 text-xs text-red-700">Unable to load certificate status</p>
-              )}
-            </div>
-          )}
-
+      {isStudent && lessonCertificateEnabled && (
+        <div className="mt-4 grid grid-cols-1 gap-3">
           {lessonCertificateEnabled && (
             <div
               className={`rounded-lg border p-3 ${
