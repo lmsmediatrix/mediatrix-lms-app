@@ -515,14 +515,48 @@ export default function AssessmentResultQuestion({
         );
 
       case "enumeration":
-        const studentAnswers = Array.isArray(resultData.answer)
-          ? resultData.answer
-          : [""];
-        const correctAnswers = Array.isArray(resultData.correctAnswer)
+        const normalizeEnumerationAnswer = (value: string) =>
+          String(value || "")
+            .normalize("NFKC")
+            .replace(/[\u200B-\u200D\uFEFF]/g, "")
+            .replace(/^["'`]+|["'`]+$/g, "")
+            .trim()
+            .toLowerCase();
+        const toEnumerationAnswers = (value: string | string[] | unknown): string[] => {
+          const rawItems = Array.isArray(value) ? value : [value];
+          const flattened: string[] = [];
+          for (const rawItem of rawItems) {
+            const text = String(rawItem ?? "");
+            const parts = text.split(/[\n,;]+/);
+            for (const part of parts) {
+              const normalized = normalizeEnumerationAnswer(part);
+              if (normalized) flattened.push(normalized);
+            }
+          }
+          return flattened;
+        };
+
+        const studentAnswersRaw = Array.isArray(resultData.answer)
+          ? resultData.answer.map((item) => String(item ?? ""))
+          : typeof resultData.answer === "string"
+            ? resultData.answer.split(/[\n,;]+/).map((item) => String(item ?? "").trim())
+            : [];
+        const studentAnswers = studentAnswersRaw.filter((item) => item.trim() !== "");
+        const correctAnswersRaw = Array.isArray(resultData.correctAnswer)
           ? resultData.correctAnswer
-          : [""];
-        const hasNoEnumAnswer =
-          studentAnswers.length === 0 || studentAnswers.every((ans) => ans === "");
+          : [resultData.correctAnswer];
+        const correctAnswers = correctAnswersRaw
+          .flatMap((item) => String(item ?? "").split(/[\n,;]+/))
+          .map((item) => item.trim())
+          .filter((item) => item !== "");
+
+        const normalizedCorrectAnswersSet = new Set(
+          toEnumerationAnswers(resultData.correctAnswer),
+        );
+        const enumerationAnswerMatches = studentAnswers.map((answer) =>
+          normalizedCorrectAnswersSet.has(normalizeEnumerationAnswer(answer)),
+        );
+        const hasNoEnumAnswer = studentAnswers.length === 0;
         return (
           <div className="space-y-3">
             {question.questionImage && (
@@ -545,7 +579,7 @@ export default function AssessmentResultQuestion({
                   <div
                     key={idx}
                     className={`p-2 rounded-lg mb-1 border ${
-                      resultData.isCorrect
+                      enumerationAnswerMatches[idx]
                         ? "bg-green-100 border-green-500"
                         : "bg-red-100 border-red-500"
                     }`}
