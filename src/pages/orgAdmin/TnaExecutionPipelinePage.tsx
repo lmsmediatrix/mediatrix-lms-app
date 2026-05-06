@@ -4,7 +4,7 @@ import { FaArrowLeft } from "react-icons/fa";
 import { toast } from "react-toastify";
 import { Lightbulb } from "@/components/animate-ui/icons/lightbulb";
 import Button from "../../components/common/Button";
-import Dialog from "../../components/common/Dialog";
+import FinalGradeBreakdownModal from "../../components/common/FinalGradeBreakdownModal";
 import HoverHelpTooltip from "../../components/common/HoverHelpTooltip";
 import TnaAutoCreatePlanModal from "../../components/orgAdmin/TnaAutoCreatePlanModal";
 import { useAuth } from "../../context/AuthContext";
@@ -1349,162 +1349,16 @@ export default function TnaExecutionPipelinePage() {
         isSubmitting={autoDeployMutation.isPending}
         defaultCourses={plannerDefaultCourses}
       />
-      <Dialog
+      <FinalGradeBreakdownModal
         isOpen={trainingGradeModal.isOpen}
         onClose={() => setTrainingGradeModal(initialTrainingGradeModalState)}
-        title="Training Grade Analytics"
+        title="Final Grade Breakdown"
         subTitle={`${trainingGradeModal.trainingTitle || "--"} • ${trainingGradeModal.employeeName || "--"}`}
-        size="4xl"
-        backdrop="blur"
-      >
-        {trainingGradeModal.isLoading ? (
-          <p className="text-sm text-slate-600">Loading employee grade analytics...</p>
-        ) : trainingGradeModal.error ? (
-          <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
-            {trainingGradeModal.error}
-          </div>
-        ) : (
-          <div className="space-y-4">
-            <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700">
-              Batch:{" "}
-              <span className="font-semibold text-slate-900">
-                {trainingGradeModal.batchName || "--"}
-              </span>{" "}
-              {trainingGradeModal.batchCode
-                ? `(${trainingGradeModal.batchCode})`
-                : ""}
-            </div>
-
-            <div className="grid grid-cols-1 gap-2 md:grid-cols-3 text-xs">
-              <div className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2">
-                <p className="font-semibold text-slate-600">Total Enrolled</p>
-                <p className="mt-1 text-slate-900">
-                  {trainingGradeModal.analytics?.totalStudentsEnrolled ?? "--"}
-                </p>
-              </div>
-              <div className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2">
-                <p className="font-semibold text-slate-600">Average Final Grade</p>
-                <p className="mt-1 text-slate-900">
-                  {trainingGradeModal.analytics?.averageFinalGrade ?? "--"}
-                </p>
-              </div>
-              <div className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2">
-                <p className="font-semibold text-slate-600">Average Final %</p>
-                <p className="mt-1 text-slate-900">
-                  {trainingGradeModal.analytics?.averageFinalPercentage ?? "--"}
-                </p>
-              </div>
-            </div>
-
-            <div className="rounded-lg border border-slate-200 bg-white p-3">
-              <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-                Individual Employee Grade
-              </p>
-              {!trainingGradeModal.employeeGrade ? (
-                <p className="mt-2 text-sm text-slate-500">
-                  No individual grade record found for this employee in the resolved batch.
-                </p>
-              ) : (
-                <div className="mt-2 overflow-auto">
-                  <table className="min-w-[680px] w-full">
-                    <thead className="bg-slate-50">
-                      <tr className="border-b border-slate-200 text-left text-[11px] font-semibold uppercase tracking-wider text-slate-500">
-                        <th className="px-2.5 py-2">{employeeTerm} Name</th>
-                        <th className="px-2.5 py-2">Final Grade</th>
-                        <th className="px-2.5 py-2">Final %</th>
-                        <th className="px-2.5 py-2">Assignment Avg</th>
-                        <th className="px-2.5 py-2">Quiz Avg</th>
-                        <th className="px-2.5 py-2">Attendance</th>
-                        <th className="px-2.5 py-2">Exam</th>
-                        <th className="px-2.5 py-2">TNA Pass / Level-up</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr className="border-b border-slate-100">
-                        <td className="px-2.5 py-2 text-sm font-medium text-slate-900">
-                          {trainingGradeModal.employeeGrade.name || "--"}
-                        </td>
-                        <td className="px-2.5 py-2 text-xs text-slate-700">
-                          {trainingGradeModal.employeeGrade.finalGrade || "--"}
-                        </td>
-                        <td className="px-2.5 py-2 text-xs text-slate-700">
-                          {trainingGradeModal.employeeGrade.finalPercentage
-                            ? `${trainingGradeModal.employeeGrade.finalPercentage}%`
-                            : "--"}
-                        </td>
-                        <td className="px-2.5 py-2 text-xs text-slate-700">
-                          {trainingGradeModal.employeeGrade.assignmentAverage
-                            ? `${trainingGradeModal.employeeGrade.assignmentAverage}%`
-                            : "--"}
-                        </td>
-                        <td className="px-2.5 py-2 text-xs text-slate-700">
-                          {trainingGradeModal.employeeGrade.quizAverage
-                            ? `${trainingGradeModal.employeeGrade.quizAverage}%`
-                            : "--"}
-                        </td>
-                        <td className="px-2.5 py-2 text-xs text-slate-700">
-                          {trainingGradeModal.employeeGrade.attendance
-                            ? `${trainingGradeModal.employeeGrade.attendance}%`
-                            : "--"}
-                        </td>
-                        <td className="px-2.5 py-2 text-xs text-slate-700">
-                          {trainingGradeModal.employeeGrade.finalExam
-                            ? `${trainingGradeModal.employeeGrade.finalExam}%`
-                            : "--"}
-                        </td>
-                        <td className="px-2.5 py-2">
-                          {trainingGradeModal.employeeGrade.isPassed === true ? (
-                            <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs text-emerald-700">
-                              Passed / Eligible
-                            </span>
-                          ) : trainingGradeModal.employeeGrade.isPassed ===
-                            false ? (
-                            <span className="inline-flex items-center rounded-full border border-red-200 bg-red-50 px-2.5 py-1 text-xs text-red-700">
-                              Not Passed
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600">
-                              Pending
-                            </span>
-                          )}
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-              )}
-
-              {trainingGradeModal.employeeGrade?.assessmentBreakdown &&
-                trainingGradeModal.employeeGrade.assessmentBreakdown.length > 0 && (
-                  <div className="mt-3 rounded-md border border-slate-200 bg-slate-50 p-3">
-                    <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-                      Assessment Breakdown
-                    </p>
-                    <div className="mt-2 space-y-1.5">
-                      {trainingGradeModal.employeeGrade.assessmentBreakdown.map(
-                        (item) => (
-                          <div
-                            key={item.assessmentId}
-                            className="rounded border border-slate-200 bg-white px-2.5 py-2 text-xs text-slate-700"
-                          >
-                            <p className="font-medium text-slate-800">
-                              {item.title} ({item.type})
-                            </p>
-                            <p className="mt-0.5">
-                              {item.attempted
-                                ? `Score: ${item.score ?? "--"} / ${item.totalPoints ?? "--"} (${item.percentage ?? "--"}%)`
-                                : "Not attempted"}
-                            </p>
-                          </div>
-                        ),
-                      )}
-                    </div>
-                  </div>
-                )}
-            </div>
-          </div>
-        )}
-      </Dialog>
+        data={trainingGradeModal.employeeGrade}
+        isLoading={trainingGradeModal.isLoading}
+        error={trainingGradeModal.error}
+        emptyMessage="No individual grade record found for this employee in the resolved batch."
+      />
     </div>
   );
 }
