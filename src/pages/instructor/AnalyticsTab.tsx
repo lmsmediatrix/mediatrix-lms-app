@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useLocation } from "react-router-dom";
 import GradeChart from "../../components/instructor/GradeChart";
 import { useSectionAnalytics } from "../../hooks/useSection";
@@ -7,6 +7,7 @@ import AnalyticsTabSkeleton from "../../components/skeleton/AnalyticsTabSkeleton
 import { useAuth } from "../../context/AuthContext";
 import { getTerm } from "../../lib/utils";
 import Button from "../../components/common/Button";
+import FinalGradeBreakdownModal from "../../components/common/FinalGradeBreakdownModal";
 import { FiDownload } from "react-icons/fi";
 import { toast } from "react-toastify";
 import { generateTimestamp } from "../../lib/dateUtils";
@@ -112,50 +113,42 @@ export default function AnalyticsTab() {
       ? `${student.attendanceDetails.presentDays}/${student.attendanceDetails.totalDays} days (${student.attendance || "--"}%)`
       : "No attendance records yet";
 
-  const exportRows = useMemo(
-    () =>
-      (Array.isArray(individualGrades) ? individualGrades : []).map((student: IStudentGrade) => ({
-        [`${learnerTerm} Name`]: student.name || "--",
-        "Final Grade": student.finalGrade || "--",
-        "Final %": student.finalPercentage ? `${student.finalPercentage}%` : "--",
-        "Assignment Avg": student.assignmentAverage
-          ? `${student.assignmentAverage}%`
-          : "--",
-        "Quiz Avg": student.quizAverage ? `${student.quizAverage}%` : "--",
-        Attendance: student.attendance ? `${student.attendance}%` : "--",
-        Exam: student.finalExam ? `${student.finalExam}%` : "--",
-        "TNA Pass / Level-up":
-          student.isPassed === true
-            ? "Passed / Eligible"
-            : student.isPassed === false
-              ? "Not Passed"
-              : "Pending",
-        "Attendance Breakdown": buildAttendanceBreakdownText(student),
-        "Assessment Breakdown": buildAssessmentBreakdownText(student),
-        "Grade Mapping": student.gradeComputation || "N/A",
-        "Percentage Formula": student.percentageComputation || "N/A",
-      })),
-    [individualGrades, learnerTerm],
+  const exportRows = (Array.isArray(individualGrades) ? individualGrades : []).map(
+    (student: IStudentGrade) => ({
+      [`${learnerTerm} Name`]: student.name || "--",
+      "Final Grade": student.finalGrade || "--",
+      "Final %": student.finalPercentage ? `${student.finalPercentage}%` : "--",
+      "Assignment Avg": student.assignmentAverage ? `${student.assignmentAverage}%` : "--",
+      "Quiz Avg": student.quizAverage ? `${student.quizAverage}%` : "--",
+      Attendance: student.attendance ? `${student.attendance}%` : "--",
+      Exam: student.finalExam ? `${student.finalExam}%` : "--",
+      "TNA Pass / Level-up":
+        student.isPassed === true
+          ? "Passed / Eligible"
+          : student.isPassed === false
+            ? "Not Passed"
+            : "Pending",
+      "Attendance Breakdown": buildAttendanceBreakdownText(student),
+      "Assessment Breakdown": buildAssessmentBreakdownText(student),
+      "Grade Mapping": student.gradeComputation || "N/A",
+      "Percentage Formula": student.percentageComputation || "N/A",
+    }),
   );
 
-  const exportColumns = useMemo(
-    () =>
-      [
-        `${learnerTerm} Name`,
-        "Final Grade",
-        "Final %",
-        "Assignment Avg",
-        "Quiz Avg",
-        "Attendance",
-        "Exam",
-        "TNA Pass / Level-up",
-        "Attendance Breakdown",
-        "Assessment Breakdown",
-        "Grade Mapping",
-        "Percentage Formula",
-      ] as const,
-    [learnerTerm],
-  );
+  const exportColumns = [
+    `${learnerTerm} Name`,
+    "Final Grade",
+    "Final %",
+    "Assignment Avg",
+    "Quiz Avg",
+    "Attendance",
+    "Exam",
+    "TNA Pass / Level-up",
+    "Attendance Breakdown",
+    "Assessment Breakdown",
+    "Grade Mapping",
+    "Percentage Formula",
+  ] as const;
 
   const escapeCsvValue = (value: string): string => {
     const normalized = value.replace(/"/g, '""');
@@ -513,91 +506,12 @@ export default function AnalyticsTab() {
         </table>
       </div>
 
-      {selectedBreakdown && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/45 p-4"
-          onClick={() => setSelectedBreakdown(null)}
-        >
-          <div
-            className="w-full max-w-2xl rounded-xl border border-slate-200 bg-white p-4 shadow-xl"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <p className="text-sm font-semibold text-slate-900">
-                  Final Grade Breakdown
-                </p>
-                <p className="text-xs text-slate-500">
-                  {selectedBreakdown.name}
-                </p>
-              </div>
-              <button
-                type="button"
-                className="rounded-md border border-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50"
-                onClick={() => setSelectedBreakdown(null)}
-              >
-                Close
-              </button>
-            </div>
-
-            <div className="mt-4 space-y-2 text-sm text-slate-700">
-              <div className="rounded-md border border-slate-200 bg-slate-50 p-3">
-                <p className="font-semibold text-slate-800">Attendance breakdown</p>
-                <p className="mt-1">
-                  {selectedBreakdown.attendanceDetails
-                    ? `${selectedBreakdown.attendanceDetails.presentDays}/${selectedBreakdown.attendanceDetails.totalDays} days (${selectedBreakdown.attendance || "--"}%)`
-                    : "No attendance records yet"}
-                </p>
-              </div>
-
-              <div className="rounded-md border border-slate-200 bg-slate-50 p-3">
-                <p className="font-semibold text-slate-800">Assessment grades</p>
-                {!selectedBreakdown.assessmentBreakdown ||
-                selectedBreakdown.assessmentBreakdown.length === 0 ? (
-                  <p className="mt-1 text-xs text-slate-500">
-                    No assessments found for this batch.
-                  </p>
-                ) : (
-                  <div className="mt-2 space-y-1.5">
-                    {selectedBreakdown.assessmentBreakdown.map((item) => (
-                      <div
-                        key={item.assessmentId}
-                        className="rounded border border-slate-200 bg-white px-2.5 py-2 text-xs text-slate-700"
-                      >
-                        <p className="font-medium text-slate-800">
-                          {item.title} ({item.type})
-                        </p>
-                        <p className="mt-0.5">
-                          {item.attempted
-                            ? `Score: ${item.score ?? "--"} / ${item.totalPoints ?? "--"} (${item.percentage ?? "--"}%)`
-                            : "Not attempted"}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {selectedBreakdown.gradeComputation && (
-                <div className="rounded-md border border-slate-200 bg-slate-50 p-3">
-                  <p className="font-semibold text-slate-800">Grade mapping</p>
-                  <p className="mt-1">{selectedBreakdown.gradeComputation}</p>
-                </div>
-              )}
-              {selectedBreakdown.percentageComputation && (
-                <div className="rounded-md border border-slate-200 bg-slate-50 p-3">
-                  <p className="font-semibold text-slate-800">Percentage formula</p>
-                  <p className="mt-1">{selectedBreakdown.percentageComputation}</p>
-                </div>
-              )}
-              {!selectedBreakdown.gradeComputation &&
-                !selectedBreakdown.percentageComputation && (
-                  <p className="text-xs text-slate-500">No breakdown data available.</p>
-                )}
-            </div>
-          </div>
-        </div>
-      )}
+      <FinalGradeBreakdownModal
+        isOpen={Boolean(selectedBreakdown)}
+        onClose={() => setSelectedBreakdown(null)}
+        subTitle={selectedBreakdown?.name || ""}
+        data={selectedBreakdown}
+      />
     </div>
   );
 }

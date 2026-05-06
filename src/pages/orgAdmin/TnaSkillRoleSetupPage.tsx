@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+ import { useMemo, useState } from "react";
 import { FaListUl, FaTable } from "react-icons/fa";
 import { Trash } from "@/components/animate-ui/icons/trash";
 import { Navigate, useNavigate } from "react-router-dom";
@@ -12,6 +12,7 @@ import GroupedDataTable, {
   GroupedTableGroup,
 } from "../../components/common/GroupedDataTable";
 import ActionMenuButton from "../../components/orgAdmin/ActionMenuButton";
+import TableSkeletonClean from "../../components/skeleton/TableSkeletonClean";
 import { useAuth } from "../../context/AuthContext";
 import {
   useCreateTnaSkill,
@@ -496,6 +497,23 @@ export default function TnaSkillRoleSetupPage() {
     },
   ];
 
+  const skillLibraryTableSkeletonColumns = [
+    { width: "12%", alignment: "left" as const },
+    { width: "68%", alignment: "left" as const },
+    { width: "20%", alignment: "center" as const },
+  ];
+
+  const roleStandardsTableSkeletonColumns = [
+    { width: "20%", alignment: "left" as const },
+    { width: "12%", alignment: "center" as const },
+    { width: "14%", alignment: "center" as const },
+    { width: "16%", alignment: "center" as const },
+    { width: "10%", alignment: "center" as const },
+    { width: "10%", alignment: "center" as const },
+    { width: "8%", alignment: "center" as const },
+    { width: "10%", alignment: "center" as const },
+  ];
+
   return (
     <div className="pt-14 pb-6 px-4 md:px-6 lg:p-6 space-y-6">
       <section className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
@@ -582,7 +600,11 @@ export default function TnaSkillRoleSetupPage() {
 
             <div className="rounded-xl bg-slate-50 border border-slate-200 p-3 min-h-[66px]">
               {skillsQuery.isLoading ? (
-                <p className="text-sm text-slate-500">Loading skills...</p>
+                <TableSkeletonClean
+                  columns={skillLibraryTableSkeletonColumns}
+                  rows={6}
+                  className="bg-white rounded-xl p-0.5"
+                />
               ) : skills.length === 0 ? (
                 <p className="text-sm text-slate-500">No skills yet. Add your first skill above.</p>
               ) : (
@@ -888,7 +910,11 @@ export default function TnaSkillRoleSetupPage() {
                 </div>
               </div>
               {roleRequirementsQuery.isLoading ? (
-                <p className="text-sm text-slate-500">Loading role standards...</p>
+                <TableSkeletonClean
+                  columns={roleStandardsTableSkeletonColumns}
+                  rows={6}
+                  className="bg-white rounded-xl p-0.5"
+                />
               ) : roleRequirements.length === 0 ? (
                 <p className="text-sm text-slate-500">No role standards yet. Save your first role profile above.</p>
               ) : (

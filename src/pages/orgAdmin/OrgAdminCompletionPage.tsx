@@ -4,7 +4,9 @@ import { ChartBarIcon } from "@/components/ui/chart-bar-icon";
 import PageHeader from "../../components/common/PageHeader";
 import HoverHelpTooltip from "../../components/common/HoverHelpTooltip";
 import StatsCards from "../../components/common/StatsCards";
+import FinalGradeBreakdownModal from "../../components/common/FinalGradeBreakdownModal";
 import { useAuth } from "../../context/AuthContext";
+import { useSectionAnalytics } from "../../hooks/useSection";
 import { useAdminCompletionOverview } from "../../hooks/useSection";
 import { useGetPerformanceDashboard } from "../../hooks/useMetrics";
 import { getTerm } from "../../lib/utils";
@@ -160,12 +162,6 @@ type MetricDrawerRecord = {
   secondaryValue: string;
 };
 
-const statusLabelMap: Record<EmployeeCompletionRow["status"], string> = {
-  completed: "Completed",
-  in_progress: "In Progress",
-  not_started: "Not Started",
-};
-
 const getFullName = (
   user?: {
     firstName?: string;
@@ -209,6 +205,104 @@ const getRiskDisplayText = (employee: EmployeeCompletionRow): string => {
   }
 
   return employee.riskLevel;
+};
+
+const normalizePhilippineGradeToScore = (grade: number): number => {
+  if (!Number.isFinite(grade)) return 0;
+  const bounded = Math.max(1, Math.min(5, grade));
+  return Math.round(((5 - bounded) / 4) * 100);
+};
+
+const classifyCompliance = (score: number): {
+  riskLevel: string;
+  standing: string;
+} => {
+  if (score < 50) return { riskLevel: "Critical", standing: "Probation" };
+  if (score < 75) return { riskLevel: "Moderate", standing: "Warning" };
+  return { riskLevel: "Low", standing: "Good Standing" };
+};
+
+type SectionAnalyticsEmployee = {
+  id?: string;
+  finalGrade?: string | null;
+  finalPercentage?: string | null;
+  attendance?: string | null;
+  attendanceDetails?: {
+    presentDays: number;
+    totalDays: number;
+  } | null;
+  gradeComputation?: string | null;
+  percentageComputation?: string | null;
+  assessmentBreakdown?: Array<{
+    assessmentId: string;
+    title: string;
+    type: string;
+    score: number | null;
+    totalPoints: number | null;
+    percentage: number | null;
+    attempted: boolean;
+  }>;
+  isPassed?: boolean | null;
+};
+
+type DerivedCompliance = {
+  score: number;
+  riskLevel: string;
+  standing: string;
+};
+
+const deriveComplianceFromAnalytics = (
+  employee: EmployeeCompletionRow,
+  analyticsEmployee?: SectionAnalyticsEmployee | null,
+): DerivedCompliance | null => {
+  if (!analyticsEmployee) return null;
+
+  const attendanceValue = Number(analyticsEmployee.attendance);
+  const finalGradeValue = Number(analyticsEmployee.finalGrade);
+  const finalPercentageValue = Number(analyticsEmployee.finalPercentage);
+
+  const attendance = Number.isFinite(attendanceValue)
+    ? clampPercent(attendanceValue)
+    : employee.attendancePercent;
+  const lessonCompletion = clampPercent(employee.lessonPercent);
+  const assessmentCompletion = clampPercent(employee.assessmentPercent);
+
+  const gradeScore = Number.isFinite(finalGradeValue) && finalGradeValue > 0
+    ? normalizePhilippineGradeToScore(finalGradeValue)
+    : Number.isFinite(finalPercentageValue)
+      ? clampPercent(finalPercentageValue)
+      : 0;
+
+  const weightedScore =
+    attendance * 0.35 +
+    lessonCompletion * 0.25 +
+    assessmentCompletion * 0.25 +
+    gradeScore * 0.15;
+  const score = clampPercent(Math.round(weightedScore));
+  const classification = classifyCompliance(score);
+
+  return {
+    score,
+    riskLevel: classification.riskLevel,
+    standing: classification.standing,
+  };
+};
+
+const getPassFailStatus = (
+  analyticsEmployee?: SectionAnalyticsEmployee | null,
+  minPassingGrade?: number | null,
+): "Passed" | "Failed" | "Pending" => {
+  if (!analyticsEmployee) return "Pending";
+  if (analyticsEmployee.isPassed === true) return "Passed";
+  if (analyticsEmployee.isPassed === false) return "Failed";
+
+  const finalPercentage = Number(analyticsEmployee.finalPercentage);
+  const threshold = Number(minPassingGrade);
+  if (Number.isFinite(finalPercentage) && Number.isFinite(threshold)) {
+    return finalPercentage >= threshold ? "Passed" : "Failed";
+  }
+
+  return "Pending";
 };
 
 export default function OrgAdminCompletionPage() {
@@ -773,6 +867,63 @@ export default function OrgAdminCompletionPage() {
       ) || activeInstructor.batches[0]
     );
   }, [activeInstructor, selectedBatchId]);
+
+  const { data: activeBatchAnalyticsData } = useSectionAnalytics(
+    activeBatch?.batchCode || "",
+  );
+
+  const activeBatchAnalyticsByEmployee = useMemo(() => {
+    const map = new Map<string, SectionAnalyticsEmployee>();
+    const payload = activeBatchAnalyticsData as
+      | {
+          data?: {
+            individualGrades?: SectionAnalyticsEmployee[];
+          };
+          individualGrades?: SectionAnalyticsEmployee[];
+        }
+      | undefined;
+
+    const individualGrades = Array.isArray(payload?.data?.individualGrades)
+      ? payload.data.individualGrades
+      : Array.isArray(payload?.individualGrades)
+        ? payload.individualGrades
+        : [];
+
+    individualGrades.forEach((grade) => {
+      const id = String(grade?.id || "").trim();
+      if (!id) return;
+      map.set(id, grade);
+    });
+
+    return map;
+  }, [activeBatchAnalyticsData]);
+
+  const selectedEmployeeAnalytics = useMemo(() => {
+    if (!selectedEmployee) return null;
+    return activeBatchAnalyticsByEmployee.get(selectedEmployee.employeeId) || null;
+  }, [activeBatchAnalyticsByEmployee, selectedEmployee]);
+
+  const activeBatchMinPassingGrade = useMemo(() => {
+    const payload = activeBatchAnalyticsData as
+      | {
+          data?: {
+            minPassingGrade?: number | null;
+          };
+          minPassingGrade?: number | null;
+        }
+      | undefined;
+
+    const candidate =
+      typeof payload?.data?.minPassingGrade === "number"
+        ? payload.data.minPassingGrade
+        : typeof payload?.minPassingGrade === "number"
+          ? payload.minPassingGrade
+          : null;
+
+    return typeof candidate === "number" && Number.isFinite(candidate)
+      ? candidate
+      : null;
+  }, [activeBatchAnalyticsData]);
 
   useEffect(() => {
     if (!activeMetricDrawer) {
@@ -1347,6 +1498,45 @@ export default function OrgAdminCompletionPage() {
                             {activeBatch.employees.map((employee) => {
                               const isSelectedEmployee =
                                 selectedEmployee?.id === employee.id;
+                              const analyticsEmployee =
+                                activeBatchAnalyticsByEmployee.get(
+                                  employee.employeeId,
+                                );
+                              const overallDisplay = analyticsEmployee?.finalPercentage
+                                ? `${analyticsEmployee.finalPercentage}%`
+                                : `${employee.overallPercent}%`;
+                              const attendanceDisplay = analyticsEmployee?.attendance
+                                ? `${analyticsEmployee.attendance}%`
+                                : `${employee.attendancePercent}%`;
+                              const passFailStatus = getPassFailStatus(
+                                analyticsEmployee,
+                                activeBatchMinPassingGrade,
+                              );
+                              const derivedCompliance = deriveComplianceFromAnalytics(
+                                employee,
+                                analyticsEmployee,
+                              );
+                              const attendanceForRisk = analyticsEmployee?.attendance
+                                ? clampPercent(Number(analyticsEmployee.attendance))
+                                : employee.attendancePercent;
+                              const gradeForRisk = Number(
+                                analyticsEmployee?.finalGrade || employee.gpa,
+                              );
+                              const hasRiskGrade =
+                                Number.isFinite(gradeForRisk) && gradeForRisk > 0;
+                              const riskDisplay =
+                                employee.status === "not_started" ||
+                                (employee.completedLessons === 0 &&
+                                  employee.completedAssessments === 0 &&
+                                  attendanceForRisk === 0)
+                                  ? "--"
+                                  : employee.totalAssessments > 0 &&
+                                      employee.completedAssessments === 0
+                                    ? "Awaiting Assessment"
+                                    : employee.completedAssessments > 0 &&
+                                        !hasRiskGrade
+                                      ? "Awaiting Grade"
+                                      : derivedCompliance?.riskLevel || employee.riskLevel;
                               return (
                                 <tr
                                   key={employee.id}
@@ -1373,7 +1563,7 @@ export default function OrgAdminCompletionPage() {
                                     </p>
                                   </td>
                                   <td className="py-2.5 px-3 font-semibold text-[12px] text-slate-700">
-                                    {employee.overallPercent}%
+                                    {overallDisplay}
                                   </td>
                                   <td className="py-2.5 px-3 text-[12px] text-slate-700">
                                     {employee.completedLessons}/
@@ -1384,13 +1574,23 @@ export default function OrgAdminCompletionPage() {
                                     {employee.totalAssessments}
                                   </td>
                                   <td className="py-2.5 px-3 text-[12px] text-slate-700">
-                                    {employee.attendancePercent}%
+                                    {attendanceDisplay}
                                   </td>
                                   <td className="py-2.5 px-3 text-[12px] text-slate-700">
-                                    {getRiskDisplayText(employee)}
+                                    {riskDisplay}
                                   </td>
                                   <td className="py-2.5 px-3 text-[12px] text-slate-700">
-                                    {statusLabelMap[employee.status]}
+                                    <span
+                                      className={
+                                        passFailStatus === "Passed"
+                                          ? "font-semibold text-emerald-700"
+                                          : passFailStatus === "Failed"
+                                            ? "font-semibold text-rose-700"
+                                            : "text-slate-600"
+                                      }
+                                    >
+                                      {passFailStatus}
+                                    </span>
                                   </td>
                                   <td className="py-2.5 pl-3 text-right">
                                     <div className="inline-flex gap-2">
@@ -1401,7 +1601,7 @@ export default function OrgAdminCompletionPage() {
                                           setSelectedEmployee(employee)
                                         }
                                       >
-                                        Quick View
+                                        View Breakdown
                                       </button>
                                       <button
                                         type="button"
@@ -1536,127 +1736,13 @@ export default function OrgAdminCompletionPage() {
               </div>
             )}
 
-            {selectedEmployee && (
-              <div
-                className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/45 p-4"
-                onClick={() => setSelectedEmployee(null)}
-              >
-                <div
-                  className="w-full max-w-3xl rounded-2xl border border-slate-200 bg-white p-4 shadow-xl"
-                  onClick={(event) => event.stopPropagation()}
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="text-lg font-semibold text-slate-900">
-                        {selectedEmployee.employeeName}
-                      </p>
-                      <p className="text-sm text-slate-500">
-                        {selectedEmployee.employeeEmail || "--"}
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      className="rounded-md border border-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50"
-                      onClick={() => setSelectedEmployee(null)}
-                    >
-                      Close
-                    </button>
-                  </div>
-
-                  <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-2.5">
-                    <div className="rounded-md border border-slate-200 bg-slate-50 p-2.5">
-                      <p className="text-xs font-semibold uppercase text-slate-500">
-                        Modules
-                      </p>
-                      <p className="text-sm font-semibold text-slate-900 mt-1">
-                        {selectedEmployee.completedModules}/
-                        {selectedEmployee.totalModules} (
-                        {selectedEmployee.modulePercent}%)
-                      </p>
-                    </div>
-                    <div className="rounded-md border border-slate-200 bg-slate-50 p-2.5">
-                      <p className="text-xs font-semibold uppercase text-slate-500">
-                        Lessons
-                      </p>
-                      <p className="text-sm font-semibold text-slate-900 mt-1">
-                        {selectedEmployee.completedLessons}/
-                        {selectedEmployee.totalLessons} (
-                        {selectedEmployee.lessonPercent}%)
-                      </p>
-                    </div>
-                    <div className="rounded-md border border-slate-200 bg-slate-50 p-2.5">
-                      <p className="text-xs font-semibold uppercase text-slate-500">
-                        Assessments
-                      </p>
-                      <p className="text-sm font-semibold text-slate-900 mt-1">
-                        {selectedEmployee.completedAssessments}/
-                        {selectedEmployee.totalAssessments} (
-                        {selectedEmployee.assessmentPercent}%)
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="mt-2.5 grid grid-cols-2 md:grid-cols-4 gap-2.5">
-                    <div className="rounded-md border border-slate-200 bg-slate-50 p-2.5">
-                      <p className="text-[11px] uppercase font-semibold text-slate-500">
-                        Attendance
-                      </p>
-                      <p className="text-sm font-semibold text-slate-900 mt-1">
-                        {selectedEmployee.attendancePercent}%
-                      </p>
-                    </div>
-                    <div className="rounded-md border border-slate-200 bg-slate-50 p-2.5">
-                      <p className="text-[11px] uppercase font-semibold text-slate-500">
-                        Grade
-                      </p>
-                      <p className="text-sm font-semibold text-slate-900 mt-1">
-                        {selectedEmployee.gpa}
-                      </p>
-                    </div>
-                    <div className="rounded-md border border-slate-200 bg-slate-50 p-2.5">
-                      <p className="text-[11px] uppercase font-semibold text-slate-500">
-                        Compliance
-                      </p>
-                      <p className="text-sm font-semibold text-slate-900 mt-1">
-                        {selectedEmployee.complianceScore === null
-                          ? "N/A"
-                          : `${selectedEmployee.complianceScore}%`}
-                      </p>
-                    </div>
-                    <div className="rounded-md border border-slate-200 bg-slate-50 p-2.5">
-                      <p className="text-[11px] uppercase font-semibold text-slate-500">
-                        Standing
-                      </p>
-                      <p className="text-sm font-semibold text-slate-900 mt-1">
-                        {selectedEmployee.standing}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="mt-4 flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      className="rounded-md border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
-                      onClick={() =>
-                        navigate(
-                          `/${orgCode}/admin/student/${selectedEmployee.employeeId}`,
-                        )
-                      }
-                      disabled={!selectedEmployee.employeeId}
-                    >
-                      Open Employee Page
-                    </button>
-                    <button
-                      type="button"
-                      className="rounded-md border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
-                      onClick={() => setSelectedEmployee(null)}
-                    >
-                      Close
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
+            <FinalGradeBreakdownModal
+              isOpen={Boolean(selectedEmployee)}
+              onClose={() => setSelectedEmployee(null)}
+              subTitle={selectedEmployee?.employeeName || ""}
+              data={selectedEmployeeAnalytics}
+              emptyMessage="No individual grade record found for this employee in the selected batch."
+            />
           </>
         )}
       </div>
