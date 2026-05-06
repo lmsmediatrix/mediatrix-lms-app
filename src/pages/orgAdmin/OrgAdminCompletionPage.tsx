@@ -162,12 +162,6 @@ type MetricDrawerRecord = {
   secondaryValue: string;
 };
 
-const statusLabelMap: Record<EmployeeCompletionRow["status"], string> = {
-  completed: "Completed",
-  in_progress: "In Progress",
-  not_started: "Not Started",
-};
-
 const getFullName = (
   user?: {
     firstName?: string;
