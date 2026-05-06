@@ -744,6 +744,7 @@ export default function OrgAdminCompletionPage() {
     useState<EmployeeCompletionRow | null>(null);
   const [activeMetricDrawer, setActiveMetricDrawer] =
     useState<MetricDrawerKey | null>(null);
+  const [isMetricDrawerEntering, setIsMetricDrawerEntering] = useState(false);
   const detailPaneRef = useRef<HTMLDivElement | null>(null);
 
   const filteredHierarchy = useMemo(() => {
@@ -772,6 +773,22 @@ export default function OrgAdminCompletionPage() {
       ) || activeInstructor.batches[0]
     );
   }, [activeInstructor, selectedBatchId]);
+
+  useEffect(() => {
+    if (!activeMetricDrawer) {
+      setIsMetricDrawerEntering(false);
+      return;
+    }
+
+    setIsMetricDrawerEntering(false);
+    const frameId = window.requestAnimationFrame(() => {
+      setIsMetricDrawerEntering(true);
+    });
+
+    return () => {
+      window.cancelAnimationFrame(frameId);
+    };
+  }, [activeMetricDrawer]);
 
   useEffect(() => {
     if (!filteredHierarchy.length) {
@@ -1414,11 +1431,15 @@ export default function OrgAdminCompletionPage() {
 
             {activeMetricDrawerData && (
               <div
-                className="fixed inset-0 z-40 flex justify-end bg-slate-900/35"
+                className={`fixed inset-0 z-40 flex justify-end transition-opacity duration-250 ${
+                  isMetricDrawerEntering ? "bg-slate-900/35 opacity-100" : "bg-slate-900/0 opacity-0"
+                }`}
                 onClick={() => setActiveMetricDrawer(null)}
               >
                 <aside
-                  className="h-full w-full max-w-2xl border-l border-slate-200 bg-white shadow-2xl"
+                  className={`h-full w-full max-w-2xl border-l border-slate-200 bg-white shadow-2xl transition-transform duration-300 ease-out ${
+                    isMetricDrawerEntering ? "translate-x-0" : "translate-x-6"
+                  }`}
                   onClick={(event) => event.stopPropagation()}
                 >
                   <div className="flex h-full flex-col">

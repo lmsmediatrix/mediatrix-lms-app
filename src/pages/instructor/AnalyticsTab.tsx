@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useLocation } from "react-router-dom";
 import GradeChart from "../../components/instructor/GradeChart";
 import { useSectionAnalytics } from "../../hooks/useSection";
@@ -6,6 +6,10 @@ import { FaUser } from "react-icons/fa";
 import AnalyticsTabSkeleton from "../../components/skeleton/AnalyticsTabSkeleton";
 import { useAuth } from "../../context/AuthContext";
 import { getTerm } from "../../lib/utils";
+import Button from "../../components/common/Button";
+import { FiDownload } from "react-icons/fi";
+import { toast } from "react-toastify";
+import { generateTimestamp } from "../../lib/dateUtils";
 
 interface IStudentGrade {
   id: string;
@@ -46,6 +50,8 @@ export default function AnalyticsTab() {
   const [selectedBreakdown, setSelectedBreakdown] = useState<IStudentGrade | null>(
     null,
   );
+  const [isExportingCsv, setIsExportingCsv] = useState(false);
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
 
   // Handle loading state
   if (isPending) {
@@ -82,6 +88,185 @@ export default function AnalyticsTab() {
         (student: IStudentGrade) => student.finalGrade && student.finalGrade !== "--",
       ).length
     : 0;
+
+  const buildAssessmentBreakdownText = (student: IStudentGrade): string => {
+    if (
+      !Array.isArray(student.assessmentBreakdown) ||
+      student.assessmentBreakdown.length === 0
+    ) {
+      return "No assessment breakdown";
+    }
+
+    return student.assessmentBreakdown
+      .map((item) => {
+        if (!item.attempted) {
+          return `${item.title} (${item.type}): Not attempted`;
+        }
+        return `${item.title} (${item.type}): ${item.score ?? "--"}/${item.totalPoints ?? "--"} (${item.percentage ?? "--"}%)`;
+      })
+      .join(" | ");
+  };
+
+  const buildAttendanceBreakdownText = (student: IStudentGrade): string =>
+    student.attendanceDetails
+      ? `${student.attendanceDetails.presentDays}/${student.attendanceDetails.totalDays} days (${student.attendance || "--"}%)`
+      : "No attendance records yet";
+
+  const exportRows = useMemo(
+    () =>
+      (Array.isArray(individualGrades) ? individualGrades : []).map((student: IStudentGrade) => ({
+        [`${learnerTerm} Name`]: student.name || "--",
+        "Final Grade": student.finalGrade || "--",
+        "Final %": student.finalPercentage ? `${student.finalPercentage}%` : "--",
+        "Assignment Avg": student.assignmentAverage
+          ? `${student.assignmentAverage}%`
+          : "--",
+        "Quiz Avg": student.quizAverage ? `${student.quizAverage}%` : "--",
+        Attendance: student.attendance ? `${student.attendance}%` : "--",
+        Exam: student.finalExam ? `${student.finalExam}%` : "--",
+        "TNA Pass / Level-up":
+          student.isPassed === true
+            ? "Passed / Eligible"
+            : student.isPassed === false
+              ? "Not Passed"
+              : "Pending",
+        "Attendance Breakdown": buildAttendanceBreakdownText(student),
+        "Assessment Breakdown": buildAssessmentBreakdownText(student),
+        "Grade Mapping": student.gradeComputation || "N/A",
+        "Percentage Formula": student.percentageComputation || "N/A",
+      })),
+    [individualGrades, learnerTerm],
+  );
+
+  const exportColumns = useMemo(
+    () =>
+      [
+        `${learnerTerm} Name`,
+        "Final Grade",
+        "Final %",
+        "Assignment Avg",
+        "Quiz Avg",
+        "Attendance",
+        "Exam",
+        "TNA Pass / Level-up",
+        "Attendance Breakdown",
+        "Assessment Breakdown",
+        "Grade Mapping",
+        "Percentage Formula",
+      ] as const,
+    [learnerTerm],
+  );
+
+  const escapeCsvValue = (value: string): string => {
+    const normalized = value.replace(/"/g, '""');
+    return `"${normalized}"`;
+  };
+
+  const handleExportCsv = async () => {
+    if (!exportRows.length) {
+      toast.info(`No ${learnerTerm.toLowerCase()} grade data to export.`);
+      return;
+    }
+
+    setIsExportingCsv(true);
+    try {
+      await toast.promise(
+        (async () => {
+          const csvLines: string[] = [];
+          csvLines.push(exportColumns.map((column) => escapeCsvValue(column)).join(","));
+          exportRows.forEach((row) => {
+            csvLines.push(
+              exportColumns
+                .map((column) => escapeCsvValue(String(row[column] ?? "")))
+                .join(","),
+            );
+          });
+
+          const blob = new Blob([csvLines.join("\n")], {
+            type: "text/csv;charset=utf-8;",
+          });
+          const url = window.URL.createObjectURL(blob);
+          const link = document.createElement("a");
+          link.href = url;
+          link.download = `analytics-all-${learnersTerm.toLowerCase()}-grades-${generateTimestamp()}.csv`;
+          document.body.appendChild(link);
+          link.click();
+          link.remove();
+          window.URL.revokeObjectURL(url);
+        })(),
+        {
+          pending: "Exporting all employee grades to CSV...",
+          success: "Employee grades exported to CSV",
+          error: "Failed to export employee grades to CSV",
+        },
+      );
+    } finally {
+      setIsExportingCsv(false);
+    }
+  };
+
+  const handleExportPdf = async () => {
+    if (!exportRows.length) {
+      toast.info(`No ${learnerTerm.toLowerCase()} grade data to export.`);
+      return;
+    }
+
+    setIsExportingPdf(true);
+    try {
+      await toast.promise(
+        (async () => {
+          const [{ jsPDF }, autoTableModule] = await Promise.all([
+            import("jspdf"),
+            import("jspdf-autotable"),
+          ]);
+          const autoTable = autoTableModule.default;
+          const doc = new jsPDF({
+            orientation: "landscape",
+            unit: "pt",
+            format: "a4",
+          });
+
+          doc.setFontSize(14);
+          doc.text(`Analytics - All ${learnersTerm} Grades`, 30, 30);
+          doc.setFontSize(9);
+          doc.setTextColor(100);
+          doc.text(`Generated ${new Date().toLocaleString("en-US")}`, 30, 45);
+
+          autoTable(doc, {
+            startY: 56,
+            head: [exportColumns.map((column) => String(column))],
+            body: exportRows.map((row) =>
+              exportColumns.map((column) => String(row[column] ?? "")),
+            ),
+            styles: {
+              fontSize: 6.5,
+              cellPadding: 2.5,
+              overflow: "linebreak",
+            },
+            headStyles: {
+              fillColor: [30, 64, 175],
+              textColor: [255, 255, 255],
+              fontStyle: "bold",
+              fontSize: 7,
+            },
+            margin: { top: 40, right: 20, bottom: 24, left: 20 },
+            theme: "grid",
+          });
+
+          doc.save(
+            `analytics-all-${learnersTerm.toLowerCase()}-grades-${generateTimestamp()}.pdf`,
+          );
+        })(),
+        {
+          pending: "Exporting all employee grades to PDF...",
+          success: "Employee grades exported to PDF",
+          error: "Failed to export employee grades to PDF",
+        },
+      );
+    } finally {
+      setIsExportingPdf(false);
+    }
+  };
 
   return (
     <div className="p-2 sm:p-6 space-y-6">
@@ -155,6 +340,28 @@ export default function AnalyticsTab() {
         <h1 className="text-xl sm:text-2xl font-bold">
           Individual {learnerTerm} Grades
         </h1>
+        <div className="ml-auto flex items-center gap-2">
+          <Button
+            variant="outline"
+            className="h-9 px-3 text-xs sm:text-sm"
+            onClick={() => void handleExportCsv()}
+            isLoading={isExportingCsv}
+            isLoadingText="Exporting..."
+          >
+            <FiDownload className="mr-1" />
+            Export CSV
+          </Button>
+          <Button
+            variant="outline"
+            className="h-9 px-3 text-xs sm:text-sm"
+            onClick={() => void handleExportPdf()}
+            isLoading={isExportingPdf}
+            isLoadingText="Exporting..."
+          >
+            <FiDownload className="mr-1" />
+            Export PDF
+          </Button>
+        </div>
       </div>
       <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-600">
         Final grade is computed as the average of available components:

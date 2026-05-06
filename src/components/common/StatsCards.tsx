@@ -69,9 +69,6 @@ export default function StatsCards({
               <p className="relative z-10 text-xs text-gray-500">
                 {stat.change}
               </p>
-              <p className="mt-2 text-[11px] font-semibold text-primary">
-                Open details
-              </p>
             </button>
           );
         }

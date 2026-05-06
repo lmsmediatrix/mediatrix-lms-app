@@ -237,7 +237,7 @@ export const useUpsertTnaRecommendationExecution = () => {
       recordsNotes?: string;
       trainingStatuses?: Array<{
         trainingId: string;
-        status: "pending" | "in_progress" | "completed";
+        status: "pending" | "in_progress" | "completed" | "overdue";
       }>;
       status?: "pending" | "assigned" | "completed";
     }) => TnaService.upsertRecommendationExecution(payload),
@@ -246,6 +246,21 @@ export const useUpsertTnaRecommendationExecution = () => {
       queryClient.invalidateQueries({
         queryKey: ["employee-tna-recommendations"],
       });
+    },
+  });
+};
+
+export const useSyncTnaRecommendationOutcomes = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload?: { employeeId?: string }) =>
+      TnaService.syncRecommendationOutcomes(payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["tna-recommendations"] });
+      queryClient.invalidateQueries({
+        queryKey: ["employee-tna-recommendations"],
+      });
+      queryClient.invalidateQueries({ queryKey: ["tna-employee-skills"] });
     },
   });
 };

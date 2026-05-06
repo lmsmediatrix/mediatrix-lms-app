@@ -51,7 +51,7 @@ export const useDeleteGrade = () => {
 
 export const useGetSectionAttendance = (
   sectionCode: string,
-  date: { from: string; to: string }
+  date: { from: string; to: string },
 ) => {
   return useQuery({
     queryKey: ["section-attendance", sectionCode, date],
@@ -107,7 +107,7 @@ export const useSearchInstructors = (
   apiParams?: Partial<ApiParams> & {
     organizationId?: string;
     archiveStatus?: "only" | "none";
-  }
+  },
 ) => {
   return useQuery({
     queryKey: ["search-instructors", apiParams],
@@ -236,7 +236,7 @@ export const useExportInstructorToCsv = () => {
 };
 
 export const useInstructorsForDropdown = (
-  apiParams?: Partial<ApiParams> & { organizationId?: string }
+  apiParams?: Partial<ApiParams> & { organizationId?: string },
 ) => {
   return useQuery({
     queryKey: ["instructors-dropdown", apiParams],
@@ -272,7 +272,7 @@ export const useInstructorsForDropdown = (
 };
 
 export const useInfiniteInstructorsForDropdown = (
-  apiParams?: Partial<ApiParams> & { organizationId?: string }
+  apiParams?: Partial<ApiParams> & { organizationId?: string },
 ) => {
   const limit = apiParams?.limit || 10;
 

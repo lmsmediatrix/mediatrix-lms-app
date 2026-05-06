@@ -4,6 +4,7 @@ import { FaArrowLeft } from "react-icons/fa";
 import { toast } from "react-toastify";
 import { Lightbulb } from "@/components/animate-ui/icons/lightbulb";
 import Button from "../../components/common/Button";
+import Dialog from "../../components/common/Dialog";
 import HoverHelpTooltip from "../../components/common/HoverHelpTooltip";
 import TnaAutoCreatePlanModal from "../../components/orgAdmin/TnaAutoCreatePlanModal";
 import { useAuth } from "../../context/AuthContext";
@@ -12,6 +13,8 @@ import {
   useGetTnaRecommendations,
 } from "../../hooks/useTna";
 import { getTerm } from "../../lib/utils";
+import developmentPlanService from "../../services/developmentPlanApi";
+import sectionService from "../../services/sectionApi";
 
 type RecommendationStatus = "pending" | "assigned" | "completed";
 type TrainingProgressStatus = "pending" | "in_progress" | "completed";
@@ -45,6 +48,7 @@ type TnaRecommendation = {
     priority?: string;
     mandatory?: boolean;
     progressStatus?: TrainingProgressStatus;
+    course?: { _id?: string } | string;
   }>;
   execution?: {
     stage?: string;
@@ -52,6 +56,20 @@ type TnaRecommendation = {
     passingScore?: number;
     examPassed?: boolean;
   };
+  preAssessment?: {
+    score?: number;
+    threshold?: number;
+    requiresTraining?: boolean;
+  };
+  skillGaps?: Array<{
+    skillName?: string;
+    requiredLevel?: number;
+    currentLevel?: number;
+    gap?: number;
+  }>;
+  performanceGaps?: string[];
+  managerRecommendations?: string[];
+  employeeRequests?: string[];
 };
 
 type AutoDeploySummary = {
@@ -181,6 +199,114 @@ const getErrorMessage = (error: unknown): string => {
   return "Failed to complete auto create";
 };
 
+type RecommendationTrainingRow = {
+  id: string;
+  title: string;
+  priority: TrainingPriority;
+  mandatory: boolean;
+  status: TrainingProgressStatus;
+  courseId?: string;
+};
+
+type SectionSearchRow = {
+  _id?: string;
+  code?: string;
+  name?: string;
+  title?: string;
+  status?: string;
+  createdAt?: string;
+};
+
+type EmployeeGradeRow = {
+  id: string;
+  name: string;
+  finalGrade?: string;
+  finalPercentage?: string | null;
+  assignmentAverage?: string;
+  quizAverage?: string;
+  attendance?: string;
+  finalExam?: string;
+  isPassed?: boolean | null;
+  gradeComputation?: string | null;
+  percentageComputation?: string | null;
+  attendanceDetails?: {
+    presentDays: number;
+    totalDays: number;
+  } | null;
+  assessmentBreakdown?: Array<{
+    assessmentId: string;
+    title: string;
+    type: string;
+    score: number | null;
+    totalPoints: number | null;
+    percentage: number | null;
+    attempted: boolean;
+  }>;
+};
+
+type SectionAnalyticsPayload = {
+  sectionId?: string;
+  sectionCode?: string;
+  totalStudentsEnrolled?: string | number;
+  minPassingGrade?: number;
+  averageFinalGrade?: string | number;
+  averageFinalPercentage?: string | number;
+  individualGrade?: EmployeeGradeRow | null;
+  individualGrades?: EmployeeGradeRow[];
+};
+
+type TrainingGradeModalState = {
+  isOpen: boolean;
+  isLoading: boolean;
+  error: string;
+  trainingTitle: string;
+  batchCode: string;
+  batchName: string;
+  employeeName: string;
+  analytics: SectionAnalyticsPayload | null;
+  employeeGrade: EmployeeGradeRow | null;
+};
+
+const initialTrainingGradeModalState: TrainingGradeModalState = {
+  isOpen: false,
+  isLoading: false,
+  error: "",
+  trainingTitle: "",
+  batchCode: "",
+  batchName: "",
+  employeeName: "",
+  analytics: null,
+  employeeGrade: null,
+};
+
+const mapRecommendationTrainingRows = (
+  recommendation?: TnaRecommendation | null,
+): RecommendationTrainingRow[] => {
+  if (!recommendation || !Array.isArray(recommendation.recommendedTrainings)) {
+    return [];
+  }
+
+  return recommendation.recommendedTrainings.map((item, index) => {
+    const rowId = String(item?._id || `training-${index}`);
+    return {
+      id: rowId,
+      title: String(item?.title || "").trim() || "Untitled training",
+      priority: normalizeTrainingPriority(
+        String(item?.priority || "")
+          .trim()
+          .toLowerCase(),
+      ),
+      mandatory: Boolean(item?.mandatory),
+      status: normalizeTrainingProgressStatus(item?.progressStatus),
+      courseId:
+        typeof item?.course === "string"
+          ? String(item.course || "").trim() || undefined
+          : String((item?.course as { _id?: string } | undefined)?._id || "").trim() ||
+            undefined,
+    };
+  });
+};
+
 export default function TnaExecutionPipelinePage() {
   const { currentUser } = useAuth();
   const navigate = useNavigate();
@@ -212,6 +338,8 @@ export default function TnaExecutionPipelinePage() {
   const [autoDeploySummary, setAutoDeploySummary] =
     useState<AutoDeploySummary | null>(null);
   const [isPlannerModalOpen, setIsPlannerModalOpen] = useState(false);
+  const [trainingGradeModal, setTrainingGradeModal] =
+    useState<TrainingGradeModalState>(initialTrainingGradeModalState);
   const [deploymentCreateMode, setDeploymentCreateMode] =
     useState<DeploymentCreateMode>("auto_create");
 
@@ -282,25 +410,7 @@ export default function TnaExecutionPipelinePage() {
   }, [selectedRecommendation]);
 
   const selectedTrainingRows = useMemo(() => {
-    if (
-      !selectedRecommendation ||
-      !Array.isArray(selectedRecommendation.recommendedTrainings)
-    )
-      return [];
-    return selectedRecommendation.recommendedTrainings.map((item, index) => {
-      const rowId = String(item?._id || `training-${index}`);
-      return {
-        id: rowId,
-        title: String(item?.title || "").trim() || "Untitled training",
-        priority: normalizeTrainingPriority(
-          String(item?.priority || "")
-            .trim()
-            .toLowerCase(),
-        ),
-        mandatory: Boolean(item?.mandatory),
-        status: normalizeTrainingProgressStatus(item?.progressStatus),
-      };
-    });
+    return mapRecommendationTrainingRows(selectedRecommendation);
   }, [selectedRecommendation]);
 
   const plannerDefaultCourses = useMemo(() => {
@@ -444,6 +554,164 @@ export default function TnaExecutionPipelinePage() {
     await runAutoDeployFromTna(payload);
   };
 
+  const handleOpenTrainingGrades = async (trainingRow: RecommendationTrainingRow) => {
+    if (!selectedRecommendation?._id) {
+      toast.error("Select a recommendation first.");
+      return;
+    }
+
+    if (!selectedEmployeeId) {
+      toast.error("Selected employee is missing an ID.");
+      return;
+    }
+
+    setTrainingGradeModal({
+      ...initialTrainingGradeModalState,
+      isOpen: true,
+      isLoading: true,
+      trainingTitle: trainingRow.title,
+      employeeName: selectedEmployeeName || "--",
+    });
+
+    try {
+      const plansResponse = (await developmentPlanService.getPlans({
+        employeeId: selectedEmployeeId,
+        recommendationId: selectedRecommendation._id,
+        limit: 10,
+        skip: 0,
+      })) as
+        | {
+            data?: Array<{
+              quarterPlans?: Array<{
+                activities?: Array<{
+                  sourceReference?: {
+                    trainingId?: string;
+                    sectionId?: string;
+                    sectionCode?: string;
+                  };
+                }>;
+              }>;
+            }>;
+          }
+        | undefined;
+
+      const plans = Array.isArray(plansResponse?.data) ? plansResponse.data : [];
+      const sourceReferenceMatches = plans.flatMap((plan) =>
+        (Array.isArray(plan?.quarterPlans) ? plan.quarterPlans : []).flatMap((quarterPlan) =>
+          (Array.isArray(quarterPlan?.activities) ? quarterPlan.activities : [])
+            .map((activity) => activity?.sourceReference)
+            .filter((sourceReference) => {
+              const sourceTrainingId = String(sourceReference?.trainingId || "").trim();
+              return sourceTrainingId === trainingRow.id;
+            }),
+        ),
+      );
+
+      const sourceReference =
+        sourceReferenceMatches.find(
+          (item) => String(item?.sectionCode || "").trim().length > 0,
+        ) || sourceReferenceMatches[0];
+
+      let sectionId = String(sourceReference?.sectionId || "").trim();
+      let sectionCode = String(sourceReference?.sectionCode || "").trim();
+
+      if (!sectionId && trainingRow.courseId) {
+        const sectionSearchResponse = (await sectionService
+          .resetQuery()
+          .select(["_id", "code", "name", "title", "status", "createdAt"])
+          .where({
+            students: selectedEmployeeId,
+            course: trainingRow.courseId,
+          })
+          .withArchive("none")
+          .withDocument(true)
+          .limit(20)
+          .skip(0)
+          .searchSections()) as
+          | { sections?: SectionSearchRow[] }
+          | undefined;
+
+        const candidateSections = Array.isArray(sectionSearchResponse?.sections)
+          ? sectionSearchResponse.sections
+          : [];
+        const statusRank = (status?: string) => {
+          const normalized = String(status || "").toLowerCase();
+          if (normalized === "active" || normalized === "in_progress") return 3;
+          if (normalized === "upcoming") return 2;
+          if (normalized === "completed") return 1;
+          return 0;
+        };
+        const selectedSection =
+          candidateSections.sort((a, b) => {
+            const rankDiff = statusRank(b.status) - statusRank(a.status);
+            if (rankDiff !== 0) return rankDiff;
+            return (
+              new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
+            );
+          })[0] || null;
+
+        if (selectedSection?._id) {
+          sectionId = String(selectedSection._id || "").trim();
+          sectionCode = String(selectedSection.code || sectionCode).trim();
+        }
+      }
+
+      if (!sectionId) {
+        setTrainingGradeModal((previous) => ({
+          ...previous,
+          isLoading: false,
+          error:
+            "No linked section found yet for this training and employee.",
+        }));
+        return;
+      }
+
+      let resolvedBatchName = "";
+      if (sectionId) {
+        try {
+          const sectionByIdResponse = (await sectionService
+            .resetQuery()
+            .select(["name", "title", "code"])
+            .withDocument(true)
+            .getSectionById(sectionId)) as
+            | { data?: { name?: string; title?: string } }
+            | undefined;
+          resolvedBatchName = String(
+            sectionByIdResponse?.data?.name || sectionByIdResponse?.data?.title || "",
+          ).trim();
+        } catch {
+          resolvedBatchName = "";
+        }
+      }
+
+      const analyticsResponse = (await sectionService
+        .resetQuery()
+        .getSectionEmployeeAnalytics(sectionId, selectedEmployeeId)) as
+        | { data?: SectionAnalyticsPayload }
+        | undefined;
+      const analytics = analyticsResponse?.data || null;
+      const matchedEmployeeGrade =
+        analytics?.individualGrade ||
+        (Array.isArray(analytics?.individualGrades) ? analytics?.individualGrades[0] : null) ||
+        null;
+
+      setTrainingGradeModal((previous) => ({
+        ...previous,
+        isLoading: false,
+        batchCode: String(analytics?.sectionCode || sectionCode),
+        batchName: resolvedBatchName,
+        analytics,
+        employeeGrade: matchedEmployeeGrade,
+      }));
+    } catch (error) {
+      setTrainingGradeModal((previous) => ({
+        ...previous,
+        isLoading: false,
+        error: getErrorMessage(error),
+      }));
+    }
+  };
+
   const openPlannerModal = () => {
     if (!selectedRecommendation?._id) {
       toast.error("Select a recommendation first.");
@@ -543,13 +811,18 @@ export default function TnaExecutionPipelinePage() {
                   recommendation._id === (selectedRecommendation?._id || "");
                 const employeeName = getEmployeeName(recommendation);
                 return (
-                  <button
+                  <div
                     key={recommendation._id}
-                    type="button"
-                    onClick={() =>
-                      setSelectedRecommendationId(recommendation._id)
-                    }
-                    className={`w-full rounded-xl border p-3 text-left transition-colors ${
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => setSelectedRecommendationId(recommendation._id)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        setSelectedRecommendationId(recommendation._id);
+                      }
+                    }}
+                    className={`w-full rounded-xl border p-3 text-left transition-colors cursor-pointer ${
                       isActive
                         ? "border-primary bg-primary/5"
                         : "border-slate-200 hover:border-slate-300"
@@ -567,7 +840,7 @@ export default function TnaExecutionPipelinePage() {
                       </span>{" "}
                       {toLocaleDateTime(recommendation.createdAt)}
                     </p>
-                  </button>
+                  </div>
                 );
               })}
             </div>
@@ -691,6 +964,7 @@ export default function TnaExecutionPipelinePage() {
                                 <th className="px-3 py-2.5">Priority</th>
                                 <th className="px-3 py-2.5">Type</th>
                                 <th className="px-3 py-2.5">Status</th>
+                                <th className="px-3 py-2.5 text-right">Grades</th>
                               </tr>
                             </thead>
                             <tbody>
@@ -720,6 +994,17 @@ export default function TnaExecutionPipelinePage() {
                                     >
                                       {trainingStatusLabelMap[row.status]}
                                     </span>
+                                  </td>
+                                  <td className="px-3 py-2.5 text-right">
+                                    <button
+                                      type="button"
+                                      className="inline-flex items-center rounded-md border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                                      onClick={() => {
+                                        void handleOpenTrainingGrades(row);
+                                      }}
+                                    >
+                                      View Grades
+                                    </button>
                                   </td>
                                 </tr>
                               ))}
@@ -1064,6 +1349,162 @@ export default function TnaExecutionPipelinePage() {
         isSubmitting={autoDeployMutation.isPending}
         defaultCourses={plannerDefaultCourses}
       />
+      <Dialog
+        isOpen={trainingGradeModal.isOpen}
+        onClose={() => setTrainingGradeModal(initialTrainingGradeModalState)}
+        title="Training Grade Analytics"
+        subTitle={`${trainingGradeModal.trainingTitle || "--"} • ${trainingGradeModal.employeeName || "--"}`}
+        size="4xl"
+        backdrop="blur"
+      >
+        {trainingGradeModal.isLoading ? (
+          <p className="text-sm text-slate-600">Loading employee grade analytics...</p>
+        ) : trainingGradeModal.error ? (
+          <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+            {trainingGradeModal.error}
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700">
+              Batch:{" "}
+              <span className="font-semibold text-slate-900">
+                {trainingGradeModal.batchName || "--"}
+              </span>{" "}
+              {trainingGradeModal.batchCode
+                ? `(${trainingGradeModal.batchCode})`
+                : ""}
+            </div>
+
+            <div className="grid grid-cols-1 gap-2 md:grid-cols-3 text-xs">
+              <div className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2">
+                <p className="font-semibold text-slate-600">Total Enrolled</p>
+                <p className="mt-1 text-slate-900">
+                  {trainingGradeModal.analytics?.totalStudentsEnrolled ?? "--"}
+                </p>
+              </div>
+              <div className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2">
+                <p className="font-semibold text-slate-600">Average Final Grade</p>
+                <p className="mt-1 text-slate-900">
+                  {trainingGradeModal.analytics?.averageFinalGrade ?? "--"}
+                </p>
+              </div>
+              <div className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2">
+                <p className="font-semibold text-slate-600">Average Final %</p>
+                <p className="mt-1 text-slate-900">
+                  {trainingGradeModal.analytics?.averageFinalPercentage ?? "--"}
+                </p>
+              </div>
+            </div>
+
+            <div className="rounded-lg border border-slate-200 bg-white p-3">
+              <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                Individual Employee Grade
+              </p>
+              {!trainingGradeModal.employeeGrade ? (
+                <p className="mt-2 text-sm text-slate-500">
+                  No individual grade record found for this employee in the resolved batch.
+                </p>
+              ) : (
+                <div className="mt-2 overflow-auto">
+                  <table className="min-w-[680px] w-full">
+                    <thead className="bg-slate-50">
+                      <tr className="border-b border-slate-200 text-left text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                        <th className="px-2.5 py-2">{employeeTerm} Name</th>
+                        <th className="px-2.5 py-2">Final Grade</th>
+                        <th className="px-2.5 py-2">Final %</th>
+                        <th className="px-2.5 py-2">Assignment Avg</th>
+                        <th className="px-2.5 py-2">Quiz Avg</th>
+                        <th className="px-2.5 py-2">Attendance</th>
+                        <th className="px-2.5 py-2">Exam</th>
+                        <th className="px-2.5 py-2">TNA Pass / Level-up</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr className="border-b border-slate-100">
+                        <td className="px-2.5 py-2 text-sm font-medium text-slate-900">
+                          {trainingGradeModal.employeeGrade.name || "--"}
+                        </td>
+                        <td className="px-2.5 py-2 text-xs text-slate-700">
+                          {trainingGradeModal.employeeGrade.finalGrade || "--"}
+                        </td>
+                        <td className="px-2.5 py-2 text-xs text-slate-700">
+                          {trainingGradeModal.employeeGrade.finalPercentage
+                            ? `${trainingGradeModal.employeeGrade.finalPercentage}%`
+                            : "--"}
+                        </td>
+                        <td className="px-2.5 py-2 text-xs text-slate-700">
+                          {trainingGradeModal.employeeGrade.assignmentAverage
+                            ? `${trainingGradeModal.employeeGrade.assignmentAverage}%`
+                            : "--"}
+                        </td>
+                        <td className="px-2.5 py-2 text-xs text-slate-700">
+                          {trainingGradeModal.employeeGrade.quizAverage
+                            ? `${trainingGradeModal.employeeGrade.quizAverage}%`
+                            : "--"}
+                        </td>
+                        <td className="px-2.5 py-2 text-xs text-slate-700">
+                          {trainingGradeModal.employeeGrade.attendance
+                            ? `${trainingGradeModal.employeeGrade.attendance}%`
+                            : "--"}
+                        </td>
+                        <td className="px-2.5 py-2 text-xs text-slate-700">
+                          {trainingGradeModal.employeeGrade.finalExam
+                            ? `${trainingGradeModal.employeeGrade.finalExam}%`
+                            : "--"}
+                        </td>
+                        <td className="px-2.5 py-2">
+                          {trainingGradeModal.employeeGrade.isPassed === true ? (
+                            <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs text-emerald-700">
+                              Passed / Eligible
+                            </span>
+                          ) : trainingGradeModal.employeeGrade.isPassed ===
+                            false ? (
+                            <span className="inline-flex items-center rounded-full border border-red-200 bg-red-50 px-2.5 py-1 text-xs text-red-700">
+                              Not Passed
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600">
+                              Pending
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              {trainingGradeModal.employeeGrade?.assessmentBreakdown &&
+                trainingGradeModal.employeeGrade.assessmentBreakdown.length > 0 && (
+                  <div className="mt-3 rounded-md border border-slate-200 bg-slate-50 p-3">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                      Assessment Breakdown
+                    </p>
+                    <div className="mt-2 space-y-1.5">
+                      {trainingGradeModal.employeeGrade.assessmentBreakdown.map(
+                        (item) => (
+                          <div
+                            key={item.assessmentId}
+                            className="rounded border border-slate-200 bg-white px-2.5 py-2 text-xs text-slate-700"
+                          >
+                            <p className="font-medium text-slate-800">
+                              {item.title} ({item.type})
+                            </p>
+                            <p className="mt-0.5">
+                              {item.attempted
+                                ? `Score: ${item.score ?? "--"} / ${item.totalPoints ?? "--"} (${item.percentage ?? "--"}%)`
+                                : "Not attempted"}
+                            </p>
+                          </div>
+                        ),
+                      )}
+                    </div>
+                  </div>
+                )}
+            </div>
+          </div>
+        )}
+      </Dialog>
     </div>
   );
 }
