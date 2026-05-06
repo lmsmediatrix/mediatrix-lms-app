@@ -65,6 +65,7 @@ export const useGetStudentProfile = (
           "createdAt",
           "socialLinks",
           "yearLevel",
+          "studentAssessmentResults",
         ])
         .populate([
           {

@@ -101,6 +101,8 @@ export const API_ENDPOINTS = {
     SECTION_GRADE_SYSTEM: "/section/:sectionCode/grade/system",
     SECTION_STUDENT_GRADES: "/section/:sectionCode/grades",
     SECTION_STUDENT_GRADES_ANALYTICS: "/section/:sectionCode/analytics",
+    SECTION_STUDENT_GRADES_ANALYTICS_BY_EMPLOYEE:
+      "/section/analytics/student",
     REMOVE_STUDENT_IN_SECTION:
       "/section/:sectionCode/student/remove/:studentId",
     HELPER_CODE: "/section/code",
@@ -310,6 +312,7 @@ export const API_ENDPOINTS = {
     RECOMMENDATION_REMOVE: "/tna/recommendation/remove/:id",
     RECOMMENDATION_UPDATE_STATUS: "/tna/recommendation/status/update",
     RECOMMENDATION_EXECUTION_UPSERT: "/tna/recommendation/execution/upsert",
+    RECOMMENDATION_OUTCOME_SYNC: "/tna/recommendation/outcome/sync",
     RECOMMENDATION_AUTO_DEPLOY: "/tna/recommendation/deploy/auto",
     DEVELOPMENT_PLAN_GET_ALL: "/tna/development-plan/get/all",
     DEVELOPMENT_PLAN_UPSERT: "/tna/development-plan/upsert",

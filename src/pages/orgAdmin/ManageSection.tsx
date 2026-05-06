@@ -6,6 +6,7 @@ import CreateModuleTab from "../instructor/CreateModuleTab";
 import CreateAnnouncementTab from "../instructor/CreateAnnouncementTab";
 import CreateAssessmenttTab from "../instructor/CreateAssessmentTab";
 import CreateGradesTab from "../instructor/CreateGradesTab";
+import AnalyticsTab from "../instructor/AnalyticsTab";
 import { TActiveTab } from "../../types/interfaces";
 import { useSectionByCode } from "../../hooks/useSection";
 import { getTerm } from "../../lib/utils";
@@ -39,6 +40,7 @@ export default function ManageSection() {
     { name: "Modules", value: "modules" },
     { name: "Assessments", value: "assessments" },
     { name: "Grading System", value: "grades" },
+    { name: "Analytics", value: "analytics" },
     { name: "Manage Students", value: "students" },
     { name: "Announcements", value: "announcements" },
   ];
@@ -106,6 +108,8 @@ export default function ManageSection() {
           return <AssessmentTabSkeleton />;
         case "grades":
           return <CreateGradesTabSkeleton />;
+        case "analytics":
+          return <CreateGradesTabSkeleton />;
         case "students":
           return <StudentsTabSkeleton />;
         default:
@@ -137,6 +141,8 @@ export default function ManageSection() {
         );
       case "grades":
         return <CreateGradesTab sectionCode={sectionCode} />;
+      case "analytics":
+        return <AnalyticsTab />;
       case "students":
         return (
           <div className="border rounded-md bg-white shadow-md">

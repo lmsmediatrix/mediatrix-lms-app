@@ -241,13 +241,24 @@ class TnaService extends APIService {
     recordsNotes?: string;
     trainingStatuses?: Array<{
       trainingId: string;
-      status: "pending" | "in_progress" | "completed";
+      status: "pending" | "in_progress" | "completed" | "overdue";
     }>;
     status?: "pending" | "assigned" | "completed";
   }) => {
     const response = await apiClient.put(
       `${BASE_URL}${TNA.RECOMMENDATION_EXECUTION_UPSERT}`,
       body,
+      {
+        withCredentials: true,
+      },
+    );
+    return response.data;
+  };
+
+  syncRecommendationOutcomes = async (body?: { employeeId?: string }) => {
+    const response = await apiClient.post(
+      `${BASE_URL}${TNA.RECOMMENDATION_OUTCOME_SYNC}`,
+      body || {},
       {
         withCredentials: true,
       },

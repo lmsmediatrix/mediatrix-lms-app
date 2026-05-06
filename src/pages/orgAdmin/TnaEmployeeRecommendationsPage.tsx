@@ -19,6 +19,7 @@ import {
   useGetTnaRecommendations,
 } from "../../hooks/useTna";
 import { getTerm } from "../../lib/utils";
+import sectionService from "../../services/sectionApi";
 
 type EmployeeOption = {
   _id: string;
@@ -256,6 +257,7 @@ export default function TnaEmployeeRecommendationsPage() {
     recommendation: TnaRecommendation | null;
   } | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget>(null);
+  const [openingAnalyticsEmployeeId, setOpeningAnalyticsEmployeeId] = useState("");
 
   const openDetails = (
     employee: EmployeeOption,
@@ -297,6 +299,71 @@ export default function TnaEmployeeRecommendationsPage() {
     }
 
     navigate(`/${orgCode}/admin/tna?${params.toString()}`);
+  };
+
+  const handleOpenBatchAnalytics = async (row: EmployeeSummaryRow) => {
+    const employeeId = String(row.employee?._id || "").trim();
+    if (!employeeId) {
+      toast.error("Employee record is missing an ID.");
+      return;
+    }
+
+    setOpeningAnalyticsEmployeeId(employeeId);
+    try {
+      const response = await sectionService
+        .resetQuery()
+        .select(["code", "name", "status", "createdAt"])
+        .where({ students: employeeId })
+        .withArchive("none")
+        .withDocument(true)
+        .limit(100)
+        .skip(0)
+        .searchSections();
+
+      const sections = Array.isArray((response as { sections?: unknown[] })?.sections)
+        ? ((response as { sections?: unknown[] }).sections as Array<{
+            code?: string;
+            status?: string;
+            createdAt?: string;
+          }>)
+        : [];
+
+      if (sections.length === 0) {
+        toast.info("No enrolled batch found for this employee yet.");
+        return;
+      }
+
+      const statusRank = (status?: string) => {
+        const normalized = String(status || "").toLowerCase();
+        if (normalized === "active" || normalized === "in_progress") return 3;
+        if (normalized === "upcoming") return 2;
+        if (normalized === "completed") return 1;
+        return 0;
+      };
+
+      const targetSection =
+        sections
+          .filter((section) => String(section.code || "").trim())
+          .sort((a, b) => {
+            const rankDiff = statusRank(b.status) - statusRank(a.status);
+            if (rankDiff !== 0) return rankDiff;
+            return (
+              new Date(b.createdAt || 0).getTime() -
+              new Date(a.createdAt || 0).getTime()
+            );
+          })[0] || null;
+
+      if (!targetSection?.code) {
+        toast.info("Could not resolve a batch with analytics access.");
+        return;
+      }
+
+      navigate(`/${orgCode}/admin/section/${targetSection.code}/manage?tab=analytics`);
+    } catch (error) {
+      toast.error(getErrorMessage(error));
+    } finally {
+      setOpeningAnalyticsEmployeeId("");
+    }
   };
 
   const requestDeleteRecommendation = (row: EmployeeSummaryRow) => {
@@ -580,6 +647,17 @@ export default function TnaEmployeeRecommendationsPage() {
                 onClick: () => handleUpdateRecommendation(row),
               },
               {
+                key: "open-analytics",
+                label:
+                  openingAnalyticsEmployeeId === row.employee._id
+                    ? "Opening Analytics..."
+                    : "Open Batch Analytics",
+                onClick: () => {
+                  void handleOpenBatchAnalytics(row);
+                },
+                disabled: openingAnalyticsEmployeeId === row.employee._id,
+              },
+              {
                 key: "delete",
                 label: "Delete",
                 onClick: () => requestDeleteRecommendation(row),
@@ -591,7 +669,7 @@ export default function TnaEmployeeRecommendationsPage() {
         ),
       },
     ],
-    [employeeTerm, orgCode],
+    [employeeTerm, openingAnalyticsEmployeeId, orgCode],
   );
 
   const detailsModalHost =

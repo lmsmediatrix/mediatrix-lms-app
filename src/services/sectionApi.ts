@@ -202,6 +202,24 @@ class SectionService extends APIService {
     }
   };
 
+  getSectionEmployeeAnalytics = async (sectionId: string, employeeId: string) => {
+    try {
+      const response = await apiClient.get(
+        `${BASE_URL}${SECTION.SECTION_STUDENT_GRADES_ANALYTICS_BY_EMPLOYEE}`,
+        {
+          withCredentials: true,
+          params: {
+            sectionId,
+            employeeId,
+          },
+        }
+      );
+      return response.data;
+    } catch (error) {
+      throw new Error("Error fetching section employee analytics data");
+    }
+  };
+
   exportSection = async () => {
     try {
       const response = await apiClient.post(

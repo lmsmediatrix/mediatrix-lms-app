@@ -91,6 +91,11 @@ export const BASE_NAVIGATION: {
       ICON: ChartNoAxesCombinedIcon,
     },
     {
+      LABEL: "Employee TNA",
+      PATH: "/:code/admin/tna/employees",
+      ICON: UsersIcon,
+    },
+    {
       LABEL: "Configuration",
       ICON: SettingsIcon,
       SUBMENU: [
