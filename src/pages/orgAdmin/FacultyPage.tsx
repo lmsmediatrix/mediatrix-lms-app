@@ -366,14 +366,6 @@ export default function FacultyPage() {
         <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
           Error loading faculties
         </div>
-      ) : facultyRows.length === 0 ? (
-        <TableEmptyState
-          title="Create Your First Faculty"
-          description="Start by creating a faculty. Faculties help organize your academic departments."
-          colSpan={5}
-          type="faculty"
-          isFiltered={Boolean(searchTerm || selectedStatus || archiveStatus !== "none")}
-        />
       ) : (
         <GroupedDataTable
           groups={tableGroups}
@@ -386,6 +378,18 @@ export default function FacultyPage() {
           onRowClick={(row) => setSearchParams({ modal: "view-faculty", id: row._id })}
           toolbarRight={tableToolbarActions}
           emptyFilteredText="No matching faculties found."
+          emptyState={
+            facultyRows.length === 0 &&
+            !(searchTerm || selectedStatus || archiveStatus !== "none") ? (
+              <TableEmptyState
+                title="Create Your First Faculty"
+                description="Start by creating a faculty. Faculties help organize your academic departments."
+                colSpan={5}
+                type="faculty"
+                isFiltered={false}
+              />
+            ) : undefined
+          }
         />
       )}
 

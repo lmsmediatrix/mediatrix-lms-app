@@ -353,16 +353,6 @@ export default function CategoryPage() {
         <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
           Error loading categories
         </div>
-      ) : categoryRows.length === 0 ? (
-        <TableEmptyState
-          title="Create Your First Category"
-          description="Start by creating a category. Categories help organize your courses."
-          colSpan={4}
-          type="category"
-          isFiltered={Boolean(
-            searchTerm || selectedStatus || archiveStatus !== "none",
-          )}
-        />
       ) : (
         <GroupedDataTable
           groups={tableGroups}
@@ -377,6 +367,18 @@ export default function CategoryPage() {
           }
           toolbarRight={tableToolbarActions}
           emptyFilteredText="No matching categories found."
+          emptyState={
+            categoryRows.length === 0 &&
+            !(searchTerm || selectedStatus || archiveStatus !== "none") ? (
+              <TableEmptyState
+                title="Create Your First Category"
+                description="Start by creating a category. Categories help organize your courses."
+                colSpan={4}
+                type="category"
+                isFiltered={false}
+              />
+            ) : undefined
+          }
         />
       )}
       {/* Pagination */}

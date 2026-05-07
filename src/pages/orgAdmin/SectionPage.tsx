@@ -560,20 +560,6 @@ export default function SectionPage() {
         <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
           Error loading {sectionsTerm.toLowerCase()}
         </div>
-      ) : sectionRows.length === 0 &&
-        !(
-          debouncedSearchTerm ||
-          selectedCourse ||
-          selectedInstructor ||
-          archiveStatus !== "none"
-        ) ? (
-        <TableEmptyState
-          title={`Create Your First ${sectionTerm}`}
-          description={`Start by creating a ${sectionTerm.toLowerCase()}. You'll need courses, ${instructorTerm.toLowerCase()}s, and ${learnerTerm.toLowerCase()}s first.`}
-          colSpan={6}
-          type="section"
-          isFiltered={false}
-        />
       ) : (
         <div
           className={`transition-opacity duration-200 ${isFetching ? "opacity-70" : "opacity-100"}`}
@@ -591,6 +577,23 @@ export default function SectionPage() {
             }
             toolbarRight={tableToolbarActions}
             emptyFilteredText={`No matching ${sectionsTerm.toLowerCase()} found.`}
+            emptyState={
+              sectionRows.length === 0 &&
+              !(
+                debouncedSearchTerm ||
+                selectedCourse ||
+                selectedInstructor ||
+                archiveStatus !== "none"
+              ) ? (
+                <TableEmptyState
+                  title={`Create Your First ${sectionTerm}`}
+                  description={`Start by creating a ${sectionTerm.toLowerCase()}. You'll need courses, ${instructorTerm.toLowerCase()}s, and ${learnerTerm.toLowerCase()}s first.`}
+                  colSpan={6}
+                  type="section"
+                  isFiltered={false}
+                />
+              ) : undefined
+            }
           />
         </div>
       )}

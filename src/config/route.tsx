@@ -110,8 +110,12 @@ export const appRoutes = [
         element: <OrgAdminDashboard />,
       },
       {
-        path: "/:orgCode/admin/completion",
+        path: "/:orgCode/admin/progress",
         element: <OrgAdminCompletionPage />,
+      },
+      {
+        path: "/:orgCode/admin/completion",
+        element: <Navigate to="../progress" replace />,
       },
       {
         path: "/:orgCode/admin/instructor",

@@ -657,19 +657,12 @@ export default function StudentDatabase() {
 
       {isInitialStudentsLoading ? (
         <TableSkeletonClean columns={studentTableColumns} rows={5} />
-      ) : studentRows.length === 0 &&
-        !(debouncedSearchTerm || filters.status || filters.program || archiveStatus !== "none") ? (
-        <TableEmptyState
-          title={`Add Your First ${learnerTerm}`}
-          description={`Start by adding ${learnersTerm.toLowerCase()} who will take your courses.`}
-          secondaryActionLabel="Bulk Import"
-          onSecondaryAction={() => setIsBulkImportOpen(true)}
-          colSpan={orgType === "school" ? 5 : 6}
-          type="student"
-          isFiltered={false}
-        />
       ) : (
-        <div className={`transition-opacity duration-200 ${isStudentsFetching ? "opacity-70" : "opacity-100"}`}>
+        <div
+          className={`transition-opacity duration-200 ${
+            isStudentsFetching ? "opacity-70" : "opacity-100"
+          }`}
+        >
           <GroupedDataTable
             groups={tableGroups}
             columns={tableColumns}
@@ -681,6 +674,25 @@ export default function StudentDatabase() {
             onRowClick={(row) => navigate(row._id)}
             toolbarRight={tableToolbarActions}
             emptyFilteredText={`No matching ${learnersTerm.toLowerCase()} found.`}
+            emptyState={
+              studentRows.length === 0 &&
+              !(
+                debouncedSearchTerm ||
+                filters.status ||
+                filters.program ||
+                archiveStatus !== "none"
+              ) ? (
+                <TableEmptyState
+                  title={`Add Your First ${learnerTerm}`}
+                  description={`Start by adding ${learnersTerm.toLowerCase()} who will take your courses.`}
+                  secondaryActionLabel="Bulk Import"
+                  onSecondaryAction={() => setIsBulkImportOpen(true)}
+                  colSpan={orgType === "school" ? 5 : 6}
+                  type="student"
+                  isFiltered={false}
+                />
+              ) : undefined
+            }
           />
         </div>
       )}

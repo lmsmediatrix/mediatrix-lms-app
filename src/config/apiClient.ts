@@ -56,6 +56,17 @@ apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
     if (axios.isAxiosError(error)) {
+      const extractApiMessage = (data: any): string | undefined => {
+        if (!data) return undefined;
+        const inner = data?.error;
+        if (inner && typeof inner === "object" && typeof inner.message === "string") {
+          return inner.message;
+        }
+        if (typeof inner === "string") return inner;
+        if (typeof data?.message === "string") return data.message;
+        return undefined;
+      };
+
       // Create a safe error object for logging that doesn't include sensitive data
       const safeErrorForLogging = {
         url: error.config?.url,
@@ -80,9 +91,7 @@ apiClient.interceptors.response.use(
           // Don't log out automatically on 401/403 to prevent breaking login state
           // Just pass the error through to be handled by the component
           const errorMessage =
-            (error.response.data as { error?: string })?.error ||
-            (error.response.data as { message?: string })?.message ||
-            "Authentication error";
+            extractApiMessage(error.response.data) || "Authentication error";
 
           return Promise.reject(new ApiError(errorMessage, error));
         }
@@ -90,9 +99,7 @@ apiClient.interceptors.response.use(
         // Handle other server errors
         console.error("Server error:", safeErrorForLogging);
         const errorMessage =
-          (error.response.data as { error?: string })?.error ||
-          (error.response.data as { message?: string })?.message ||
-          "An error occurred with the server";
+          extractApiMessage(error.response.data) || "An error occurred with the server";
 
         return Promise.reject(new ApiError(errorMessage, error));
       }

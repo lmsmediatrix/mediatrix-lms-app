@@ -523,21 +523,6 @@ export default function InstructorDatabase() {
 
       {isInitialTeachersLoading ? (
         <TableSkeletonClean columns={instructorTableColumns} rows={5} />
-      ) : instructorRows.length === 0 &&
-        !(
-          debouncedSearchTerm ||
-          filters.employmentType ||
-          archiveStatus !== "none"
-        ) ? (
-        <TableEmptyState
-          title={`Add Your First ${instructorTerm}`}
-          description={`Start by adding ${instructorsTerm.toLowerCase()} who will teach your courses.`}
-          secondaryActionLabel="Bulk Import"
-          onSecondaryAction={() => setIsBulkImportOpen(true)}
-          colSpan={orgType === "school" ? 5 : 4}
-          type="instructor"
-          isFiltered={false}
-        />
       ) : (
         <div
           className={`transition-opacity duration-200 ${isTeachersFetching ? "opacity-70" : "opacity-100"}`}
@@ -555,6 +540,20 @@ export default function InstructorDatabase() {
             onRowClick={(row) => navigate(row._id)}
             toolbarRight={tableToolbarActions}
             emptyFilteredText={`No matching ${instructorsTerm.toLowerCase()} found.`}
+            emptyState={
+              instructorRows.length === 0 &&
+              !(debouncedSearchTerm || filters.employmentType || archiveStatus !== "none") ? (
+                <TableEmptyState
+                  title={`Add Your First ${instructorTerm}`}
+                  description={`Start by adding ${instructorsTerm.toLowerCase()} who will teach your courses.`}
+                  secondaryActionLabel="Bulk Import"
+                  onSecondaryAction={() => setIsBulkImportOpen(true)}
+                  colSpan={orgType === "school" ? 5 : 4}
+                  type="instructor"
+                  isFiltered={false}
+                />
+              ) : undefined
+            }
           />
         </div>
       )}

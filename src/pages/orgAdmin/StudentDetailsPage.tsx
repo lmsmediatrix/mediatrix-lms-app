@@ -1263,7 +1263,7 @@ export default function StudentDetailsPage() {
               </Button>
               <Button
                 variant="outline"
-                onClick={() => navigate(`/${orgCode}/admin/completion`)}
+                onClick={() => navigate(`/${orgCode}/admin/progress`)}
               >
                 View Progress
               </Button>

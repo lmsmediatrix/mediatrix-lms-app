@@ -327,7 +327,7 @@ export default function UpsertSectionModal({
         success: "Section updated successfully",
         error: {
           render({ data }) {
-            return (data as { message: string }).message;
+            return (data as { message?: string })?.message || "Failed to update section";
           },
         },
       }

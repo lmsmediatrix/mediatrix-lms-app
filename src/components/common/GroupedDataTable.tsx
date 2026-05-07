@@ -186,6 +186,7 @@ interface GroupedDataTableProps<T> {
   showPagination?: boolean;
   showColumnFilters?: boolean;
   emptyFilteredText?: string;
+  emptyState?: React.ReactNode;
   tableMinWidthClassName?: string;
   onRowClick?: (row: T) => void;
   cardless?: boolean;
@@ -204,6 +205,7 @@ export default function GroupedDataTable<T extends object>({
   showPagination = true,
   showColumnFilters = true,
   emptyFilteredText = "No matching rows found.",
+  emptyState,
   tableMinWidthClassName = "min-w-[980px]",
   onRowClick,
   cardless = false,
@@ -686,7 +688,7 @@ export default function GroupedDataTable<T extends object>({
                           colSpan={columns.length}
                           className="px-5 py-8 text-center text-sm text-gray-500"
                         >
-                          {emptyFilteredText}
+                          {emptyState ?? emptyFilteredText}
                         </td>
                       </tr>
                     ) : (

@@ -266,12 +266,6 @@ export default function ProgramPage() {
         <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
           Error loading programs
         </div>
-      ) : programRows.length === 0 ? (
-        <TableEmptyState
-          title="Create Your First Program"
-          description="Start by creating a program. Programs help organize your academic offerings."
-          colSpan={4}
-        />
       ) : (
         <GroupedDataTable
           groups={tableGroups}
@@ -284,6 +278,16 @@ export default function ProgramPage() {
           onRowClick={(row) => setSearchParams({ modal: "view-program", id: row._id })}
           toolbarRight={tableToolbarActions}
           emptyFilteredText="No matching programs found."
+          emptyState={
+            programRows.length === 0 && !debouncedSearchTerm && archiveStatus === "none" ? (
+              <TableEmptyState
+                title="Create Your First Program"
+                description="Start by creating a program. Programs help organize your academic offerings."
+                colSpan={4}
+                isFiltered={false}
+              />
+            ) : undefined
+          }
         />
       )}
       {/* Pagination */}

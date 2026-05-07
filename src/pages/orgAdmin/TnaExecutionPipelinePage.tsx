@@ -307,6 +307,66 @@ const mapRecommendationTrainingRows = (
   });
 };
 
+function TrainingManagementEmptyPlaceholder({
+  label,
+}: {
+  label: string;
+}) {
+  return (
+    <div className="space-y-4">
+      <div className="rounded-xl border border-slate-200 bg-white p-3">
+        <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+          <div className="space-y-2">
+            <div className="h-3 w-36 rounded bg-slate-100 animate-pulse" />
+            <div className="h-4 w-64 rounded bg-slate-100 animate-pulse" />
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="h-9 w-[220px] rounded-xl bg-slate-100 animate-pulse" />
+            <div className="h-9 w-28 rounded-full bg-slate-100 animate-pulse" />
+          </div>
+        </div>
+
+        <div className="mt-3 rounded-xl border border-slate-200 bg-white overflow-hidden">
+          <div className="border-b border-slate-200 bg-slate-50/80 px-3 py-2.5">
+            <div className="grid grid-cols-5 gap-3 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+              <div className="col-span-2">Training</div>
+              <div>Priority</div>
+              <div>Type</div>
+              <div className="text-right">Status</div>
+            </div>
+          </div>
+          <div className="divide-y divide-slate-100">
+            {Array.from({ length: 5 }).map((_, index) => (
+              <div
+                key={`empty-row-${index}`}
+                className="grid grid-cols-5 gap-3 px-3 py-3"
+              >
+                <div className="col-span-2 space-y-2">
+                  <div className="h-4 w-4/5 rounded bg-slate-100 animate-pulse" />
+                  <div className="h-3 w-2/5 rounded bg-slate-100 animate-pulse" />
+                </div>
+                <div className="flex items-center">
+                  <div className="h-6 w-20 rounded-full bg-slate-100 animate-pulse" />
+                </div>
+                <div className="flex items-center">
+                  <div className="h-6 w-24 rounded-full bg-slate-100 animate-pulse" />
+                </div>
+                <div className="flex items-center justify-end">
+                  <div className="h-6 w-24 rounded-full bg-slate-100 animate-pulse" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-5 text-sm text-slate-600">
+        {label}
+      </div>
+    </div>
+  );
+}
+
 export default function TnaExecutionPipelinePage() {
   const { currentUser } = useAuth();
   const navigate = useNavigate();
@@ -849,9 +909,7 @@ export default function TnaExecutionPipelinePage() {
 
         <main className={`${cardClassName} space-y-4 min-h-[520px]`}>
           {!selectedRecommendation ? (
-            <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-5 text-sm text-slate-600">
-              Select a recommendation from the left panel.
-            </div>
+            <TrainingManagementEmptyPlaceholder label="Select a recommendation from the left panel to view trainings, execute auto-create, and track outcomes." />
           ) : (
             <>
               <section className="rounded-xl border border-slate-200 bg-white p-3">

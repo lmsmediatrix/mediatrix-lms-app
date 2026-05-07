@@ -550,14 +550,6 @@ export default function CoursePage() {
         <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
           Error loading courses
         </div>
-      ) : courseRows.length === 0 && !hasActiveFilters ? (
-        <TableEmptyState
-          title="Create Your First Course"
-          description="Start by creating a course. You'll need courses before you can create sections."
-          colSpan={isCorporate ? 5 : 6}
-          type="course"
-          isFiltered={false}
-        />
       ) : (
         <GroupedDataTable
           groups={tableGroups}
@@ -570,6 +562,17 @@ export default function CoursePage() {
           showGroupHeader={false}
           onRowClick={(row) => setSearchParams({ modal: "view-course", id: row._id })}
           emptyFilteredText="No matching courses found."
+          emptyState={
+            courseRows.length === 0 && !hasActiveFilters ? (
+              <TableEmptyState
+                title="Create Your First Course"
+                description="Start by creating a course. You'll need courses before you can create sections."
+                colSpan={isCorporate ? 5 : 6}
+                type="course"
+                isFiltered={false}
+              />
+            ) : undefined
+          }
         />
       )}
 

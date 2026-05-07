@@ -360,13 +360,6 @@ export default function DepartmentPage() {
         <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
           Error loading departments
         </div>
-      ) : departmentRows.length === 0 ? (
-        <TableEmptyState
-          title="Create Your First Department"
-          description="Start by creating a department to organize your corporate workforce."
-          colSpan={5}
-          isFiltered={Boolean(searchTerm || selectedStatus || archiveStatus !== "none")}
-        />
       ) : (
         <GroupedDataTable
           groups={tableGroups}
@@ -381,6 +374,17 @@ export default function DepartmentPage() {
           }
           toolbarRight={tableToolbarActions}
           emptyFilteredText="No matching departments found."
+          emptyState={
+            departmentRows.length === 0 &&
+            !(searchTerm || selectedStatus || archiveStatus !== "none") ? (
+              <TableEmptyState
+                title="Create Your First Department"
+                description="Start by creating a department to organize your corporate workforce."
+                colSpan={5}
+                isFiltered={false}
+              />
+            ) : undefined
+          }
         />
       )}
 

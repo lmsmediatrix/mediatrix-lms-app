@@ -51,7 +51,8 @@ export const pageTitles: TitleMapping = {
   "/:orgCode/admin/profile": "Admin Profile",
   "/:orgCode/admin/settings": "Settings",
   "/:orgCode/admin/reports": "Reports",
-  "/:orgCode/admin/completion": "Completion Tracker",
+  "/:orgCode/admin/progress": "Progress",
+  "/:orgCode/admin/completion": "Progress",
 
   // Instructor Routes
   "/:orgCode/instructor/dashboard": "Instructor Dashboard",
