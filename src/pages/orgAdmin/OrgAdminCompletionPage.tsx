@@ -5,6 +5,7 @@ import PageHeader from "../../components/common/PageHeader";
 import HoverHelpTooltip from "../../components/common/HoverHelpTooltip";
 import StatsCards from "../../components/common/StatsCards";
 import FinalGradeBreakdownModal from "../../components/common/FinalGradeBreakdownModal";
+import TableSkeletonClean from "../../components/skeleton/TableSkeletonClean";
 import { useAuth } from "../../context/AuthContext";
 import { useSectionAnalytics } from "../../hooks/useSection";
 import { useAdminCompletionOverview } from "../../hooks/useSection";
@@ -1252,8 +1253,71 @@ export default function OrgAdminCompletionPage() {
         />
 
         {isLoading ? (
-          <div className="rounded-2xl border border-slate-200 bg-white p-6 text-sm text-slate-500">
-            Loading completion tracker...
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              <StatsCards stats={[]} isLoading={true} />
+            </div>
+
+            <section className="rounded-2xl border border-slate-200 bg-white p-4 md:p-5 shadow-sm space-y-4">
+              <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                <div className="space-y-2">
+                  <div className="h-4 w-64 rounded bg-slate-100 animate-pulse" />
+                  <div className="h-3 w-96 max-w-full rounded bg-slate-100 animate-pulse" />
+                </div>
+                <div className="h-8 w-44 rounded-md bg-slate-100 animate-pulse" />
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-12">
+                <aside className="rounded-xl border border-slate-200 bg-slate-50/70 p-3 md:col-span-2 lg:col-span-2 space-y-3">
+                  <div className="h-3 w-24 rounded bg-slate-200/70 animate-pulse" />
+                  <div className="h-10 w-full rounded-md bg-white border border-slate-200" />
+                  <div className="space-y-2">
+                    {Array.from({ length: 5 }).map((_, idx) => (
+                      <div
+                        key={`instructor-skel-${idx}`}
+                        className="rounded-lg border border-slate-200 bg-white px-3 py-2"
+                      >
+                        <div className="h-4 w-3/4 rounded bg-slate-100 animate-pulse" />
+                        <div className="mt-2 h-3 w-1/2 rounded bg-slate-100 animate-pulse" />
+                        <div className="mt-2 h-1.5 w-full rounded-full bg-slate-200 overflow-hidden">
+                          <div className="h-full w-1/3 rounded-full bg-slate-300 animate-pulse" />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </aside>
+
+                <div className="rounded-xl border border-slate-200 bg-white p-3 md:col-span-5 lg:col-span-5 min-w-0">
+                  <TableSkeletonClean
+                    columns={[
+                      { width: "34%" },
+                      { width: "14%" },
+                      { width: "14%" },
+                      { width: "14%" },
+                      { width: "14%" },
+                      { width: "10%", alignment: "right" as const },
+                    ]}
+                    rows={6}
+                  />
+                </div>
+
+                <div className="rounded-xl border border-slate-200 bg-white p-3 md:col-span-5 lg:col-span-5 min-w-0">
+                  <TableSkeletonClean
+                    columns={[
+                      { width: "28%" },
+                      { width: "10%" },
+                      { width: "12%" },
+                      { width: "14%" },
+                      { width: "12%" },
+                      { width: "12%" },
+                      { width: "12%" },
+                      { width: "10%", alignment: "right" as const },
+                    ]}
+                    rows={6}
+                  />
+                </div>
+              </div>
+            </section>
           </div>
         ) : (
           <>

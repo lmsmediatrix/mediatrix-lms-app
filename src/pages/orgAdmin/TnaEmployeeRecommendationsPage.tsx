@@ -156,6 +156,44 @@ const getEmployeeDisplayName = (employee?: EmployeeOption): string => {
   return fullName || "--";
 };
 
+const getPriorityTone = (priority?: string) => {
+  const normalized = String(priority || "").trim().toLowerCase();
+  if (normalized === "high")
+    return "border-rose-200 bg-rose-50 text-rose-700";
+  if (normalized === "medium" || normalized === "")
+    return "border-amber-200 bg-amber-50 text-amber-800";
+  if (normalized === "low")
+    return "border-slate-200 bg-slate-50 text-slate-700";
+  return "border-slate-200 bg-slate-50 text-slate-700";
+};
+
+const getGapTone = (gapValue?: number) => {
+  const gap = Number(gapValue ?? 0);
+  if (gap >= 4) return "border-rose-200 bg-rose-50 text-rose-700";
+  if (gap >= 2) return "border-amber-200 bg-amber-50 text-amber-800";
+  if (gap >= 1) return "border-yellow-200 bg-yellow-50 text-yellow-800";
+  return "border-emerald-200 bg-emerald-50 text-emerald-700";
+};
+
+function MetaChip({
+  label,
+  value,
+  className = "",
+}: {
+  label: string;
+  value: string;
+  className?: string;
+}) {
+  return (
+    <span
+      className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium ${className}`}
+    >
+      <span className="text-slate-500">{label}</span>
+      <span className="text-slate-900">{value}</span>
+    </span>
+  );
+}
+
 const formatReasonType = (reasonType?: string): string => {
   if (!reasonType) return "other";
   return reasonType.replace(/_/g, " ");
@@ -866,38 +904,44 @@ export default function TnaEmployeeRecommendationsPage() {
                   </div>
                 ) : (
                   <>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-xs">
-                      <div className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2">
-                        <p className="font-semibold text-slate-600 mb-1">
-                          Skill Gaps
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                      <div className="rounded-xl border border-slate-200 bg-gradient-to-br from-slate-50 to-white px-4 py-3 shadow-sm">
+                        <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                          Skill gaps
                         </p>
-                        <p className="text-slate-800">
+                        <p className="mt-1 text-2xl font-semibold text-slate-900">
                           {Array.isArray(selectedRecommendation.skillGaps)
                             ? selectedRecommendation.skillGaps.length
                             : 0}
                         </p>
                       </div>
-                      <div className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2">
-                        <p className="font-semibold text-slate-600 mb-1">
-                          Recommended Trainings
+                      <div className="rounded-xl border border-slate-200 bg-gradient-to-br from-slate-50 to-white px-4 py-3 shadow-sm">
+                        <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                          Recommended trainings
                         </p>
-                        <p className="text-slate-800">
-                          {Array.isArray(
-                            selectedRecommendation.recommendedTrainings,
-                          )
+                        <p className="mt-1 text-2xl font-semibold text-slate-900">
+                          {Array.isArray(selectedRecommendation.recommendedTrainings)
                             ? selectedRecommendation.recommendedTrainings.length
                             : 0}
                         </p>
                       </div>
-                      <div className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2">
-                        <p className="font-semibold text-slate-600 mb-1">
+                      <div className="rounded-xl border border-slate-200 bg-gradient-to-br from-slate-50 to-white px-4 py-3 shadow-sm">
+                        <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
                           Pre-test
                         </p>
-                        <p className="text-slate-800">
-                          {typeof selectedRecommendation.preAssessment
-                            ?.score === "number"
-                            ? `${selectedRecommendation.preAssessment.score}% (threshold ${selectedRecommendation.preAssessment.threshold ?? 70}%)`
-                            : "--"}
+                        <p className="mt-1 text-base font-semibold text-slate-900">
+                          {typeof selectedRecommendation.preAssessment?.score ===
+                          "number" ? (
+                            <>
+                              {selectedRecommendation.preAssessment.score}%
+                              <span className="ml-2 text-xs font-medium text-slate-500">
+                                threshold{" "}
+                                {selectedRecommendation.preAssessment.threshold ?? 70}%
+                              </span>
+                            </>
+                          ) : (
+                            "--"
+                          )}
                         </p>
                       </div>
                     </div>
@@ -913,18 +957,39 @@ export default function TnaEmployeeRecommendationsPage() {
                             No skill gaps.
                           </p>
                         ) : (
-                          <ul className="mt-2 space-y-1.5 text-sm text-slate-700">
+                          <ul className="mt-3 divide-y divide-slate-100">
                             {selectedRecommendation.skillGaps.map(
                               (gapItem, index) => (
                                 <li
                                   key={`${selectedRecommendation._id}-gap-${index}`}
+                                  className="flex flex-col gap-2 py-3 sm:flex-row sm:items-start sm:justify-between"
                                 >
-                                  <span className="font-medium">
-                                    {gapItem.skillName || "Unnamed skill"}
-                                  </span>{" "}
-                                  - required {gapItem.requiredLevel ?? 0},
-                                  current {gapItem.currentLevel ?? 0}, gap{" "}
-                                  {gapItem.gap ?? 0}
+                                  <div className="min-w-0">
+                                    <p className="text-sm font-semibold text-slate-900">
+                                      {gapItem.skillName || "Unnamed skill"}
+                                    </p>
+                                    <p className="mt-0.5 text-xs text-slate-500">
+                                      Compare levels for this role.
+                                    </p>
+                                  </div>
+
+                                  <div className="flex flex-wrap items-center gap-1.5 sm:justify-end">
+                                    <MetaChip
+                                      label="Required"
+                                      value={String(gapItem.requiredLevel ?? 0)}
+                                      className="border-slate-200 bg-slate-50"
+                                    />
+                                    <MetaChip
+                                      label="Current"
+                                      value={String(gapItem.currentLevel ?? 0)}
+                                      className="border-slate-200 bg-white"
+                                    />
+                                    <MetaChip
+                                      label="Gap"
+                                      value={String(gapItem.gap ?? 0)}
+                                      className={getGapTone(gapItem.gap)}
+                                    />
+                                  </div>
                                 </li>
                               ),
                             )}
@@ -949,31 +1014,61 @@ export default function TnaEmployeeRecommendationsPage() {
                             {selectedRecommendation.recommendedTrainings.map(
                               (item, index) => {
                                 const courseLabel = getCourseLabel(item.course);
+                                const reasonLabel = formatReasonType(item.reasonType);
                                 return (
                                   <li
                                     key={`${selectedRecommendation._id}-training-${index}`}
-                                    className="rounded-md border border-slate-200 bg-slate-50 px-2.5 py-2"
+                                    className="rounded-xl border border-slate-200 bg-gradient-to-br from-slate-50 to-white px-3 py-3 shadow-sm"
                                   >
-                                    <p className="font-medium text-slate-900">
-                                      {item.title || "Untitled training"}
-                                    </p>
-                                    <p className="text-xs text-slate-500 mt-0.5">
-                                      {formatReasonType(item.reasonType)} |
-                                      priority: {item.priority || "medium"} |{" "}
-                                      {item.mandatory
-                                        ? "mandatory"
-                                        : "optional"}
-                                    </p>
-                                    {item.reasonDetail && (
-                                      <p className="text-xs text-slate-500 mt-0.5">
+                                    <div className="flex flex-col gap-2">
+                                      <div className="flex items-start justify-between gap-3">
+                                        <p className="min-w-0 font-semibold text-slate-900">
+                                          {item.title || "Untitled training"}
+                                        </p>
+                                        <span className="shrink-0 rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[11px] font-medium text-slate-600">
+                                          #{index + 1}
+                                        </span>
+                                      </div>
+
+                                      <div className="flex flex-wrap items-center gap-1.5">
+                                        <span className="inline-flex items-center rounded-full border border-indigo-200 bg-indigo-50 px-2 py-0.5 text-[11px] font-medium text-indigo-700 capitalize">
+                                          {reasonLabel}
+                                        </span>
+                                        <span
+                                          className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium capitalize ${getPriorityTone(
+                                            item.priority,
+                                          )}`}
+                                        >
+                                          Priority: {item.priority || "medium"}
+                                        </span>
+                                        <span
+                                          className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${
+                                            item.mandatory
+                                              ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                                              : "border-slate-200 bg-white text-slate-600"
+                                          }`}
+                                        >
+                                          {item.mandatory ? "Mandatory" : "Optional"}
+                                        </span>
+                                      </div>
+                                    </div>
+
+                                    {item.reasonDetail ? (
+                                      <p className="text-xs text-slate-600 mt-2 leading-relaxed">
                                         {item.reasonDetail}
                                       </p>
-                                    )}
-                                    {courseLabel && (
-                                      <p className="text-xs text-slate-500 mt-0.5">
-                                        Linked course: {courseLabel}
-                                      </p>
-                                    )}
+                                    ) : null}
+
+                                    {courseLabel ? (
+                                      <div className="mt-2 rounded-lg border border-slate-200 bg-white px-2.5 py-2">
+                                        <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                                          Linked course
+                                        </p>
+                                        <p className="mt-0.5 text-xs text-slate-700">
+                                          {courseLabel}
+                                        </p>
+                                      </div>
+                                    ) : null}
                                   </li>
                                 );
                               },

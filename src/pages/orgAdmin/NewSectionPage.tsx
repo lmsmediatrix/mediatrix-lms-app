@@ -279,7 +279,7 @@ export default function NewSectionPage() {
         success: "Section created successfully",
         error: {
           render({ data }: { data: any }) {
-            return data?.response?.data?.error || "Failed to create section";
+            return (data as { message?: string })?.message || "Failed to create section";
           },
         },
       }

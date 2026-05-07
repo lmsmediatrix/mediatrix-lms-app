@@ -6,6 +6,29 @@ import { APIService } from "./apiService";
 
 const { BASE_URL, SECTION } = API_ENDPOINTS;
 
+function parseSectionApiErrorMessage(error: unknown, fallback: string): string {
+  const err = error as {
+    response?: { data?: { error?: unknown; message?: string } };
+    data?: { error?: unknown; message?: string };
+    message?: string;
+  };
+  const data = err?.response?.data || err?.data;
+  const inner = data?.error;
+  if (inner && typeof inner === "object" && "message" in inner) {
+    return String((inner as { message: string }).message);
+  }
+  if (typeof inner === "string") {
+    return inner;
+  }
+  if (typeof data?.message === "string") {
+    return data.message;
+  }
+  if (typeof err?.message === "string" && err.message.trim()) {
+    return err.message;
+  }
+  return fallback;
+}
+
 class SectionService extends APIService {
   batchCreateContent = async (sectionCode: string, body: object) => {
     try {
@@ -40,7 +63,7 @@ class SectionService extends APIService {
       return response.data;
     } catch (error: any) {
       console.error("Error creating section:", error);
-      throw new Error(error.data?.error?.message || "Something went wrong!");
+      throw new Error(parseSectionApiErrorMessage(error, "Something went wrong!"));
     }
   };
 
@@ -55,7 +78,7 @@ class SectionService extends APIService {
       );
       return response.data;
     } catch (error: any) {
-      throw new Error(error.data?.error?.message || "Something went wrong!");
+      throw new Error(parseSectionApiErrorMessage(error, "Something went wrong!"));
     }
   };
 
@@ -149,7 +172,7 @@ class SectionService extends APIService {
       );
       return response.data;
     } catch (error) {
-      throw new Error("Error bulk importing students");
+      throw new Error(parseSectionApiErrorMessage(error, "Error bulk importing students"));
     }
   };
 
@@ -269,7 +292,7 @@ class SectionService extends APIService {
       return response.data;
     } catch (error: any) {
       console.error("Error adding students to section:", error);
-      throw new Error(error.data?.error?.message || "Something went wrong!");
+      throw new Error(parseSectionApiErrorMessage(error, "Something went wrong!"));
     }
   };
 

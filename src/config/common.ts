@@ -87,7 +87,7 @@ export const BASE_NAVIGATION: {
     },
     {
       LABEL: "Progress",
-      PATH: "/:code/admin/completion",
+      PATH: "/:code/admin/progress",
       ICON: ChartNoAxesCombinedIcon,
     },
     {

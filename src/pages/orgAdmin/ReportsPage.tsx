@@ -1296,12 +1296,6 @@ function StudentReportTab({
         <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
           Failed to load the {learnersTerm.toLowerCase()} report.
         </div>
-      ) : rows.length === 0 ? (
-        <TableEmptyState
-          type="student"
-          title={`No ${learnersTerm} found`}
-          description={`There are no active ${learnersTerm.toLowerCase()} available for this report.`}
-        />
       ) : (
         <GroupedDataTable
           groups={groups}
@@ -1315,6 +1309,16 @@ function StudentReportTab({
             orgType === "school" ? "min-w-[1100px]" : "min-w-[1180px]"
           }
           emptyFilteredText={`No matching ${learnersTerm.toLowerCase()} found.`}
+          emptyState={
+            rows.length === 0 ? (
+              <TableEmptyState
+                type="student"
+                title={`No ${learnersTerm} found`}
+                description={`There are no active ${learnersTerm.toLowerCase()} available for this report.`}
+                isFiltered={false}
+              />
+            ) : undefined
+          }
         />
       )}
     </ReportPanelShell>
@@ -1559,12 +1563,6 @@ function InstructorReportTab({
         <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
           Failed to load the {instructorsTerm.toLowerCase()} report.
         </div>
-      ) : rows.length === 0 ? (
-        <TableEmptyState
-          type="instructor"
-          title={`No ${instructorsTerm} found`}
-          description={`There are no active ${instructorsTerm.toLowerCase()} available for this report.`}
-        />
       ) : (
         <GroupedDataTable
           groups={groups}
@@ -1578,6 +1576,16 @@ function InstructorReportTab({
             orgType === "school" ? "min-w-[1080px]" : "min-w-[980px]"
           }
           emptyFilteredText={`No matching ${instructorsTerm.toLowerCase()} found.`}
+          emptyState={
+            rows.length === 0 ? (
+              <TableEmptyState
+                type="instructor"
+                title={`No ${instructorsTerm} found`}
+                description={`There are no active ${instructorsTerm.toLowerCase()} available for this report.`}
+                isFiltered={false}
+              />
+            ) : undefined
+          }
         />
       )}
     </ReportPanelShell>
@@ -1821,12 +1829,6 @@ function SectionReportTab({
         <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
           Failed to load the {sectionsTerm.toLowerCase()} report.
         </div>
-      ) : rows.length === 0 ? (
-        <TableEmptyState
-          type="section"
-          title={`No ${sectionsTerm} found`}
-          description={`There are no active ${sectionsTerm.toLowerCase()} available for this report.`}
-        />
       ) : (
         <GroupedDataTable
           groups={groups}
@@ -1838,6 +1840,16 @@ function SectionReportTab({
           onVisibleRowsChange={handleVisibleRowsChange}
           tableMinWidthClassName="min-w-[1180px]"
           emptyFilteredText={`No matching ${sectionsTerm.toLowerCase()} found.`}
+          emptyState={
+            rows.length === 0 ? (
+              <TableEmptyState
+                type="section"
+                title={`No ${sectionsTerm} found`}
+                description={`There are no active ${sectionsTerm.toLowerCase()} available for this report.`}
+                isFiltered={false}
+              />
+            ) : undefined
+          }
         />
       )}
     </ReportPanelShell>
@@ -2070,12 +2082,6 @@ function CourseReportTab({ orgId, orgCode, isCorporate }: CourseReportProps) {
         <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
           Failed to load the course report.
         </div>
-      ) : rows.length === 0 ? (
-        <TableEmptyState
-          type="course"
-          title="No courses found"
-          description="There are no active courses available for this report."
-        />
       ) : (
         <GroupedDataTable
           groups={groups}
@@ -2089,6 +2095,16 @@ function CourseReportTab({ orgId, orgCode, isCorporate }: CourseReportProps) {
             isCorporate ? "min-w-[980px]" : "min-w-[1120px]"
           }
           emptyFilteredText="No matching courses found."
+          emptyState={
+            rows.length === 0 ? (
+              <TableEmptyState
+                type="course"
+                title="No courses found"
+                description="There are no active courses available for this report."
+                isFiltered={false}
+              />
+            ) : undefined
+          }
         />
       )}
     </ReportPanelShell>
@@ -2347,7 +2363,7 @@ function PerformanceReportTab({
       onExportPdfAllRows={reportExporter.exportPdfAllRows}
       isExportingExcel={reportExporter.isExportingExcel}
       isExportingPdf={reportExporter.isExportingPdf}
-      onOpenPage={() => navigate(`/${orgCode}/admin/completion`)}
+      onOpenPage={() => navigate(`/${orgCode}/admin/progress`)}
       openPageLabel="Open Progress Page"
     >
       {isPending ? (
@@ -2368,12 +2384,6 @@ function PerformanceReportTab({
         <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
           Failed to load the performance report.
         </div>
-      ) : rows.length === 0 ? (
-        <TableEmptyState
-          type="student"
-          title={`No ${learnersTerm} found`}
-          description={`There are no ${learnersTerm.toLowerCase()} available in the performance report.`}
-        />
       ) : (
         <GroupedDataTable
           groups={groups}
@@ -2385,6 +2395,16 @@ function PerformanceReportTab({
           onVisibleRowsChange={handleVisibleRowsChange}
           tableMinWidthClassName="min-w-[1360px]"
           emptyFilteredText={`No matching ${learnersTerm.toLowerCase()} found.`}
+          emptyState={
+            rows.length === 0 ? (
+              <TableEmptyState
+                type="student"
+                title={`No ${learnersTerm} found`}
+                description={`There are no ${learnersTerm.toLowerCase()} available in the performance report.`}
+                isFiltered={false}
+              />
+            ) : undefined
+          }
         />
       )}
     </ReportPanelShell>
@@ -2776,18 +2796,6 @@ function IndividualGradesReportTab({
         <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
           Failed to load the individual grades report.
         </div>
-      ) : sections.length === 0 ? (
-        <TableEmptyState
-          type="section"
-          title={`No ${sectionsTerm} found`}
-          description={`There are no active ${sectionsTerm.toLowerCase()} available for this report.`}
-        />
-      ) : rows.length === 0 ? (
-        <TableEmptyState
-          type="student"
-          title="No grades found"
-          description={`No grade entries were returned from the loaded ${sectionsTerm.toLowerCase()}.`}
-        />
       ) : (
         <GroupedDataTable
           groups={groups}
@@ -2799,6 +2807,23 @@ function IndividualGradesReportTab({
           onVisibleRowsChange={handleVisibleRowsChange}
           tableMinWidthClassName="min-w-[1480px]"
           emptyFilteredText={`No matching ${learnersTerm.toLowerCase()} grades found.`}
+          emptyState={
+            sections.length === 0 ? (
+              <TableEmptyState
+                type="section"
+                title={`No ${sectionsTerm} found`}
+                description={`There are no active ${sectionsTerm.toLowerCase()} available for this report.`}
+                isFiltered={false}
+              />
+            ) : rows.length === 0 ? (
+              <TableEmptyState
+                type="student"
+                title="No grades found"
+                description={`No grade entries were returned from the loaded ${sectionsTerm.toLowerCase()}.`}
+                isFiltered={false}
+              />
+            ) : undefined
+          }
         />
       )}
     </ReportPanelShell>
@@ -3094,8 +3119,8 @@ function BatchProgressReportTab({
       onExportPdfAllRows={reportExporter.exportPdfAllRows}
       isExportingExcel={reportExporter.isExportingExcel}
       isExportingPdf={reportExporter.isExportingPdf}
-      onOpenPage={() => navigate(`/${orgCode}/admin/completion`)}
-      openPageLabel="Open Completion Page"
+      onOpenPage={() => navigate(`/${orgCode}/admin/progress`)}
+      openPageLabel="Open Progress Page"
     >
       {isCompletionPending || isPerformancePending ? (
         <TableSkeletonClean
@@ -3115,12 +3140,6 @@ function BatchProgressReportTab({
         <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
           Failed to load the {sectionsTerm.toLowerCase()} progress report.
         </div>
-      ) : rows.length === 0 ? (
-        <TableEmptyState
-          type="section"
-          title={`No ${sectionsTerm} found`}
-          description={`There are no ${sectionsTerm.toLowerCase()} available in the progress report.`}
-        />
       ) : (
         <GroupedDataTable
           groups={groups}
@@ -3132,6 +3151,16 @@ function BatchProgressReportTab({
           onVisibleRowsChange={handleVisibleRowsChange}
           tableMinWidthClassName="min-w-[1450px]"
           emptyFilteredText={`No matching ${sectionsTerm.toLowerCase()} found.`}
+          emptyState={
+            rows.length === 0 ? (
+              <TableEmptyState
+                type="section"
+                title={`No ${sectionsTerm} found`}
+                description={`There are no ${sectionsTerm.toLowerCase()} available in the progress report.`}
+                isFiltered={false}
+              />
+            ) : undefined
+          }
         />
       )}
     </ReportPanelShell>
