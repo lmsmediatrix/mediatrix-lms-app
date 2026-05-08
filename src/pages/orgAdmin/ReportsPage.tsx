@@ -874,7 +874,7 @@ function ReportPanelShell({
   return (
     <section className="overflow-hidden rounded-[28px] border border-slate-200/90 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
       <div className="border-b border-slate-100 px-5 py-5 lg:px-6">
-        <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0 max-w-3xl">
             <div className="flex flex-wrap items-center gap-2">
               <h2 className="text-lg font-semibold tracking-tight text-slate-900">
@@ -885,10 +885,8 @@ function ReportPanelShell({
               </span>
             </div>
           </div>
-        </div>
 
-        <div className="mt-4 flex flex-wrap items-center gap-2 xl:mt-0 xl:justify-end">
-          <div className="relative" ref={actionMenuRef}>
+          <div className="relative shrink-0" ref={actionMenuRef}>
             <Button
               variant={isActionMenuOpen ? "outline" : "primary"}
               onClick={() => setIsActionMenuOpen((previous) => !previous)}
@@ -1302,6 +1300,7 @@ function StudentReportTab({
           columns={columns}
           rowKey={(row) => row._id}
           pageSize={REPORT_PAGE_SIZE}
+          showPageJumpInput={true}
           showGroupHeader={false}
           cardless={true}
           onVisibleRowsChange={handleVisibleRowsChange}
@@ -1569,6 +1568,7 @@ function InstructorReportTab({
           columns={columns}
           rowKey={(row) => row._id}
           pageSize={REPORT_PAGE_SIZE}
+          showPageJumpInput={true}
           showGroupHeader={false}
           cardless={true}
           onVisibleRowsChange={handleVisibleRowsChange}
@@ -1835,6 +1835,7 @@ function SectionReportTab({
           columns={columns}
           rowKey={(row) => row._id || row.code}
           pageSize={REPORT_PAGE_SIZE}
+          showPageJumpInput={true}
           showGroupHeader={false}
           cardless={true}
           onVisibleRowsChange={handleVisibleRowsChange}
@@ -2088,6 +2089,7 @@ function CourseReportTab({ orgId, orgCode, isCorporate }: CourseReportProps) {
           columns={columns}
           rowKey={(row) => row._id}
           pageSize={REPORT_PAGE_SIZE}
+          showPageJumpInput={true}
           showGroupHeader={false}
           cardless={true}
           onVisibleRowsChange={handleVisibleRowsChange}
@@ -2390,6 +2392,7 @@ function PerformanceReportTab({
           columns={columns}
           rowKey={(row) => `${row._id}-${row.section || "section"}`}
           pageSize={REPORT_PAGE_SIZE}
+          showPageJumpInput={true}
           showGroupHeader={false}
           cardless={true}
           onVisibleRowsChange={handleVisibleRowsChange}
@@ -2802,6 +2805,7 @@ function IndividualGradesReportTab({
           columns={columns}
           rowKey={(row) => row.id}
           pageSize={REPORT_PAGE_SIZE}
+          showPageJumpInput={true}
           showGroupHeader={false}
           cardless={true}
           onVisibleRowsChange={handleVisibleRowsChange}
@@ -3146,6 +3150,7 @@ function BatchProgressReportTab({
           columns={columns}
           rowKey={(row) => row.id}
           pageSize={REPORT_PAGE_SIZE}
+          showPageJumpInput={true}
           showGroupHeader={false}
           cardless={true}
           onVisibleRowsChange={handleVisibleRowsChange}
