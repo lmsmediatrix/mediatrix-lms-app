@@ -1,7 +1,6 @@
 import { useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
-import { FaArrowLeft } from "react-icons/fa";
 import { toast } from "react-toastify";
 import ActionMenuButton from "../../components/orgAdmin/ActionMenuButton";
 import Button from "../../components/common/Button";
@@ -720,14 +719,6 @@ export default function TnaEmployeeRecommendationsPage() {
       <section className="p-1 md:p-0">
         <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
           <div className="flex items-start gap-3">
-            <button
-              type="button"
-              onClick={() => navigate(`/${orgCode}/admin/tna`)}
-              className="mt-0.5 inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50"
-              aria-label="Back to TNA"
-            >
-              <FaArrowLeft className="h-3.5 w-3.5" />
-            </button>
             <div>
               <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
                 TNA Dashboard

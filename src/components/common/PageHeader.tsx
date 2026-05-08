@@ -8,6 +8,7 @@ interface PageHeaderProps {
   title: React.ReactNode;
   subtitle?: React.ReactNode;
   actions?: React.ReactNode;
+  showBackButton?: boolean;
 }
 
 export default function PageHeader({
@@ -18,17 +19,20 @@ export default function PageHeader({
   title,
   subtitle,
   actions,
+  showBackButton = true,
 }: PageHeaderProps) {
   return (
     <div className="flex items-center justify-between gap-3 mb-8">
       <div className="flex items-center gap-3">
-        <button
-          onClick={onBack}
-          className="flex items-center justify-center h-9 w-9 rounded-xl border border-gray-200 bg-white text-gray-500 hover:bg-gray-50 hover:text-gray-700 shadow-sm transition-all shrink-0"
-          aria-label="Go back"
-        >
-          <FaArrowLeft className="text-sm" />
-        </button>
+        {showBackButton && (
+          <button
+            onClick={onBack}
+            className="flex items-center justify-center h-9 w-9 rounded-xl border border-gray-200 bg-white text-gray-500 hover:bg-gray-50 hover:text-gray-700 shadow-sm transition-all shrink-0"
+            aria-label="Go back"
+          >
+            <FaArrowLeft className="text-sm" />
+          </button>
+        )}
         <div
           className={`flex h-10 w-10 items-center justify-center rounded-xl shrink-0 ${iconBg}`}
           style={iconStyle}
