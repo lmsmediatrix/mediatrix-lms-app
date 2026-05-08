@@ -1300,6 +1300,7 @@ function StudentReportTab({
           columns={columns}
           rowKey={(row) => row._id}
           pageSize={REPORT_PAGE_SIZE}
+          showPageJumpInput={true}
           showGroupHeader={false}
           cardless={true}
           onVisibleRowsChange={handleVisibleRowsChange}
@@ -1567,6 +1568,7 @@ function InstructorReportTab({
           columns={columns}
           rowKey={(row) => row._id}
           pageSize={REPORT_PAGE_SIZE}
+          showPageJumpInput={true}
           showGroupHeader={false}
           cardless={true}
           onVisibleRowsChange={handleVisibleRowsChange}
@@ -1833,6 +1835,7 @@ function SectionReportTab({
           columns={columns}
           rowKey={(row) => row._id || row.code}
           pageSize={REPORT_PAGE_SIZE}
+          showPageJumpInput={true}
           showGroupHeader={false}
           cardless={true}
           onVisibleRowsChange={handleVisibleRowsChange}
@@ -2086,6 +2089,7 @@ function CourseReportTab({ orgId, orgCode, isCorporate }: CourseReportProps) {
           columns={columns}
           rowKey={(row) => row._id}
           pageSize={REPORT_PAGE_SIZE}
+          showPageJumpInput={true}
           showGroupHeader={false}
           cardless={true}
           onVisibleRowsChange={handleVisibleRowsChange}
@@ -2388,6 +2392,7 @@ function PerformanceReportTab({
           columns={columns}
           rowKey={(row) => `${row._id}-${row.section || "section"}`}
           pageSize={REPORT_PAGE_SIZE}
+          showPageJumpInput={true}
           showGroupHeader={false}
           cardless={true}
           onVisibleRowsChange={handleVisibleRowsChange}
@@ -2800,6 +2805,7 @@ function IndividualGradesReportTab({
           columns={columns}
           rowKey={(row) => row.id}
           pageSize={REPORT_PAGE_SIZE}
+          showPageJumpInput={true}
           showGroupHeader={false}
           cardless={true}
           onVisibleRowsChange={handleVisibleRowsChange}
@@ -3144,6 +3150,7 @@ function BatchProgressReportTab({
           columns={columns}
           rowKey={(row) => row.id}
           pageSize={REPORT_PAGE_SIZE}
+          showPageJumpInput={true}
           showGroupHeader={false}
           cardless={true}
           onVisibleRowsChange={handleVisibleRowsChange}

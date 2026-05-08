@@ -184,6 +184,7 @@ interface GroupedDataTableProps<T> {
   rowKey: (row: T, index: number) => string;
   pageSize?: number;
   showPagination?: boolean;
+  showPageJumpInput?: boolean;
   showColumnFilters?: boolean;
   emptyFilteredText?: string;
   emptyState?: React.ReactNode;
@@ -203,6 +204,7 @@ export default function GroupedDataTable<T extends object>({
   rowKey,
   pageSize = 5,
   showPagination = true,
+  showPageJumpInput = false,
   showColumnFilters = true,
   emptyFilteredText = "No matching rows found.",
   emptyState,
@@ -249,6 +251,7 @@ export default function GroupedDataTable<T extends object>({
   );
 
   const [pageByGroup, setPageByGroup] = useState<Record<string, number>>({});
+  const [pageInputByGroup, setPageInputByGroup] = useState<Record<string, string>>({});
   const [sortByGroup, setSortByGroup] = useState<
     Record<string, { key: string; direction: SortDirection }>
   >({});
@@ -348,6 +351,25 @@ export default function GroupedDataTable<T extends object>({
         )}
       />
     );
+  };
+
+  const commitPageInput = (
+    groupKey: string,
+    currentPage: number,
+    totalPages: number,
+  ) => {
+    const rawInput = (pageInputByGroup[groupKey] ?? String(currentPage)).trim();
+    const parsed = Number.parseInt(rawInput, 10);
+    if (Number.isNaN(parsed)) {
+      setPageInputByGroup((prev) => ({ ...prev, [groupKey]: String(currentPage) }));
+      return;
+    }
+
+    const targetPage = Math.min(Math.max(1, parsed), totalPages);
+    setPageInputByGroup((prev) => ({ ...prev, [groupKey]: String(targetPage) }));
+    if (targetPage !== currentPage) {
+      setPageByGroup((prev) => ({ ...prev, [groupKey]: targetPage }));
+    }
   };
 
   return (
@@ -742,12 +764,14 @@ export default function GroupedDataTable<T extends object>({
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
-                    onClick={() =>
-                      setPageByGroup((prev) => ({
+                    onClick={() => {
+                      const nextPage = Math.max(1, currentPage - 1);
+                      setPageByGroup((prev) => ({ ...prev, [group.key]: nextPage }));
+                      setPageInputByGroup((prev) => ({
                         ...prev,
-                        [group.key]: Math.max(1, currentPage - 1),
-                      }))
-                    }
+                        [group.key]: String(nextPage),
+                      }));
+                    }}
                     disabled={currentPage <= 1}
                     className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
@@ -756,14 +780,53 @@ export default function GroupedDataTable<T extends object>({
                   <span className="text-xs text-gray-600 min-w-[70px] text-center">
                     Page {currentPage} / {totalPages}
                   </span>
+                  {showPageJumpInput && (
+                    <div className="flex items-center gap-1">
+                      <input
+                        type="number"
+                        min={1}
+                        max={totalPages}
+                        value={pageInputByGroup[group.key] ?? String(currentPage)}
+                        onChange={(event) =>
+                          setPageInputByGroup((prev) => ({
+                            ...prev,
+                            [group.key]: event.target.value,
+                          }))
+                        }
+                        onBlur={() =>
+                          commitPageInput(group.key, currentPage, totalPages)
+                        }
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter") {
+                            event.preventDefault();
+                            commitPageInput(group.key, currentPage, totalPages);
+                          }
+                        }}
+                        className="h-8 w-16 rounded-lg border border-gray-200 px-2 text-center text-xs font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-300"
+                        aria-label={`Go to page for ${group.title}`}
+                      />
+                      <button
+                        type="button"
+                        onClick={() =>
+                          commitPageInput(group.key, currentPage, totalPages)
+                        }
+                        disabled={totalPages <= 1}
+                        className="rounded-lg border border-gray-200 px-2 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        Go
+                      </button>
+                    </div>
+                  )}
                   <button
                     type="button"
-                    onClick={() =>
-                      setPageByGroup((prev) => ({
+                    onClick={() => {
+                      const nextPage = Math.min(totalPages, currentPage + 1);
+                      setPageByGroup((prev) => ({ ...prev, [group.key]: nextPage }));
+                      setPageInputByGroup((prev) => ({
                         ...prev,
-                        [group.key]: Math.min(totalPages, currentPage + 1),
-                      }))
-                    }
+                        [group.key]: String(nextPage),
+                      }));
+                    }}
                     disabled={currentPage >= totalPages}
                     className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
