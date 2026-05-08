@@ -1231,6 +1231,7 @@ export default function OrgAdminCompletionPage() {
       <div className="mx-auto max-w-[1600px] p-6 space-y-5">
         <PageHeader
           onBack={() => navigate(`/${orgCode}/admin/dashboard`)}
+          showBackButton={false}
           icon={
             <ChartBarIcon
               size={16}
