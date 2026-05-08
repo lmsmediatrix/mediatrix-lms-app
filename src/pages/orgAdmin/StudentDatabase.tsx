@@ -20,6 +20,7 @@ import { exportToCSVUtil } from "../../lib/exportCsvUtils";
 import ExportModal from "../../components/orgAdmin/ExportModal";
 import TableEmptyState from "../../components/common/TableEmptyState";
 import HoverHelpTooltip from "../../components/common/HoverHelpTooltip";
+import PageJumpPagination from "../../components/common/PageJumpPagination";
 import ActionMenuButton from "../../components/orgAdmin/ActionMenuButton";
 import { useProgramsForDropdown } from "../../hooks/useProgram";
 import TableSkeletonClean from "../../components/skeleton/TableSkeletonClean";
@@ -699,42 +700,15 @@ export default function StudentDatabase() {
 
       {/* Pagination */}
       {!isInitialStudentsLoading && (
-        <div className="flex justify-between items-center mt-4 text-sm text-gray-500">
-          <span>
-            {studentsData?.pagination?.totalItems || 0} result
-            {studentsData?.pagination?.totalItems !== 1 ? "s" : ""}
-          </span>
-          <div className="flex gap-2">
-            <button
-              onClick={() => handlePageChange(skipLimit.skip - 1)}
-              disabled={!studentsData?.pagination?.hasPreviousPage}
-              className={`px-4 py-2 rounded-md border border-[#60B2F0] transition-all duration-300 ${
-                !studentsData?.pagination?.hasPreviousPage
-                  ? "opacity-50 cursor-not-allowed border-gray-300 text-gray-400"
-                  : "text-[#60B2F0] hover:bg-[#60B2F0] hover:text-white"
-              }`}
-            >
-              Previous
-            </button>
-
-            <span className="px-4 py-2 bg-gray-100 rounded-md font-medium">
-              Page {studentsData?.pagination?.currentPage} of{" "}
-              {studentsData?.pagination?.totalPages}
-            </span>
-
-            <button
-              onClick={() => handlePageChange(skipLimit.skip + 1)}
-              disabled={!studentsData?.pagination?.hasNextPage}
-              className={`px-4 py-2 rounded-md border border-[#60B2F0] transition-all duration-300 ${
-                !studentsData?.pagination?.hasNextPage
-                  ? "opacity-50 cursor-not-allowed border-gray-300 text-gray-400"
-                  : "text-[#60B2F0] hover:bg-[#60B2F0] hover:text-white"
-              }`}
-            >
-              Next
-            </button>
-          </div>
-        </div>
+        <PageJumpPagination
+          totalItems={studentsData?.pagination?.totalItems || 0}
+          currentPage={studentsData?.pagination?.currentPage || 1}
+          totalPages={studentsData?.pagination?.totalPages || 1}
+          hasPreviousPage={!!studentsData?.pagination?.hasPreviousPage}
+          hasNextPage={!!studentsData?.pagination?.hasNextPage}
+          onPageChange={(page) => handlePageChange(page - 1)}
+          tone="sky"
+        />
       )}
 
       {/* Modals */}

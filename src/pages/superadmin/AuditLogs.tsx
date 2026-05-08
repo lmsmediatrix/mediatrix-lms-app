@@ -11,6 +11,7 @@ import ActivityMobileSkeleton from "../../components/skeleton/ActivityMobileSkel
 import { exportToCSVUtil } from "../../lib/exportCsvUtils";
 import { useDebounce } from "../../hooks/useDebounce";
 import AuditLogDetailsModal from "../../components/common/AuditLogDetailsModal";
+import PageJumpPagination from "../../components/common/PageJumpPagination";
 
 // Define interfaces for type safety
 interface AuditLog {
@@ -363,41 +364,16 @@ export default function AuditLogs() {
       </div>
 
       {!isPending && data?.pagination && (
-        <div className="flex flex-col md:flex-row justify-between items-center mt-4 text-sm text-gray-500 gap-4">
-          <span>
-            {data.pagination.totalItems} result
-            {data.pagination.totalItems !== 1 ? "s" : ""}
-          </span>
-          <div className="flex flex-col md:flex-row gap-2 w-full md:w-auto">
-            <button
-              onClick={() => handlePageChange(skipLimit.skip - 1)}
-              disabled={!data.pagination.hasPreviousPage}
-              className={`px-4 py-2 rounded-md border border-[#3E5B93] transition-all duration-300 w-full md:w-auto ${
-                !data.pagination.hasPreviousPage
-                  ? "opacity-50 cursor-not-allowed border-gray-300 text-gray-400"
-                  : "text-[#3E5B93] hover:bg-[#3E5B93] hover:text-white"
-              }`}
-              aria-label="Go to previous page"
-            >
-              Previous
-            </button>
-            <span className="px-4 py-2 bg-gray-100 rounded-md font-medium text-center">
-              Page {data.pagination.currentPage} of {data.pagination.totalPages}
-            </span>
-            <button
-              onClick={() => handlePageChange(skipLimit.skip + 1)}
-              disabled={!data.pagination.hasNextPage}
-              className={`px-4 py-2 rounded-md border border-[#3E5B93] transition-all duration-300 w-full md:w-auto ${
-                !data.pagination.hasNextPage
-                  ? "opacity-50 cursor-not-allowed border-gray-300 text-gray-400"
-                  : "text-[#3E5B93] hover:bg-[#3E5B93] hover:text-white"
-              }`}
-              aria-label="Go to next page"
-            >
-              Next
-            </button>
-          </div>
-        </div>
+        <PageJumpPagination
+          totalItems={data.pagination.totalItems || 0}
+          currentPage={data.pagination.currentPage || 1}
+          totalPages={data.pagination.totalPages || 1}
+          hasPreviousPage={!!data.pagination.hasPreviousPage}
+          hasNextPage={!!data.pagination.hasNextPage}
+          onPageChange={(page) => handlePageChange(page - 1)}
+          tone="indigo"
+          stackOnMobile
+        />
       )}
 
       {selectedAudit && (
