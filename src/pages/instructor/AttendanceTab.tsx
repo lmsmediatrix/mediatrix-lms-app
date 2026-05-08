@@ -47,6 +47,14 @@ export default function AttendanceTab({
 
   const [showCalendar, setShowCalendar] = useState(false);
   const updateAttendance = useUpdateAttendance();
+  const scheduleStartDateKey = sectionSchedule.startDate.split("T")[0];
+  const scheduleEndDateKey = sectionSchedule.endDate?.split("T")[0] || null;
+
+  const isDateOutsideScheduleWindow = (dateKey: string) => {
+    if (dateKey < scheduleStartDateKey) return true;
+    if (scheduleEndDateKey && dateKey > scheduleEndDateKey) return true;
+    return false;
+  };
 
   const getFromDate = () => {
     const toDate = new Date(selectedDate);
@@ -88,6 +96,9 @@ export default function AttendanceTab({
     status: TAttendanceStatus,
   ) => {
     const selectedAttendanceDate = weekFullDates[dateIndex].date;
+    if (isDateOutsideScheduleWindow(selectedAttendanceDate)) {
+      return;
+    }
     const body = {
       sectionCode: sectionCode,
       userId: studentId,
@@ -277,8 +288,13 @@ export default function AttendanceTab({
                     </div>
                   </td>
                   {student.attendance.map(
-                    (entry: AttendanceEntry, index: number) =>
-                      entry.label === "class not started yet" ? (
+                    (entry: AttendanceEntry, index: number) => {
+                      const dayDate = weekFullDates[index]?.date;
+                      const isOutOfScope =
+                        !dayDate || isDateOutsideScheduleWindow(dayDate);
+                      return isOutOfScope ||
+                        entry.label === "class not started yet" ||
+                        entry.label === "noClass" ? (
                         <td
                           key={index}
                           className="px-4 py-3 md:px-6 md:py-4 text-center text-gray-300"
@@ -293,7 +309,8 @@ export default function AttendanceTab({
                           index={index}
                           handleAttendanceUpdate={handleAttendanceUpdate}
                         />
-                      ),
+                      );
+                    },
                   )}
                 </tr>
               ))}

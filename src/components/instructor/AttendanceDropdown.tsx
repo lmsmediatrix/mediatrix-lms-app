@@ -133,6 +133,16 @@ export default function AttendanceDropdown({
                 <IoCloseCircleOutline className="w-5 h-5 text-red-500" />
                 Absent
               </button>
+              <button
+                className="flex items-center gap-2 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                onClick={() => {
+                  handleAttendanceUpdate(studentId, index, "late");
+                  setIsOpen(false);
+                }}
+              >
+                <MdOutlineWatchLater className="w-5 h-5 text-yellow-500" />
+                Late
+              </button>
             </div>,
             document.body
           )
