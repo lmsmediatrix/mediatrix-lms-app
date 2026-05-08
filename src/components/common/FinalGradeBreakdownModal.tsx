@@ -1,6 +1,7 @@
 import FinalGradeBreakdown, {
   FinalGradeBreakdownData,
 } from "./FinalGradeBreakdown";
+import { IoClose } from "react-icons/io5";
 
 type FinalGradeBreakdownModalProps = {
   isOpen: boolean;
@@ -41,10 +42,11 @@ export default function FinalGradeBreakdownModal({
           </div>
           <button
             type="button"
-            className="rounded-md border border-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-600 transition-all duration-200 hover:scale-105 hover:rotate-90 hover:bg-slate-100 hover:text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-300"
             onClick={onClose}
+            aria-label="Close final grade breakdown"
           >
-            Close
+            <IoClose className="h-4 w-4" />
           </button>
         </div>
 

@@ -276,8 +276,12 @@ export default function AnalyticsTab() {
         </div>
       )}
 
-      <div className="flex flex-col sm:flex-row gap-6">
-        <div className="flex flex-col gap-4 w-full sm:w-1/3">
+      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(280px,360px)_minmax(0,1fr)]">
+        <div className="order-1 min-w-0 w-full lg:order-2">
+          <GradeChart data={gradeData[0]} learnersLabel={learnersTerm} />
+        </div>
+
+        <div className="order-2 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:order-1 lg:grid-cols-1">
           <div className="bg-blue-50 p-4 sm:p-6 rounded-lg space-y-2">
             <div className="text-xs sm:text-sm text-gray-600">
               Total {learnersTerm} Enrolled
@@ -322,18 +326,14 @@ export default function AnalyticsTab() {
             </div>
           </div>
         </div>
-
-        <div className="w-full sm:w-2/3">
-          <GradeChart data={gradeData[0]} learnersLabel={learnersTerm} />
-        </div>
       </div>
 
-      <div className="flex gap-4 items-center">
+      <div className="flex flex-wrap items-center gap-3">
         <div className="w-1.5 h-8 bg-secondary"></div>
         <h1 className="text-xl sm:text-2xl font-bold">
           Individual {learnerTerm} Grades
         </h1>
-        <div className="ml-auto flex items-center gap-2">
+        <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
           <Button
             variant="outline"
             className="h-9 px-3 text-xs sm:text-sm"
@@ -362,35 +362,35 @@ export default function AnalyticsTab() {
         assessment attempts contribute failing defaults in the computation.
       </div>
 
-      <div className="overflow-x-auto border border-gray-200 rounded-lg">
-        <table className="w-full min-w-[600px] sm:min-w-0">
+      <div className="w-full overflow-hidden rounded-lg border border-gray-200">
+        <table className="w-full table-fixed">
           <thead>
             <tr className="border-b border-gray-200">
-              <th className="px-4 sm:px-6 py-3 sm:py-4 text-left text-xs sm:text-sm text-gray-500 font-medium bg-[#F9FAFB]">
+              <th className="w-[16%] px-3 py-3 text-left text-xs text-gray-500 font-medium bg-[#F9FAFB]">
                 {learnerTerm} Name
               </th>
-              <th className="px-4 sm:px-6 py-3 sm:py-4 text-left text-xs sm:text-sm text-gray-500 font-medium bg-[#F9FAFB]">
+              <th className="w-[9%] px-3 py-3 text-left text-xs text-gray-500 font-medium bg-[#F9FAFB]">
                 Final Grade
               </th>
-              <th className="px-4 sm:px-6 py-3 sm:py-4 text-left text-xs sm:text-sm text-gray-500 font-medium bg-[#F9FAFB]">
+              <th className="w-[10%] px-3 py-3 text-left text-xs text-gray-500 font-medium bg-[#F9FAFB]">
                 Final %
               </th>
-              <th className="px-4 sm:px-6 py-3 sm:py-4 text-left text-xs sm:text-sm text-gray-500 font-medium bg-[#F9FAFB]">
+              <th className="w-[11%] px-3 py-3 text-left text-xs text-gray-500 font-medium bg-[#F9FAFB]">
                 Assignment Avg
               </th>
-              <th className="px-4 sm:px-6 py-3 sm:py-4 text-left text-xs sm:text-sm text-gray-500 font-medium bg-[#F9FAFB]">
+              <th className="w-[9%] px-3 py-3 text-left text-xs text-gray-500 font-medium bg-[#F9FAFB]">
                 Quiz Avg
               </th>
-              <th className="px-4 sm:px-6 py-3 sm:py-4 text-left text-xs sm:text-sm text-gray-500 font-medium bg-[#F9FAFB]">
+              <th className="w-[9%] px-3 py-3 text-left text-xs text-gray-500 font-medium bg-[#F9FAFB]">
                 Attendance
               </th>
-              <th className="px-4 sm:px-6 py-3 sm:py-4 text-left text-xs sm:text-sm text-gray-500 font-medium bg-[#F9FAFB]">
+              <th className="w-[8%] px-3 py-3 text-left text-xs text-gray-500 font-medium bg-[#F9FAFB]">
                 Exam
               </th>
-              <th className="px-4 sm:px-6 py-3 sm:py-4 text-left text-xs sm:text-sm text-gray-500 font-medium bg-[#F9FAFB]">
+              <th className="w-[16%] px-3 py-3 text-left text-xs text-gray-500 font-medium bg-[#F9FAFB] whitespace-nowrap">
                 TNA Pass / Level-up
               </th>
-              <th className="px-4 sm:px-6 py-3 sm:py-4 text-left text-xs sm:text-sm text-gray-500 font-medium bg-[#F9FAFB]">
+              <th className="w-[12%] px-3 py-3 text-left text-xs text-gray-500 font-medium bg-[#F9FAFB]">
                 Breakdown
               </th>
             </tr>
@@ -402,7 +402,7 @@ export default function AnalyticsTab() {
                   key={student.id}
                   className="border-b border-gray-200 last:border-b-0 hover:bg-gray-50"
                 >
-                  <td className="px-4 sm:px-6 py-3 sm:py-4">
+                  <td className="px-3 py-3">
                     <div className="flex items-center gap-3">
                       <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full overflow-hidden bg-gray-100">
                         {student.avatar ? (
@@ -415,69 +415,69 @@ export default function AnalyticsTab() {
                           <FaUser className="w-full h-full p-1 sm:p-1.5 text-gray-400" />
                         )}
                       </div>
-                      <span className="text-xs sm:text-sm font-medium text-gray-900">
+                      <span className="text-xs font-medium text-gray-900 truncate">
                         {student.name}
                       </span>
                     </div>
                   </td>
-                  <td className="px-4 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm text-gray-600">
+                  <td className="px-3 py-3 text-xs text-gray-600">
                     {student.finalGrade ? (
                       student.finalGrade
                     ) : (
                       <span className="text-primary">--</span>
                     )}
                   </td>
-                  <td className="px-4 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm text-gray-600">
+                  <td className="px-3 py-3 text-xs text-gray-600">
                     {student.finalPercentage ? (
                       `${student.finalPercentage}%`
                     ) : (
                       <span className="text-primary">--</span>
                     )}
                   </td>
-                  <td className="px-4 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm text-gray-600">
+                  <td className="px-3 py-3 text-xs text-gray-600">
                     {student.assignmentAverage ? (
                       `${student.assignmentAverage}%`
                     ) : (
                       <span className="text-primary">--</span>
                     )}
                   </td>
-                  <td className="px-4 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm text-gray-600">
+                  <td className="px-3 py-3 text-xs text-gray-600">
                     {student.quizAverage ? (
                       `${student.quizAverage}%`
                     ) : (
                       <span className="text-primary">--</span>
                     )}
                   </td>
-                  <td className="px-4 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm text-gray-600">
+                  <td className="px-3 py-3 text-xs text-gray-600">
                     {student.attendance ? (
                       `${student.attendance}%`
                     ) : (
                       <span className="text-primary">--</span>
                     )}
                   </td>
-                  <td className="px-4 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm text-gray-600">
+                  <td className="px-3 py-3 text-xs text-gray-600">
                     {student.finalExam ? (
                       `${student.finalExam}%`
                     ) : (
                       <span className="text-primary">--</span>
                     )}
                   </td>
-                  <td className="px-4 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm">
+                  <td className="px-3 py-3 text-xs whitespace-nowrap">
                     {student.isPassed === true ? (
-                      <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-emerald-700">
+                      <span className="inline-flex items-center whitespace-nowrap rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-emerald-700">
                         Passed / Eligible
                       </span>
                     ) : student.isPassed === false ? (
-                      <span className="inline-flex items-center rounded-full border border-red-200 bg-red-50 px-2.5 py-1 text-red-700">
+                      <span className="inline-flex items-center whitespace-nowrap rounded-full border border-red-200 bg-red-50 px-2.5 py-1 text-red-700">
                         Not Passed
                       </span>
                     ) : (
-                      <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-slate-600">
+                      <span className="inline-flex items-center whitespace-nowrap rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-slate-600">
                         Pending
                       </span>
                     )}
                   </td>
-                  <td className="px-4 sm:px-6 py-3 sm:py-4 align-top">
+                  <td className="px-3 py-3 align-top">
                     {student.gradeComputation || student.percentageComputation ? (
                       <button
                         type="button"

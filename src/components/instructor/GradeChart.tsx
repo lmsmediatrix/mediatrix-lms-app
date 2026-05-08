@@ -31,6 +31,8 @@ export default function GradeChart({
   data,
   learnersLabel = "Students",
 }: GradeChartProps) {
+  const isMobile = window.innerWidth < 768;
+
   // Fallback values if data is invalid
   const labels = data?.labels || [];
   const values = data?.values || [];
@@ -55,6 +57,14 @@ export default function GradeChart({
   const options = {
     responsive: true,
     maintainAspectRatio: false, // Allow chart to stretch to container size
+    layout: {
+      padding: {
+        top: 8,
+        right: isMobile ? 4 : 10,
+        left: isMobile ? 0 : 8,
+        bottom: 0,
+      },
+    },
     plugins: {
       legend: {
         display: false,
@@ -63,22 +73,22 @@ export default function GradeChart({
         display: true,
         text: "Grade Distribution",
         font: {
-          size: window.innerWidth < 768 ? 14 : 16, // Smaller title on mobile
+          size: isMobile ? 14 : 16, // Smaller title on mobile
         },
       },
       tooltip: {
         bodyFont: {
-          size: window.innerWidth < 768 ? 12 : 14, // Smaller tooltip text on mobile
+          size: isMobile ? 12 : 14, // Smaller tooltip text on mobile
         },
       },
     },
     scales: {
       y: {
         title: {
-          display: true,
+          display: !isMobile,
           text: `Number of ${learnersLabel.toLowerCase()} (Total: ${totalStudents})`,
           font: {
-            size: window.innerWidth < 768 ? 12 : 14, // Smaller axis title on mobile
+            size: isMobile ? 12 : 14, // Smaller axis title on mobile
           },
         },
         min: 0,
@@ -86,7 +96,7 @@ export default function GradeChart({
         ticks: {
           stepSize: stepSize,
           font: {
-            size: window.innerWidth < 768 ? 10 : 12, // Smaller tick labels on mobile
+            size: isMobile ? 10 : 12, // Smaller tick labels on mobile
           },
         },
         grid: {
@@ -100,12 +110,14 @@ export default function GradeChart({
           display: true,
           text: "Grade",
           font: {
-            size: window.innerWidth < 768 ? 12 : 14, // Smaller axis title on mobile
+            size: isMobile ? 12 : 14, // Smaller axis title on mobile
           },
         },
         ticks: {
+          autoSkip: true,
+          maxRotation: 0,
           font: {
-            size: window.innerWidth < 768 ? 10 : 12, // Smaller tick labels on mobile
+            size: isMobile ? 10 : 12, // Smaller tick labels on mobile
           },
         },
         grid: {
@@ -121,13 +133,14 @@ export default function GradeChart({
       {
         data: values,
         backgroundColor: "rgb(20, 184, 216)",
-        barThickness: window.innerWidth < 768 ? 20 : 50, // Thinner bars on mobile
+        barThickness: isMobile ? 16 : 40, // Thinner bars on mobile
+        maxBarThickness: isMobile ? 18 : 44,
       },
     ],
   };
 
   return (
-    <div className="bg-white p-3 md:p-4 rounded-lg shadow h-[300px] md:h-[400px] lg:mr-4">
+    <div className="w-full overflow-hidden rounded-lg bg-white p-3 shadow md:p-4 h-[280px] sm:h-[320px] md:h-[400px]">
       <Bar options={options} data={chartData} />
     </div>
   );
