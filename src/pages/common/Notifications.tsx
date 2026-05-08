@@ -6,6 +6,7 @@ import { useState, useEffect } from "react";
 import { useSearchParams, useNavigate, useParams } from "react-router-dom";
 import { formatDateMMMDDYYY } from "../../lib/dateUtils";
 import { useAuth } from "../../context/AuthContext";
+import PageJumpPagination from "../../components/common/PageJumpPagination";
 
 interface INotification {
   _id: string;
@@ -285,41 +286,15 @@ const Notifications = () => {
 
         {/* Pagination */}
         {filteredNotifications.length > 0 && (
-          <div className="flex justify-between items-center mt-4 text-sm text-gray-500">
-            <span>
-              {filteredNotifications.length} result
-              {filteredNotifications.length !== 1 ? "s" : ""}
-            </span>
-            <div className="flex gap-2">
-              <button
-                onClick={() => handlePageChange(skipLimit.skip - 1)}
-                disabled={!pagination.hasPreviousPage}
-                className={`px-4 py-2 rounded-md border border-[#3E5B93] transition-all duration-300 ${
-                  !pagination.hasPreviousPage
-                    ? "opacity-50 cursor-not-allowed border-gray-300 text-gray-400"
-                    : "text-[#3E5B93] hover:bg-[#3E5B93] hover:text-white"
-                }`}
-              >
-                Previous
-              </button>
-
-              <span className="px-4 py-2 bg-gray-100 rounded-md font-medium">
-                Page {pagination.currentPage} of {pagination.totalPages}
-              </span>
-
-              <button
-                onClick={() => handlePageChange(skipLimit.skip + 1)}
-                disabled={!pagination.hasNextPage}
-                className={`px-4 py-2 rounded-md border border-[#3E5B93] transition-all duration-300 ${
-                  !pagination.hasNextPage
-                    ? "opacity-50 cursor-not-allowed border-gray-300 text-gray-400"
-                    : "text-[#3E5B93] hover:bg-[#3E5B93] hover:text-white"
-                }`}
-              >
-                Next
-              </button>
-            </div>
-          </div>
+          <PageJumpPagination
+            totalItems={pagination.totalItems || filteredNotifications.length}
+            currentPage={pagination.currentPage || 1}
+            totalPages={pagination.totalPages || 1}
+            hasPreviousPage={!!pagination.hasPreviousPage}
+            hasNextPage={!!pagination.hasNextPage}
+            onPageChange={(page) => handlePageChange(page - 1)}
+            tone="indigo"
+          />
         )}
       </div>
     </div>

@@ -11,6 +11,7 @@ import ViewProgramModal from "../../components/orgAdmin/ViewProgramModal";
 import DeleteProgramModal from "../../components/orgAdmin/DeleteProgramModal";
 import TableSkeletonClean from "../../components/skeleton/TableSkeletonClean";
 import { useDebounce } from "../../hooks/useDebounce";
+import PageJumpPagination from "../../components/common/PageJumpPagination";
 import {
   GroupedTableColumn,
   GroupedTableGroup,
@@ -292,42 +293,15 @@ export default function ProgramPage() {
       )}
       {/* Pagination */}
       {!isLoading && (
-        <div className="flex justify-between items-center mt-4 text-sm text-gray-500">
-          <span>
-            {data?.pagination?.totalItems || 0} result
-            {data?.pagination?.totalItems !== 1 ? "s" : ""}
-          </span>
-          <div className="flex gap-2">
-            <button
-              onClick={() => handlePageChange(skipLimit.skip - 1)}
-              disabled={!data?.pagination?.hasPreviousPage}
-              className={`px-4 py-2 rounded-md border border-[#60B2F0] transition-all duration-300 ${
-                !data?.pagination?.hasPreviousPage
-                  ? "opacity-50 cursor-not-allowed border-gray-300 text-gray-400"
-                  : "text-[#60B2F0] hover:bg-[#60B2F0] hover:text-white"
-              }`}
-            >
-              Previous
-            </button>
-
-            <span className="px-4 py-2 bg-gray-100 rounded-md font-medium">
-              Page {data?.pagination?.currentPage} of{" "}
-              {data?.pagination?.totalPages}
-            </span>
-
-            <button
-              onClick={() => handlePageChange(skipLimit.skip + 1)}
-              disabled={!data?.pagination?.hasNextPage}
-              className={`px-4 py-2 rounded-md border border-[#60B2F0] transition-all duration-300 ${
-                !data?.pagination?.hasNextPage
-                  ? "opacity-50 cursor-not-allowed border-gray-300 text-gray-400"
-                  : "text-[#60B2F0] hover:bg-[#60B2F0] hover:text-white"
-              }`}
-            >
-              Next
-            </button>
-          </div>
-        </div>
+        <PageJumpPagination
+          totalItems={data?.pagination?.totalItems || 0}
+          currentPage={data?.pagination?.currentPage || 1}
+          totalPages={data?.pagination?.totalPages || 1}
+          hasPreviousPage={!!data?.pagination?.hasPreviousPage}
+          hasNextPage={!!data?.pagination?.hasNextPage}
+          onPageChange={(page) => handlePageChange(page - 1)}
+          tone="sky"
+        />
       )}
       {/* Modals */}
       {(modal === "create-program" || modal === "edit-program") && (
