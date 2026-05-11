@@ -11,9 +11,13 @@ export const useGetDevelopmentPlans = (params?: {
   limit?: number;
   skip?: number;
 }) => {
+  const hasAnyFilter = Boolean(
+    params && (params.employeeId || params.recommendationId || params.keyword),
+  );
   return useQuery({
     queryKey: ["development-plans", params],
     queryFn: () => DevelopmentPlanService.getPlans(params),
+    enabled: params ? hasAnyFilter : true,
   });
 };
 
