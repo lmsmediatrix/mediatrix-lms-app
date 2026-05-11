@@ -155,6 +155,19 @@ export const useArchiveCourse = () => {
   });
 };
 
+export const useBulkImportCourses = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: FormData) => courseService.bulkImportCourses(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["search-course"] });
+      queryClient.invalidateQueries({ queryKey: ["all-courses"] });
+      queryClient.invalidateQueries({ queryKey: ["courses-dropdown"] });
+    },
+  });
+};
+
 export const useExportCourseToCsv = () => {
   return useMutation({
     mutationFn: async (apiParams?: Partial<ApiParams>) => {

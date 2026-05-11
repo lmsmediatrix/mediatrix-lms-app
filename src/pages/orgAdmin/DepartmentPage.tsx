@@ -1,7 +1,12 @@
 import Button from "../../components/common/Button";
 import { FaPlus } from "react-icons/fa";
+import { FiDownload, FiUpload } from "react-icons/fi";
 import { Navigate, useSearchParams } from "react-router-dom";
-import { useDepartments } from "../../hooks/useDepartment";
+import { useDepartments, useExportDepartmentToCsv } from "../../hooks/useDepartment";
+import { PanelLeft } from "@/components/animate-ui/icons/panel-left";
+import ExportModal from "../../components/orgAdmin/ExportModal";
+import { exportToCSVUtil } from "../../lib/exportCsvUtils";
+import BulkImportDepartmentModal from "../../components/orgAdmin/BulkImportDepartmentModal";
 import { useMemo, useState } from "react";
 import { useAuth } from "../../context/AuthContext";
 import TableEmptyState from "../../components/common/TableEmptyState";
@@ -66,6 +71,11 @@ export default function DepartmentPage() {
   });
   const [departmentToDelete, setDepartmentToDelete] =
     useState<DepartmentToDelete | null>(null);
+  const [isBulkImportModalOpen, setIsBulkImportModalOpen] = useState(false);
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+  const [isImportExportOpen, setIsImportExportOpen] = useState(false);
+
+  const exportDepartmentMutation = useExportDepartmentToCsv();
 
   const { data, isLoading, isError } = useDepartments({
     skip: skipLimit.skip,
@@ -120,6 +130,35 @@ export default function DepartmentPage() {
     setDepartmentToDelete({
       id: department._id,
       name: department.name,
+    });
+  };
+
+  const exportToCSV = (type: "all" | "current") => {
+    const baseExportParams = {
+      organizationId: currentUser.user.organization._id,
+      searchTerm: debouncedSearchTerm,
+      archiveStatus,
+      ...(selectedStatus
+        ? { filter: { key: "isActive" as const, value: selectedStatus } }
+        : {}),
+    };
+    exportToCSVUtil({
+      mutationFn: async (params) => exportDepartmentMutation.mutateAsync(params),
+      mutationParams:
+        type === "all"
+          ? { limit: 1000, skip: 0, ...baseExportParams }
+          : {
+              limit: skipLimit.limit,
+              skip: skipLimit.skip,
+              ...baseExportParams,
+            },
+      filenamePrefix: "1bislms-departments",
+      toastMessages: {
+        pending: `Exporting ${type} data to CSV...`,
+        success: `Successfully exported ${type} data to CSV`,
+        error: `Failed to export ${type} data to CSV`,
+      },
+      onError: (error) => console.error("Export error:", error),
     });
   };
 
@@ -246,7 +285,7 @@ export default function DepartmentPage() {
   ];
 
   const tableToolbarActions = (
-    <div className="flex items-center gap-2 flex-wrap md:flex-nowrap">
+    <div className="flex gap-2 flex-shrink-0 flex-wrap md:flex-nowrap md:items-center justify-end">
       <div className="hidden md:block xl:hidden">
         <ResponsiveFilterButton
           activeFiltersCount={selectedStatus ? 1 : 0}
@@ -265,11 +304,54 @@ export default function DepartmentPage() {
       <Button
         variant="primary"
         onClick={() => setSearchParams({ modal: "create-department" })}
-        className="whitespace-nowrap text-sm"
+        className="whitespace-nowrap text-sm h-[42px] flex-1 md:flex-initial"
       >
         <FaPlus />
         <span className="hidden sm:inline">Add Department</span>
         <span className="sm:hidden">Add</span>
+      </Button>
+      <div
+        className={`flex items-center gap-2 overflow-hidden transition-all duration-300 ease-out ${
+          isImportExportOpen
+            ? "max-w-[520px] opacity-100 translate-x-0"
+            : "max-w-0 opacity-0 -translate-x-2 pointer-events-none"
+        }`}
+      >
+        <Button
+          variant="outline"
+          onClick={() => setIsBulkImportModalOpen(true)}
+          className={`whitespace-nowrap text-sm h-[42px] transition-all duration-300 ${
+            isImportExportOpen ? "scale-100" : "scale-95"
+          }`}
+          type="button"
+        >
+          <FiUpload className="size-4" />
+          <span>Import</span>
+        </Button>
+        <Button
+          variant="outline"
+          onClick={() => setIsExportModalOpen(true)}
+          className={`whitespace-nowrap text-sm h-[42px] transition-all duration-300 ${
+            isImportExportOpen ? "scale-100" : "scale-95"
+          }`}
+          type="button"
+        >
+          <FiDownload className="size-4" />
+          <span>Export</span>
+        </Button>
+      </div>
+      <Button
+        variant={isImportExportOpen ? "outline" : "primary"}
+        onClick={() => setIsImportExportOpen((prev) => !prev)}
+        className="text-sm h-[42px] !px-4 md:!px-4"
+        type="button"
+      >
+        <PanelLeft
+          size={15}
+          animate={isImportExportOpen ? "default" : false}
+          animateOnHover
+        />
+        <span className="sr-only">Toggle import and export actions</span>
       </Button>
       <div className="flex items-center gap-2">
         <button
@@ -419,6 +501,16 @@ export default function DepartmentPage() {
           department={departmentToDelete}
         />
       )}
+
+      <BulkImportDepartmentModal
+        isOpen={isBulkImportModalOpen}
+        onClose={() => setIsBulkImportModalOpen(false)}
+      />
+      <ExportModal
+        isOpen={isExportModalOpen}
+        onClose={() => setIsExportModalOpen(false)}
+        onExport={exportToCSV}
+      />
     </div>
   );
 }

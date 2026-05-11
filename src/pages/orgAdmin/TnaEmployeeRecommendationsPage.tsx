@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ComponentProps } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
@@ -19,6 +19,21 @@ import {
 } from "../../hooks/useTna";
 import { getTerm } from "../../lib/utils";
 import sectionService from "../../services/sectionApi";
+import TableSkeletonClean from "../../components/skeleton/TableSkeletonClean";
+
+const EMPLOYEE_TNA_TABLE_SKELETON_COLUMNS: ComponentProps<
+  typeof TableSkeletonClean
+>["columns"] = [
+  { width: "18%", alignment: "left", hasAvatar: true },
+  { width: "12%", alignment: "left" },
+  { width: "16%", alignment: "left" },
+  { width: "10%", alignment: "left" },
+  { width: "8%", alignment: "right" },
+  { width: "10%", alignment: "right" },
+  { width: "12%", alignment: "left" },
+  { width: "10%", alignment: "left" },
+  { width: "4%", alignment: "right" },
+];
 
 type EmployeeOption = {
   _id: string;
@@ -244,6 +259,22 @@ export default function TnaEmployeeRecommendationsPage() {
     limit: 500,
     skip: 0,
     archiveStatus: "none",
+  });
+
+  const employeeRoleCountQuery = useSearchStudents({
+    organizationId,
+    limit: 1,
+    skip: 0,
+    archiveStatus: "none",
+    filter: { key: "role", value: "employee" },
+  });
+
+  const studentRoleCountQuery = useSearchStudents({
+    organizationId,
+    limit: 1,
+    skip: 0,
+    archiveStatus: "none",
+    filter: { key: "role", value: "student" },
   });
 
   const recommendationsQuery = useGetTnaRecommendations({
@@ -480,15 +511,37 @@ export default function TnaEmployeeRecommendationsPage() {
     });
   }, [employees, latestRecommendationByEmployee]);
 
-  const employeesWithTna = useMemo(
-    () =>
-      employees.filter((employee) =>
-        latestRecommendationByEmployee.has(employee._id),
-      ).length,
-    [employees, latestRecommendationByEmployee],
+  const totalTnaEligibleEmployees = useMemo(() => {
+    const empPagination = employeeRoleCountQuery.data as
+      | { pagination?: { totalItems?: number } }
+      | undefined;
+    const studPagination = studentRoleCountQuery.data as
+      | { pagination?: { totalItems?: number } }
+      | undefined;
+    const employeeTotal = Number(empPagination?.pagination?.totalItems ?? 0);
+    const studentTotal = Number(studPagination?.pagination?.totalItems ?? 0);
+    return employeeTotal + studentTotal;
+  }, [employeeRoleCountQuery.data, studentRoleCountQuery.data]);
+
+  const recommendationsMeta = recommendationsQuery.data as
+    | { distinctEmployeesWithTna?: number }
+    | undefined;
+  const employeesWithTnaDistinct = Number(
+    recommendationsMeta?.distinctEmployeesWithTna ?? 0,
   );
 
-  const employeesWithoutTna = employees.length - employeesWithTna;
+  const employeesWithTna = employeesWithTnaDistinct;
+
+  const employeesWithoutTna = Math.max(
+    0,
+    totalTnaEligibleEmployees - employeesWithTnaDistinct,
+  );
+
+  const isEmployeeListLoading =
+    studentsQuery.isLoading ||
+    employeeRoleCountQuery.isLoading ||
+    studentRoleCountQuery.isLoading ||
+    recommendationsQuery.isLoading;
 
   const tableGroups = useMemo(
     (): GroupedTableGroup<EmployeeSummaryRow>[] => [
@@ -496,10 +549,13 @@ export default function TnaEmployeeRecommendationsPage() {
         key: "all-employees",
         title: `All ${employeesTerm}`,
         rows: employeeRows,
-        badgeText: `${employeeRows.length} total`,
+        badgeText:
+          totalTnaEligibleEmployees > employeeRows.length
+            ? `Showing ${employeeRows.length.toLocaleString()} of ${totalTnaEligibleEmployees.toLocaleString()}`
+            : `${employeeRows.length.toLocaleString()} total`,
       },
     ],
-    [employeeRows, employeesTerm],
+    [employeeRows, employeesTerm, totalTnaEligibleEmployees],
   );
 
   const tableColumns = useMemo(
@@ -736,24 +792,49 @@ export default function TnaEmployeeRecommendationsPage() {
           </div>
 
           <div className="grid grid-cols-2 gap-2 text-sm min-w-[230px]">
-            <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
-              <p className="text-xs text-slate-500">Total {employeesTerm}</p>
-              <p className="text-lg font-semibold text-slate-900">
-                {employees.length}
-              </p>
-            </div>
-            <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2">
-              <p className="text-xs text-emerald-700">With TNA</p>
-              <p className="text-lg font-semibold text-emerald-700">
-                {employeesWithTna}
-              </p>
-            </div>
-            <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 col-span-2">
-              <p className="text-xs text-amber-700">Without TNA</p>
-              <p className="text-lg font-semibold text-amber-700">
-                {employeesWithoutTna}
-              </p>
-            </div>
+            {isEmployeeListLoading ? (
+              <>
+                <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 animate-pulse">
+                  <div className="h-3 w-20 rounded bg-slate-200" />
+                  <div className="mt-2 h-7 w-10 rounded bg-slate-200" />
+                </div>
+                <div className="rounded-xl border border-emerald-200/80 bg-emerald-50/80 px-3 py-2 animate-pulse">
+                  <div className="h-3 w-16 rounded bg-emerald-100" />
+                  <div className="mt-2 h-7 w-8 rounded bg-emerald-100" />
+                </div>
+                <div className="rounded-xl border border-amber-200/80 bg-amber-50/80 px-3 py-2 col-span-2 animate-pulse">
+                  <div className="h-3 w-24 rounded bg-amber-100" />
+                  <div className="mt-2 h-7 w-10 rounded bg-amber-100" />
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+                  <p className="text-xs text-slate-500">Total {employeesTerm}</p>
+                  <p className="text-lg font-semibold text-slate-900">
+                    {totalTnaEligibleEmployees.toLocaleString()}
+                  </p>
+                  {totalTnaEligibleEmployees > employees.length ? (
+                    <p className="mt-1 text-[10px] leading-tight text-slate-500">
+                      Table lists first {employees.length.toLocaleString()} for performance; counts are
+                      organization-wide.
+                    </p>
+                  ) : null}
+                </div>
+                <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2">
+                  <p className="text-xs text-emerald-700">With TNA</p>
+                  <p className="text-lg font-semibold text-emerald-700">
+                    {employeesWithTna.toLocaleString()}
+                  </p>
+                </div>
+                <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 col-span-2">
+                  <p className="text-xs text-amber-700">Without TNA</p>
+                  <p className="text-lg font-semibold text-amber-700">
+                    {employeesWithoutTna.toLocaleString()}
+                  </p>
+                </div>
+              </>
+            )}
           </div>
         </div>
       </section>
@@ -776,10 +857,12 @@ export default function TnaEmployeeRecommendationsPage() {
           </div>
         </div>
 
-        {studentsQuery.isLoading ? (
-          <p className="text-sm text-slate-500">
-            Loading {employeesTerm.toLowerCase()}...
-          </p>
+        {isEmployeeListLoading ? (
+          <TableSkeletonClean
+            columns={EMPLOYEE_TNA_TABLE_SKELETON_COLUMNS}
+            rows={8}
+            className="[&_table]:min-w-[1150px]"
+          />
         ) : employeeRows.length === 0 ? (
           <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-5 text-sm text-slate-600">
             No matching {employeesTerm.toLowerCase()} found.

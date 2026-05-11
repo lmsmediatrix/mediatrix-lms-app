@@ -31,6 +31,46 @@ class TnaService extends APIService {
     return response.data;
   };
 
+  bulkImportSkills = async (data: FormData) => {
+    try {
+      const response = await apiClient.post(
+        `${BASE_URL}${TNA.SKILL_BULK_CREATE}`,
+        data,
+        {
+          withCredentials: true,
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        },
+      );
+      return response.data as {
+        message: string;
+        result: {
+          successCount: number;
+          successList: Array<{ _id: string; name: string }>;
+          errorCount: number;
+          errorList: Array<{
+            errorMessage: string;
+            errorCode: number;
+            row?: number;
+          }>;
+        };
+      };
+    } catch (error: unknown) {
+      const err = error as {
+        response?: { data?: { message?: string; error?: string } };
+        message?: string;
+      };
+      const msg =
+        err?.response?.data?.message ||
+        err?.response?.data?.error ||
+        err?.message ||
+        "Error importing skills";
+      console.error("Error bulk importing TNA skills:", error);
+      throw new Error(typeof msg === "string" ? msg : "Error importing skills");
+    }
+  };
+
   getSkills = async (params?: {
     keyword?: string;
     limit?: number;

@@ -25,6 +25,25 @@ import { IDepartment, IProgram } from "../../types/interfaces";
 import { createStudentFormData } from "../../lib/formDataUtils";
 import ImageCropper from "../ImageCropper";
 
+/** Matches `USER_STATUS` on the API (user / student account state). */
+const LEARNER_ACCOUNT_STATUSES = [
+  "active",
+  "inactive",
+  "suspended",
+  "deactivated",
+  "archived",
+  "withdrawn",
+] as const;
+
+type LearnerAccountStatus = (typeof LEARNER_ACCOUNT_STATUSES)[number];
+
+const normalizeLearnerStatus = (value?: string): LearnerAccountStatus => {
+  const s = String(value || "").trim().toLowerCase();
+  return (LEARNER_ACCOUNT_STATUSES as readonly string[]).includes(s)
+    ? (s as LearnerAccountStatus)
+    : "active";
+};
+
 // Define the schema for the student form using Zod
 const studentSchema = (orgType: string) =>
   z.object({
@@ -60,6 +79,7 @@ const studentSchema = (orgType: string) =>
         : z.string().optional(),
     directTo: z.string().optional(),
     personDepartment: z.string().optional(),
+    status: z.enum(LEARNER_ACCOUNT_STATUSES),
     avatar: z.any().refine((val) => {
       return val !== null;
     }, "Avatar is required"),
@@ -214,6 +234,7 @@ export default function UpsertStudentModal({
       subrole: "",
       directTo: "",
       personDepartment: "",
+      status: "active",
       avatar: null,
     },
   });
@@ -236,6 +257,7 @@ export default function UpsertStudentModal({
           ? studentData.person.department
           : studentData.person?.department?._id || "";
       setValue("personDepartment", departmentId);
+      setValue("status", normalizeLearnerStatus(studentData.status));
 
       // Set avatar preview if available
       if (studentData.avatar) {
@@ -661,6 +683,37 @@ export default function UpsertStudentModal({
                     <p className="text-red-500 text-sm mt-1">
                       {errors.email.message}
                     </p>
+                  )}
+                </div>
+
+                <div>
+                  <label
+                    className={`block text-sm font-medium mb-1 ${
+                      errors.status ? "text-red-500" : "text-slate-700"
+                    }`}
+                  >
+                    Account status
+                  </label>
+                  <select
+                    {...register("status")}
+                    className={`w-full px-3.5 py-2.5 border rounded-xl outline-none transition-colors bg-white ${
+                      errors.status
+                        ? "border-red-500"
+                        : "border-slate-300 focus:border-primary"
+                    }`}
+                    disabled={isPending}
+                  >
+                    {LEARNER_ACCOUNT_STATUSES.map((value) => (
+                      <option key={value} value={value}>
+                        {value.charAt(0).toUpperCase() + value.slice(1)}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-slate-500 mt-1">
+                    Inactive users cannot sign in. Use the status that matches your HR policy.
+                  </p>
+                  {errors.status && (
+                    <p className="text-red-500 text-sm mt-1">{errors.status.message}</p>
                   )}
                 </div>
               </div>

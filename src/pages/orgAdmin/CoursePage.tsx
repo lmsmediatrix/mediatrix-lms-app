@@ -13,6 +13,7 @@ import {
 import { useSearchParams } from "react-router-dom";
 import UpsertCourseModal from "../../components/orgAdmin/UpsertCourseModal";
 import DeleteCourseModal from "../../components/orgAdmin/DeleteCourseModal";
+import BulkImportCourseModal from "../../components/orgAdmin/BulkImportCourseModal";
 import { useCourses, useExportCourseToCsv } from "../../hooks/useCourse";
 import { useMemo, useState } from "react";
 import { useAuth } from "../../context/AuthContext";
@@ -32,7 +33,6 @@ import {
   GroupedTableGroup,
   default as GroupedDataTable,
 } from "../../components/common/GroupedDataTable";
-import { toast } from "react-toastify";
 import { PanelLeft } from "@/components/animate-ui/icons/panel-left";
 
 interface CourseToDelete {
@@ -85,6 +85,7 @@ export default function CoursePage() {
     null
   );
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+  const [isBulkImportModalOpen, setIsBulkImportModalOpen] = useState(false);
   const [isImportExportOpen, setIsImportExportOpen] = useState(false);
 
   const filtersArray = Object.entries(filters)
@@ -472,7 +473,7 @@ export default function CoursePage() {
       >
         <Button
           variant="outline"
-          onClick={() => toast.info("Bulk import for courses is coming soon.")}
+          onClick={() => setIsBulkImportModalOpen(true)}
           className={`whitespace-nowrap text-sm h-[42px] transition-all duration-300 ${
             isImportExportOpen ? "scale-100" : "scale-95"
           }`}
@@ -609,6 +610,11 @@ export default function CoursePage() {
         isOpen={isExportModalOpen}
         onClose={() => setIsExportModalOpen(false)}
         onExport={exportToCSV}
+      />
+      <BulkImportCourseModal
+        isOpen={isBulkImportModalOpen}
+        onClose={() => setIsBulkImportModalOpen(false)}
+        includeCategoryColumn={!isCorporate}
       />
     </div>
   );

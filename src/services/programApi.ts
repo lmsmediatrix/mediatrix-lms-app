@@ -99,6 +99,66 @@ class ProgramService extends APIService {
       throw new Error("Error searching program data");
     }
   };
+
+  exportProgram = async () => {
+    try {
+      const response = await apiClient.post(
+        `${BASE_URL}${PROGRAM.EXPORT}`,
+        this.searchParams,
+        {
+          withCredentials: true,
+          headers: {
+            Accept: "text/csv",
+          },
+          responseType: "blob",
+        }
+      );
+      return response.data;
+    } catch (error) {
+      console.error("Error exporting programs:", error);
+      throw new Error("Error exporting programs");
+    }
+  };
+
+  bulkImportPrograms = async (data: FormData) => {
+    try {
+      const response = await apiClient.post(
+        `${BASE_URL}${PROGRAM.BULK_CREATE}`,
+        data,
+        {
+          withCredentials: true,
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        }
+      );
+      return response.data as {
+        message: string;
+        result: {
+          successCount: number;
+          successList: Array<{ _id: string; code: string; name: string }>;
+          errorCount: number;
+          errorList: Array<{
+            errorMessage: string;
+            errorCode: number;
+            row?: number;
+          }>;
+        };
+      };
+    } catch (error: unknown) {
+      const err = error as {
+        response?: { data?: { message?: string; error?: string } };
+        message?: string;
+      };
+      const msg =
+        err?.response?.data?.message ||
+        err?.response?.data?.error ||
+        err?.message ||
+        "Error importing programs";
+      console.error("Error bulk importing programs:", error);
+      throw new Error(typeof msg === "string" ? msg : "Error importing programs");
+    }
+  };
 }
 
 export default new ProgramService();
