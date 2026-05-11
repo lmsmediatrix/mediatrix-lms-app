@@ -5,6 +5,7 @@ import { toast } from "react-toastify";
 import Button from "../../components/common/Button";
 import ModernDatePicker from "../../components/common/ModernDatePicker";
 import { SearchableSelect } from "../../components/SearchableSelect";
+import DevelopmentPlanSkeleton from "../../components/skeleton/DevelopmentPlanSkeleton";
 import { useAuth } from "../../context/AuthContext";
 import {
   useGetDevelopmentPlans,
@@ -711,7 +712,9 @@ export default function EmployeeDevelopmentPlanPage() {
         </div>
       </section>
 
-      {!selectedPlan ? (
+      {!employeeId || plansQuery.isLoading || plansQuery.isFetching ? (
+        <DevelopmentPlanSkeleton />
+      ) : !selectedPlan ? (
         <section className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-5 space-y-3">
           <p className="text-sm text-slate-700">
             No development plan yet for this employee. Create a plan to start adding quarter activities.
