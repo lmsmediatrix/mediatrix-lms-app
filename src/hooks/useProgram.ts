@@ -7,6 +7,12 @@ import {
 import programService from "../services/programApi";
 import { ApiParams } from "../types/interfaces";
 
+type ProgramExportApiParams = Partial<ApiParams> & {
+  organizationId?: string;
+  searchTerm?: string;
+  archiveStatus?: "only" | "none";
+};
+
 export const useGetAllPrograms = (apiParams?: Partial<ApiParams>) => {
   return useQuery({
     queryKey: ["all-programs", apiParams],
@@ -96,6 +102,53 @@ export const useViewProgramById = (programId: string) => {
         ])
         .getProgramById(programId),
     enabled: !!programId,
+  });
+};
+
+export const useExportProgramToCsv = () => {
+  return useMutation({
+    mutationFn: async (apiParams?: ProgramExportApiParams) => {
+      programService.resetQuery();
+      const chain = programService
+        .select([
+          "_id",
+          "name",
+          "code",
+          "description",
+          "organizationId",
+          "isActive",
+          "createdAt",
+          "updatedAt",
+        ])
+        .limit(apiParams?.limit ?? 10)
+        .skip(apiParams?.skip ?? 0)
+        .where({
+          ...(apiParams?.organizationId
+            ? { organizationId: apiParams.organizationId }
+            : {}),
+        })
+        .search(
+          ["name", "code", "description"],
+          apiParams?.searchTerm || ""
+        )
+        .withArchive(apiParams?.archiveStatus || "none");
+
+      return chain.exportProgram();
+    },
+  });
+};
+
+export const useBulkImportPrograms = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: FormData) => programService.bulkImportPrograms(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["search-program"] });
+      queryClient.invalidateQueries({ queryKey: ["all-programs"] });
+      queryClient.invalidateQueries({ queryKey: ["programs-dropdown"] });
+      queryClient.invalidateQueries({ queryKey: ["infinite-programs-dropdown"] });
+    },
   });
 };
 

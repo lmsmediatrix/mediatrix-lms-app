@@ -7,6 +7,61 @@ import {
 import departmentService from "../services/departmentApi";
 import { ApiParams } from "../types/interfaces";
 
+type DepartmentExportApiParams = Partial<ApiParams> & {
+  organizationId?: string;
+  searchTerm?: string;
+  archiveStatus?: "only" | "none";
+};
+
+export const useExportDepartmentToCsv = () => {
+  return useMutation({
+    mutationFn: async (apiParams?: DepartmentExportApiParams) => {
+      departmentService.resetQuery();
+      return departmentService
+        .select([
+          "_id",
+          "name",
+          "code",
+          "description",
+          "organizationId",
+          "isActive",
+          "createdAt",
+          "updatedAt",
+        ])
+        .limit(apiParams?.limit ?? 10)
+        .skip(apiParams?.skip ?? 0)
+        .where({
+          ...(apiParams?.filter
+            ? { [apiParams.filter.key]: apiParams.filter.value }
+            : {}),
+          ...(apiParams?.organizationId
+            ? { organizationId: apiParams.organizationId }
+            : {}),
+        })
+        .search(
+          ["name", "code", "description"],
+          apiParams?.searchTerm || ""
+        )
+        .withArchive(apiParams?.archiveStatus || "none")
+        .exportDepartment();
+    },
+  });
+};
+
+export const useBulkImportDepartments = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: FormData) => departmentService.bulkImportDepartments(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["search-department"] });
+      queryClient.invalidateQueries({ queryKey: ["all-departments"] });
+      queryClient.invalidateQueries({ queryKey: ["departments-dropdown"] });
+      queryClient.invalidateQueries({ queryKey: ["infinite-departments-dropdown"] });
+    },
+  });
+};
+
 export const useGetAllDepartments = (apiParams?: Partial<ApiParams>) => {
   return useQuery({
     queryKey: ["all-departments", apiParams],

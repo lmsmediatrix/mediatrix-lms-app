@@ -1,7 +1,11 @@
 import Button from "../../components/common/Button";
 import { FaPlus } from "react-icons/fa";
+import { FiDownload, FiUpload } from "react-icons/fi";
 import { useSearchParams } from "react-router-dom";
-import { usePrograms } from "../../hooks/useProgram";
+import { usePrograms, useExportProgramToCsv } from "../../hooks/useProgram";
+import { PanelLeft } from "@/components/animate-ui/icons/panel-left";
+import ExportModal from "../../components/orgAdmin/ExportModal";
+import { exportToCSVUtil } from "../../lib/exportCsvUtils";
 import { useMemo, useState } from "react";
 import { useAuth } from "../../context/AuthContext";
 import TableEmptyState from "../../components/common/TableEmptyState";
@@ -9,6 +13,7 @@ import HoverHelpTooltip from "../../components/common/HoverHelpTooltip";
 import UpsertProgramModal from "../../components/orgAdmin/UpsertProgramModal";
 import ViewProgramModal from "../../components/orgAdmin/ViewProgramModal";
 import DeleteProgramModal from "../../components/orgAdmin/DeleteProgramModal";
+import BulkImportProgramModal from "../../components/orgAdmin/BulkImportProgramModal";
 import TableSkeletonClean from "../../components/skeleton/TableSkeletonClean";
 import { useDebounce } from "../../hooks/useDebounce";
 import PageJumpPagination from "../../components/common/PageJumpPagination";
@@ -51,6 +56,11 @@ export default function ProgramPage() {
   });
   const [programToDelete, setProgramToDelete] =
     useState<ProgramToDelete | null>(null);
+  const [isBulkImportModalOpen, setIsBulkImportModalOpen] = useState(false);
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+  const [isImportExportOpen, setIsImportExportOpen] = useState(false);
+
+  const exportProgramMutation = useExportProgramToCsv();
 
   const { data, isLoading, isError } = usePrograms({
     skip: skipLimit.skip,
@@ -90,6 +100,32 @@ export default function ProgramPage() {
     setProgramToDelete({
       id: program._id,
       name: program.name,
+    });
+  };
+
+  const exportToCSV = (type: "all" | "current") => {
+    const baseExportParams = {
+      organizationId: currentUser.user.organization._id,
+      searchTerm: debouncedSearchTerm,
+      archiveStatus,
+    };
+    exportToCSVUtil({
+      mutationFn: async (params) => exportProgramMutation.mutateAsync(params),
+      mutationParams:
+        type === "all"
+          ? { limit: 1000, skip: 0, ...baseExportParams }
+          : {
+              limit: skipLimit.limit,
+              skip: skipLimit.skip,
+              ...baseExportParams,
+            },
+      filenamePrefix: "1bislms-programs",
+      toastMessages: {
+        pending: `Exporting ${type} data to CSV...`,
+        success: `Successfully exported ${type} data to CSV`,
+        error: `Failed to export ${type} data to CSV`,
+      },
+      onError: (error) => console.error("Export error:", error),
     });
   };
 
@@ -193,15 +229,58 @@ export default function ProgramPage() {
   );
 
   const tableToolbarActions = (
-    <div className="flex items-center gap-2 flex-wrap md:flex-nowrap">
+    <div className="flex gap-2 flex-shrink-0 flex-wrap md:flex-nowrap md:items-center justify-end">
       <Button
         variant="primary"
         onClick={() => setSearchParams({ modal: "create-program" })}
-        className="whitespace-nowrap text-sm"
+        className="whitespace-nowrap text-sm h-[42px] flex-1 md:flex-initial"
       >
         <FaPlus />
         <span className="hidden sm:inline">Add Program</span>
         <span className="sm:hidden">Add</span>
+      </Button>
+      <div
+        className={`flex items-center gap-2 overflow-hidden transition-all duration-300 ease-out ${
+          isImportExportOpen
+            ? "max-w-[520px] opacity-100 translate-x-0"
+            : "max-w-0 opacity-0 -translate-x-2 pointer-events-none"
+        }`}
+      >
+        <Button
+          variant="outline"
+          onClick={() => setIsBulkImportModalOpen(true)}
+          className={`whitespace-nowrap text-sm h-[42px] transition-all duration-300 ${
+            isImportExportOpen ? "scale-100" : "scale-95"
+          }`}
+          type="button"
+        >
+          <FiUpload className="size-4" />
+          <span>Import</span>
+        </Button>
+        <Button
+          variant="outline"
+          onClick={() => setIsExportModalOpen(true)}
+          className={`whitespace-nowrap text-sm h-[42px] transition-all duration-300 ${
+            isImportExportOpen ? "scale-100" : "scale-95"
+          }`}
+          type="button"
+        >
+          <FiDownload className="size-4" />
+          <span>Export</span>
+        </Button>
+      </div>
+      <Button
+        variant={isImportExportOpen ? "outline" : "primary"}
+        onClick={() => setIsImportExportOpen((prev) => !prev)}
+        className="text-sm h-[42px] !px-4 md:!px-4"
+        type="button"
+      >
+        <PanelLeft
+          size={15}
+          animate={isImportExportOpen ? "default" : false}
+          animateOnHover
+        />
+        <span className="sr-only">Toggle import and export actions</span>
       </Button>
       <div className="flex items-center gap-2">
         <button
@@ -318,6 +397,15 @@ export default function ProgramPage() {
           programName={programToDelete.name}
         />
       )}
+      <BulkImportProgramModal
+        isOpen={isBulkImportModalOpen}
+        onClose={() => setIsBulkImportModalOpen(false)}
+      />
+      <ExportModal
+        isOpen={isExportModalOpen}
+        onClose={() => setIsExportModalOpen(false)}
+        onExport={exportToCSV}
+      />
     </div>
   );
 }

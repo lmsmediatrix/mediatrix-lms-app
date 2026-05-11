@@ -49,6 +49,16 @@ export const useCreateTnaSkill = () => {
   });
 };
 
+export const useBulkImportTnaSkills = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: FormData) => TnaService.bulkImportSkills(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["tna-skills"] });
+    },
+  });
+};
+
 export const useDeleteTnaSkill = () => {
   const queryClient = useQueryClient();
   return useMutation({

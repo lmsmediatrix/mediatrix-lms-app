@@ -277,6 +277,8 @@ export const API_ENDPOINTS = {
     UPDATE: "/department/update",
     REMOVE: "/department/remove/:id",
     SEARCH: "/department/search",
+    BULK_CREATE: "/department/create/bulk",
+    EXPORT: "/department/export",
   },
 
   CATEGORY: {
@@ -295,10 +297,13 @@ export const API_ENDPOINTS = {
     UPDATE: "/program/update",
     REMOVE: "/program/remove/:id",
     SEARCH: "/program/search",
+    BULK_CREATE: "/program/create/bulk",
+    EXPORT: "/program/export",
   },
 
   TNA: {
     SKILL_CREATE: "/tna/skill/create",
+    SKILL_BULK_CREATE: "/tna/skill/create/bulk",
     SKILL_GET_ALL: "/tna/skill/get/all",
     SKILL_REMOVE: "/tna/skill/remove/:id",
     ROLE_REQUIREMENT_GET_ALL: "/tna/role-requirement/get/all",

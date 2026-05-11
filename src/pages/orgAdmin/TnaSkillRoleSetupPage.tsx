@@ -1,5 +1,6 @@
- import { useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { FaListUl, FaTable } from "react-icons/fa";
+import { FiUpload } from "react-icons/fi";
 import { Trash } from "@/components/animate-ui/icons/trash";
 import { Navigate, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
@@ -12,6 +13,7 @@ import GroupedDataTable, {
   GroupedTableGroup,
 } from "../../components/common/GroupedDataTable";
 import ActionMenuButton from "../../components/orgAdmin/ActionMenuButton";
+import BulkImportTnaSkillsModal from "../../components/orgAdmin/BulkImportTnaSkillsModal";
 import TableSkeletonClean from "../../components/skeleton/TableSkeletonClean";
 import { useAuth } from "../../context/AuthContext";
 import {
@@ -145,6 +147,7 @@ export default function TnaSkillRoleSetupPage() {
   const [deletingSkillId, setDeletingSkillId] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
   const [requiredSkillsPreviewRole, setRequiredSkillsPreviewRole] = useState<any | null>(null);
+  const [isBulkImportSkillsModalOpen, setIsBulkImportSkillsModalOpen] = useState(false);
 
   if (orgType !== "corporate") {
     return <Navigate to={`/${orgCode}/admin/dashboard`} replace />;
@@ -576,22 +579,33 @@ export default function TnaSkillRoleSetupPage() {
 
             <div className={sectionSurfaceClassName}>
               <p className={fieldLabelClassName}>Add New Skill</p>
-              <div className="mt-1 grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_120px] gap-2">
+              <div className="mt-1 flex flex-col gap-2 sm:flex-row sm:items-stretch">
                 <input
                   value={skillName}
                   onChange={(event) => setSkillName(event.target.value)}
-                  className={inputClassName}
+                  className={`${inputClassName} sm:flex-1 sm:min-w-0`}
                   placeholder="Skill name (e.g., Emergency Care)"
                 />
-                <Button
-                  variant="primary"
-                  onClick={saveSkill}
-                  isLoading={createSkillMutation.isPending}
-                  disabled={!canSaveSkill}
-                  className="h-10 whitespace-nowrap justify-center"
-                >
-                  Add Skill
-                </Button>
+                <div className="flex flex-col sm:flex-row gap-2 shrink-0 sm:w-auto">
+                  <Button
+                    variant="primary"
+                    onClick={saveSkill}
+                    isLoading={createSkillMutation.isPending}
+                    disabled={!canSaveSkill}
+                    className="h-10 whitespace-nowrap justify-center sm:min-w-[120px]"
+                  >
+                    Add Skill
+                  </Button>
+                  <Button
+                    variant="outline"
+                    type="button"
+                    onClick={() => setIsBulkImportSkillsModalOpen(true)}
+                    className="h-10 whitespace-nowrap justify-center gap-2 sm:min-w-[120px]"
+                  >
+                    <FiUpload className="size-4 shrink-0" />
+                    Import CSV
+                  </Button>
+                </div>
               </div>
               <p className={fieldHintClassName}>
                 Keep names short and specific so reports and role standards stay clean.
@@ -1041,6 +1055,11 @@ export default function TnaSkillRoleSetupPage() {
           </div>
         </div>
       </Dialog>
+
+      <BulkImportTnaSkillsModal
+        isOpen={isBulkImportSkillsModalOpen}
+        onClose={() => setIsBulkImportSkillsModalOpen(false)}
+      />
     </div>
   );
 }

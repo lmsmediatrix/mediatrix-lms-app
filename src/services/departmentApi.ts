@@ -91,6 +91,66 @@ class DepartmentService extends APIService {
       throw new Error("Error searching department data");
     }
   };
+
+  exportDepartment = async () => {
+    try {
+      const response = await apiClient.post(
+        `${BASE_URL}${DEPARTMENT.EXPORT}`,
+        this.searchParams,
+        {
+          withCredentials: true,
+          headers: {
+            Accept: "text/csv",
+          },
+          responseType: "blob",
+        }
+      );
+      return response.data;
+    } catch (error) {
+      console.error("Error exporting departments:", error);
+      throw new Error("Error exporting departments");
+    }
+  };
+
+  bulkImportDepartments = async (data: FormData) => {
+    try {
+      const response = await apiClient.post(
+        `${BASE_URL}${DEPARTMENT.BULK_CREATE}`,
+        data,
+        {
+          withCredentials: true,
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        }
+      );
+      return response.data as {
+        message: string;
+        result: {
+          successCount: number;
+          successList: Array<{ _id: string; code: string; name: string }>;
+          errorCount: number;
+          errorList: Array<{
+            errorMessage: string;
+            errorCode: number;
+            row?: number;
+          }>;
+        };
+      };
+    } catch (error: unknown) {
+      const err = error as {
+        response?: { data?: { message?: string; error?: string } };
+        message?: string;
+      };
+      const msg =
+        err?.response?.data?.message ||
+        err?.response?.data?.error ||
+        err?.message ||
+        "Error importing departments";
+      console.error("Error bulk importing departments:", error);
+      throw new Error(typeof msg === "string" ? msg : "Error importing departments");
+    }
+  };
 }
 
 export default new DepartmentService();

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import { z } from "zod";
@@ -710,12 +710,6 @@ export default function TnaPage() {
     [activeStep],
   );
 
-  const stepperProgressPercent = useMemo(() => {
-    const stepCount = FLOW_STEPS.length - 1;
-    if (stepCount <= 0) return 0;
-    return (activeStepIndex / stepCount) * 100;
-  }, [activeStepIndex]);
-
   const goToStep = (stepKey: StepKey) => {
     if (stepEnabledByStep[stepKey]) {
       setActiveStep(stepKey);
@@ -1201,23 +1195,56 @@ export default function TnaPage() {
                 );
               })}
             </div>
-            <div className="relative mt-3">
-              <div className="absolute left-2 right-2 top-2 h-[2px] bg-slate-200" />
-              <div className="absolute left-2 right-2 top-2 h-[2px]">
-                <div
-                  className="h-full bg-[color:var(--color-primary,#2563eb)] transition-all duration-300"
-                  style={{ width: `${stepperProgressPercent}%` }}
-                />
-              </div>
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-3 md:gap-6">
-                {FLOW_STEPS.map((step, index) => {
-                  const isActive = activeStep === step.key;
-                  const isReached = index <= activeStepIndex;
-                  const isStepEnabled = stepEnabledByStep[step.key];
-                  const isStepLocked = !isStepEnabled && !isActive;
-                  return (
+            <div className="mt-3 hidden md:flex items-center">
+              {FLOW_STEPS.map((step, index) => {
+                const isActive = activeStep === step.key;
+                const isReached = index <= activeStepIndex;
+                const isStepEnabled = stepEnabledByStep[step.key];
+                const isStepLocked = !isStepEnabled && !isActive;
+                const segmentComplete = activeStepIndex > index;
+                return (
+                  <Fragment key={`flow-step-track-${step.key}`}>
                     <button
-                      key={`flow-step-dot-${step.key}`}
+                      type="button"
+                      onClick={() => goToStep(step.key)}
+                      disabled={isStepLocked}
+                      className="relative z-10 flex shrink-0 justify-center"
+                      aria-label={`Go to step ${index + 1}`}
+                    >
+                      <span
+                        className={`inline-flex h-4 w-4 items-center justify-center rounded-full border-2 ${
+                          isActive
+                            ? "border-[color:var(--color-primary,#2563eb)] bg-[color:var(--color-primary,#2563eb)] ring-2 ring-[color:color-mix(in_srgb,var(--color-primary,#2563eb)_20%,transparent)] ring-offset-2 ring-offset-white"
+                            : isReached
+                              ? "border-[color:var(--color-primary,#2563eb)] bg-[color:var(--color-primary,#2563eb)]"
+                              : "border-slate-300 bg-white"
+                        }`}
+                      />
+                    </button>
+                    {index < FLOW_STEPS.length - 1 ? (
+                      <div
+                        className="mx-2 h-[2px] min-w-[1.25rem] flex-1 self-center rounded-full bg-slate-200 transition-colors duration-300"
+                        aria-hidden
+                      >
+                        {segmentComplete ? (
+                          <div className="h-full w-full rounded-full bg-[color:var(--color-primary,#2563eb)]" />
+                        ) : null}
+                      </div>
+                    ) : null}
+                  </Fragment>
+                );
+              })}
+            </div>
+            <div className="mt-3 flex flex-col gap-0 pl-1.5 md:hidden">
+              {FLOW_STEPS.map((step, index) => {
+                const isActive = activeStep === step.key;
+                const isReached = index <= activeStepIndex;
+                const isStepEnabled = stepEnabledByStep[step.key];
+                const isStepLocked = !isStepEnabled && !isActive;
+                const segmentComplete = activeStepIndex > index;
+                return (
+                  <Fragment key={`flow-step-track-mobile-${step.key}`}>
+                    <button
                       type="button"
                       onClick={() => goToStep(step.key)}
                       disabled={isStepLocked}
@@ -1234,9 +1261,19 @@ export default function TnaPage() {
                         }`}
                       />
                     </button>
-                  );
-                })}
-              </div>
+                    {index < FLOW_STEPS.length - 1 ? (
+                      <div
+                        className="ml-1.5 h-4 w-0.5 shrink-0 bg-slate-200"
+                        aria-hidden
+                      >
+                        {segmentComplete ? (
+                          <div className="h-full w-full bg-[color:var(--color-primary,#2563eb)]" />
+                        ) : null}
+                      </div>
+                    ) : null}
+                  </Fragment>
+                );
+              })}
             </div>
             <p className="mt-3 text-xs text-slate-500">
               {FLOW_STEPS.find((step) => step.key === activeStep)?.description}
