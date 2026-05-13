@@ -160,7 +160,8 @@ export const createStudentFormData = (data: any): FormData => {
   formData.append("firstName", data.firstName);
   formData.append("lastName", data.lastName);
   formData.append("email", data.email);
-  formData.append("orgId", data.orgId);
+  formData.append("role", "student");
+  if (data.orgId) formData.append("orgId", data.orgId);
   formData.append("orgCode", data.orgCode);
 
   if (data.studentId) formData.append("studentId", data.studentId);
