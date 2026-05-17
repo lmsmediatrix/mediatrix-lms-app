@@ -1,9 +1,10 @@
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import TopNavigation from "../components/common/TopNavigation";
 import SideNavigation from "../components/common/SideNavigation";
+import SetupGuideBot from "../components/common/SetupGuideBot";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { getRouteRoleSegment } from "../lib/utils";
 
@@ -12,6 +13,9 @@ const MainLayout = () => {
   const navigate = useNavigate();
   const { currentUser } = useAuth();
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [activeSetupTarget, setActiveSetupTarget] = useState<string | null>(
+    null,
+  );
   const role = currentUser.user.role;
   const routeRole = getRouteRoleSegment(role);
   const orgCode = currentUser.user.organization?.code;
@@ -33,6 +37,13 @@ const MainLayout = () => {
       );
     }
   }, [currentUser, navigate, orgCode, routeRole]);
+
+  const handleActiveSetupTargetChange = useCallback((target: string | null) => {
+    setActiveSetupTarget(target);
+    if (target) {
+      setIsCollapsed(false);
+    }
+  }, []);
 
   return (
     <div className="flex h-screen flex-col overflow-hidden">
@@ -56,6 +67,7 @@ const MainLayout = () => {
           <SideNavigation
             isCollapsed={isCollapsed}
             setIsCollapsed={setIsCollapsed}
+            activeSetupTarget={activeSetupTarget}
           />
         )}
         <main
@@ -74,6 +86,11 @@ const MainLayout = () => {
             <Outlet />
           )}
         </main>
+        {isSideNav && (
+          <SetupGuideBot
+            onActiveTargetChange={handleActiveSetupTargetChange}
+          />
+        )}
       </div>
 
       <ToastContainer

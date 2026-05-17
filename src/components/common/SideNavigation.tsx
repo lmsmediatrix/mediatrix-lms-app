@@ -11,6 +11,7 @@ import { IoClose } from "react-icons/io5";
 import { useAuth } from "../../context/AuthContext";
 import { BASE_NAVIGATION } from "../../config/common";
 import { getTerm } from "../../lib/utils";
+import { openPerformanceSystem } from "../../lib/performanceRedirect";
 import { motion as m, AnimatePresence } from "framer-motion";
 
 interface NavItem {
@@ -23,7 +24,11 @@ interface NavItem {
 interface SideNavigationProps {
   isCollapsed: boolean;
   setIsCollapsed: (value: boolean) => void;
+  activeSetupTarget?: string | null;
 }
+
+export const getSetupTargetId = (label: string) =>
+  `nav-${label.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}`;
 
 // ── Animated icon wrapper ──────────────────────────────────────────────────
 interface AnimIconHandle {
@@ -97,6 +102,7 @@ function NavLinkItem({
   isCollapsed,
   isMobileMenuOpen,
   onClose,
+  isSetupActive,
 }: {
   item: NavItem;
   path: string;
@@ -105,6 +111,7 @@ function NavLinkItem({
   isCollapsed: boolean;
   isMobileMenuOpen: boolean;
   onClose: () => void;
+  isSetupActive: boolean;
 }) {
   const [isHovered, setIsHovered] = useState(false);
 
@@ -118,8 +125,13 @@ function NavLinkItem({
             : "text-gray-600 hover:bg-gray-100 hover:gap-4"
         } ${isSubmenu && (!isCollapsed || isMobileMenuOpen) ? "pl-4" : ""} ${
           isCollapsed && !isMobileMenuOpen ? "justify-center" : ""
+        } ${
+          isSetupActive
+            ? "setup-guide-sidebar-highlight bg-primary/10 text-primary shadow-[0_0_0_2px_color-mix(in_srgb,var(--color-primary)_42%,transparent)]"
+            : ""
         }`
       }
+      data-setup-target={getSetupTargetId(item.LABEL)}
       end
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
@@ -162,6 +174,7 @@ function NavMenuButton({
   isMobileMenuOpen,
   onToggle,
   children,
+  isSetupActive,
 }: {
   item: NavItem;
   displayName: string;
@@ -170,6 +183,7 @@ function NavMenuButton({
   isMobileMenuOpen: boolean;
   onToggle: () => void;
   children: React.ReactNode;
+  isSetupActive: boolean;
 }) {
   const [isHovered, setIsHovered] = useState(false);
 
@@ -181,7 +195,12 @@ function NavMenuButton({
         onMouseLeave={() => setIsHovered(false)}
         className={`flex items-center gap-3 px-4 py-2 text-base rounded-lg transition-all w-full text-left text-gray-600 hover:bg-gray-100 hover:gap-4 ${
           isCollapsed && !isMobileMenuOpen ? "justify-center" : ""
+        } ${
+          isSetupActive
+            ? "setup-guide-sidebar-highlight bg-primary/10 text-primary shadow-[0_0_0_2px_color-mix(in_srgb,var(--color-primary)_42%,transparent)]"
+            : ""
         }`}
+        data-setup-target={getSetupTargetId(item.LABEL)}
       >
         {item.ICON && (
           <AnimatedNavIcon Icon={item.ICON} isHovered={isHovered} />
@@ -229,6 +248,7 @@ function NavMenuButton({
 export default function SideNavigation({
   isCollapsed,
   setIsCollapsed,
+  activeSetupTarget,
 }: SideNavigationProps) {
   const location = useLocation();
   const navigate = useNavigate();
@@ -236,6 +256,7 @@ export default function SideNavigation({
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [openMenus, setOpenMenus] = useState<string[]>([]);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isLogoMenuOpen, setIsLogoMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const logoMenuRef = useRef<HTMLDivElement>(null);
 
@@ -278,6 +299,8 @@ export default function SideNavigation({
     (item: NavItem, isSubmenu = false) => {
       const isOpen = openMenus.includes(item.LABEL);
       const { displayName } = transformItem(item);
+      const targetId = getSetupTargetId(item.LABEL);
+      const isSetupActive = activeSetupTarget === targetId;
       const path = item.PATH
         ? role !== "SUPERADMIN" && code && item.PATH.includes(":code")
           ? item.PATH.replace(":code", code)
@@ -294,6 +317,12 @@ export default function SideNavigation({
             isCollapsed={isCollapsed}
             isMobileMenuOpen={isMobileMenuOpen}
             onToggle={() => toggleSubmenu(item.LABEL)}
+            isSetupActive={
+              isSetupActive ||
+              item.SUBMENU.some(
+                (subItem) => getSetupTargetId(subItem.LABEL) === activeSetupTarget,
+              )
+            }
           >
             {item.SUBMENU.map((subItem) => renderNavItem(subItem, true))}
           </NavMenuButton>
@@ -310,11 +339,12 @@ export default function SideNavigation({
           isCollapsed={isCollapsed}
           isMobileMenuOpen={isMobileMenuOpen}
           onClose={() => setIsMobileMenuOpen(false)}
+          isSetupActive={isSetupActive}
         />
       );
       // eslint-disable-next-line react-hooks/exhaustive-deps
     },
-    [openMenus, isCollapsed, isMobileMenuOpen, role, code, orgType],
+    [openMenus, isCollapsed, isMobileMenuOpen, role, code, orgType, activeSetupTarget],
   );
 
   const navigateToHome = () => {
@@ -329,7 +359,13 @@ export default function SideNavigation({
   };
 
   const handleLogoClick = () => {
-    navigateToHome();
+    setIsLogoMenuOpen((previous) => !previous);
+  };
+
+  const handlePerformanceRedirect = () => {
+    setIsMobileMenuOpen(false);
+    setIsLogoMenuOpen(false);
+    openPerformanceSystem(currentUser);
   };
 
   const navigateToProfile = () => {
@@ -369,16 +405,22 @@ export default function SideNavigation({
       if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
         setIsMenuOpen(false);
       }
+      if (
+        logoMenuRef.current &&
+        !logoMenuRef.current.contains(event.target as Node)
+      ) {
+        setIsLogoMenuOpen(false);
+      }
     };
 
-    if (isMenuOpen) {
+    if (isMenuOpen || isLogoMenuOpen) {
       document.addEventListener("mousedown", handleClickOutside);
     }
 
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
-  }, [isMenuOpen]);
+  }, [isMenuOpen, isLogoMenuOpen]);
 
   const navigationItems: NavItem[] = role
     ? BASE_NAVIGATION[role]
@@ -418,6 +460,20 @@ export default function SideNavigation({
         })
         .filter((item): item is NavItem => item !== null)
     : [];
+
+  useEffect(() => {
+    if (!activeSetupTarget || isCollapsed) return;
+
+    const containingMenu = navigationItems.find((item) =>
+      item.SUBMENU?.some(
+        (subItem) => getSetupTargetId(subItem.LABEL) === activeSetupTarget,
+      ),
+    );
+
+    if (containingMenu && !openMenus.includes(containingMenu.LABEL)) {
+      setOpenMenus((previous) => [...previous, containingMenu.LABEL]);
+    }
+  }, [activeSetupTarget, isCollapsed, navigationItems, openMenus]);
 
   return (
     <>
@@ -503,7 +559,41 @@ export default function SideNavigation({
                     )}
                   </m.div>
                 </AnimatePresence>
+                <MdKeyboardArrowDown
+                  className={`shrink-0 text-[20px] text-slate-500 transition-transform ${
+                    isLogoMenuOpen ? "rotate-180" : ""
+                  }`}
+                />
               </button>
+              <AnimatePresence>
+                {isLogoMenuOpen && (
+                  <m.div
+                    className="absolute left-0 top-[calc(100%+10px)] z-50 w-[220px] overflow-hidden rounded-xl border border-slate-200 bg-white shadow-[0_22px_50px_-28px_rgba(15,23,42,0.55)]"
+                    initial={{ opacity: 0, scale: 0.96, y: -4 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.96, y: -4 }}
+                    transition={{ duration: 0.16 }}
+                  >
+                    <button
+                      onClick={() => {
+                        navigateToHome();
+                        setIsLogoMenuOpen(false);
+                      }}
+                      className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
+                    >
+                      <span className="size-2 rounded-full bg-primary" />
+                      Dashboard
+                    </button>
+                    <button
+                      onClick={handlePerformanceRedirect}
+                      className="flex w-full items-center gap-3 border-t border-slate-100 px-4 py-3 text-left text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
+                    >
+                      <span className="size-2 rounded-full bg-emerald-500" />
+                      Performance System
+                    </button>
+                  </m.div>
+                )}
+              </AnimatePresence>
             </div>
           )}
         </div>

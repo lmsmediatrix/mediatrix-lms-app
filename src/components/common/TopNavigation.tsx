@@ -7,6 +7,7 @@ import { useAuth } from "../../context/AuthContext";
 import { BASE_NAVIGATION } from "../../config/common";
 import { useNotification } from "../../hooks/useNotification";
 import { getTerm } from "../../lib/utils";
+import { openPerformanceSystem } from "../../lib/performanceRedirect";
 import NotificationMenu from "./NotificationMenu";
 import AvatarDropdown from "./AvatarDropdown";
 
@@ -24,6 +25,7 @@ export default function TopNavigation() {
   const { data } = useNotification({ count: true, document: false, status: "unread" });
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [openMenus, setOpenMenus] = useState<string[]>([]);
+  const [isLogoMenuOpen, setIsLogoMenuOpen] = useState(false);
   const notificationButtonRef = useRef<HTMLButtonElement>(null);
   const logoMenuRef = useRef<HTMLDivElement>(null);
 
@@ -136,7 +138,13 @@ export default function TopNavigation() {
   };
 
   const handleLogoClick = () => {
-    navigateToHome();
+    setIsLogoMenuOpen((previous) => !previous);
+  };
+
+  const handlePerformanceRedirect = () => {
+    setIsMobileMenuOpen(false);
+    setIsLogoMenuOpen(false);
+    openPerformanceSystem(currentUser);
   };
 
   const navigateToProfile = () => {
@@ -164,6 +172,22 @@ export default function TopNavigation() {
       document.body.style.overflow = "unset";
     };
   }, [isMobileMenuOpen]);
+
+  useEffect(() => {
+    if (!isLogoMenuOpen) return;
+
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        logoMenuRef.current &&
+        !logoMenuRef.current.contains(event.target as Node)
+      ) {
+        setIsLogoMenuOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [isLogoMenuOpen]);
 
   const navigationItems: NavItem[] = role
     ? BASE_NAVIGATION[role]
@@ -226,7 +250,33 @@ export default function TopNavigation() {
                     className="h-10 w-10 cursor-pointer hover:scale-105 transition-transform rounded-full"
                   />
                 )}
+                <MdKeyboardArrowDown
+                  className={`text-[18px] text-slate-500 transition-transform ${
+                    isLogoMenuOpen ? "rotate-180" : ""
+                  }`}
+                />
               </button>
+              {isLogoMenuOpen && (
+                <div className="absolute left-0 top-[calc(100%+10px)] z-50 w-[220px] overflow-hidden rounded-xl border border-slate-200 bg-white shadow-[0_22px_50px_-28px_rgba(15,23,42,0.55)]">
+                  <button
+                    onClick={() => {
+                      navigateToHome();
+                      setIsLogoMenuOpen(false);
+                    }}
+                    className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
+                  >
+                    <span className="size-2 rounded-full bg-primary" />
+                    Dashboard
+                  </button>
+                  <button
+                    onClick={handlePerformanceRedirect}
+                    className="flex w-full items-center gap-3 border-t border-slate-100 px-4 py-3 text-left text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
+                  >
+                    <span className="size-2 rounded-full bg-emerald-500" />
+                    Performance System
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Desktop Navigation */}
