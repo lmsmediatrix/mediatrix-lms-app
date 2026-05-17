@@ -20,6 +20,26 @@ const apiClient: AxiosInstance = axios.create({
   withCredentials: true,
 });
 
+apiClient.interceptors.request.use((config) => {
+  const baseUrl = config.baseURL || "";
+  const requestUrl = config.url || "";
+  const normalizedBaseUrl = baseUrl.replace(/\/+$/, "");
+
+  if (
+    normalizedBaseUrl &&
+    requestUrl === normalizedBaseUrl
+  ) {
+    config.url = "/";
+  } else if (
+    normalizedBaseUrl &&
+    requestUrl.startsWith(`${normalizedBaseUrl}/`)
+  ) {
+    config.url = requestUrl.slice(normalizedBaseUrl.length);
+  }
+
+  return config;
+});
+
 // Custom error class to maintain original error properties
 export class ApiError extends Error {
   code?: string;

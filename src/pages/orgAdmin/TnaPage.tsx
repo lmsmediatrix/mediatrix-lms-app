@@ -1675,6 +1675,7 @@ export default function TnaPage() {
                       options={roleSelectOptions}
                       value={analyzeJobRole}
                       onChange={applyRoleSkillsToEmployee}
+                      disabled
                       placeholder={
                         roleRequirementsQuery.isLoading
                           ? "Loading role standards..."

@@ -1,0 +1,10 @@
+node_modules
+dist
+.env
+.env.*
+*.log
+dev.runtime*.log
+dev.runtime*.out.log
+dev.runtime*.err.log
+.git
+.gitignore
